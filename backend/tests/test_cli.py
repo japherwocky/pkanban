@@ -74,11 +74,11 @@ def test_token_storage():
 def test_cli_login_command(client, test_cli_user):
     from pkanban.cli import cmd_login
     from pkanban.config import get_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
-    with patch.object(KanbanClient, "__init__", return_value=None) as mock_init:
+    with patch.object(PkanbanClient, "__init__", return_value=None) as mock_init:
         with patch.object(
-            KanbanClient, "login", return_value="fake-jwt-token"
+            PkanbanClient, "login", return_value="fake-jwt-token"
         ) as mock_login:
             cmd_login(
                 username="testuser",
@@ -94,12 +94,12 @@ def test_cli_login_uses_configured_url_when_server_omitted(client, test_cli_user
     server, not a hardcoded localhost."""
     from pkanban.cli import cmd_login
     from pkanban.config import set_server_url, get_server_url
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_server_url("https://pkanban.example.com")
 
-    with patch.object(KanbanClient, "__init__", return_value=None) as mock_init:
-        with patch.object(KanbanClient, "login", return_value="jwt"):
+    with patch.object(PkanbanClient, "__init__", return_value=None) as mock_init:
+        with patch.object(PkanbanClient, "login", return_value="jwt"):
             cmd_login(username="testuser", password="pw", server=None)
 
     # The client was pointed at the configured URL...
@@ -112,12 +112,12 @@ def test_cli_login_persists_explicit_server(client, test_cli_user):
     """An explicit --server is saved so later commands reuse the same server."""
     from pkanban.cli import cmd_login
     from pkanban.config import set_server_url, get_server_url
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_server_url("http://localhost:8000")
 
-    with patch.object(KanbanClient, "__init__", return_value=None) as mock_init:
-        with patch.object(KanbanClient, "login", return_value="jwt"):
+    with patch.object(PkanbanClient, "__init__", return_value=None) as mock_init:
+        with patch.object(PkanbanClient, "login", return_value="jwt"):
             cmd_login(
                 username="testuser",
                 password="pw",
@@ -132,15 +132,15 @@ def test_cli_login_failure_does_not_change_config(client, test_cli_user):
     """A failed login must not persist the URL or a token."""
     from pkanban.cli import cmd_login
     from pkanban.config import set_server_url, get_server_url, get_token, clear_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
     import typer
 
     # The config file is shared across this module's tests, so start clean.
     set_server_url("http://localhost:8000")
     clear_token()
 
-    with patch.object(KanbanClient, "__init__", return_value=None):
-        with patch.object(KanbanClient, "login", side_effect=Exception("nope")):
+    with patch.object(PkanbanClient, "__init__", return_value=None):
+        with patch.object(PkanbanClient, "login", side_effect=Exception("nope")):
             with pytest.raises(typer.Exit):
                 cmd_login(
                     username="testuser",
@@ -155,18 +155,18 @@ def test_cli_login_failure_does_not_change_config(client, test_cli_user):
 def test_cli_login_warns_when_a_saved_api_key_will_still_win(
     client, test_cli_user, capsys, json_mode
 ):
-    """KanbanClient prefers api_key over token, so logging in while a key is
+    """PkanbanClient prefers api_key over token, so logging in while a key is
     saved doesn't actually switch identity -- the login should say so instead
     of quietly no-opping (card #113)."""
     import json
     from pkanban.cli import cmd_login
     from pkanban.config import set_api_key
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_api_key("existing-api-key")
 
-    with patch.object(KanbanClient, "__init__", return_value=None):
-        with patch.object(KanbanClient, "login", return_value="jwt"):
+    with patch.object(PkanbanClient, "__init__", return_value=None):
+        with patch.object(PkanbanClient, "login", return_value="jwt"):
             cmd_login(username="testuser", password="pw", server=None)
 
     payload = json.loads(capsys.readouterr().out)
@@ -180,12 +180,12 @@ def test_cli_login_no_warning_without_a_saved_api_key(
     import json
     from pkanban.cli import cmd_login
     from pkanban.config import clear_api_key
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     clear_api_key()
 
-    with patch.object(KanbanClient, "__init__", return_value=None):
-        with patch.object(KanbanClient, "login", return_value="jwt"):
+    with patch.object(PkanbanClient, "__init__", return_value=None):
+        with patch.object(PkanbanClient, "login", return_value="jwt"):
             cmd_login(username="testuser", password="pw", server=None)
 
     payload = json.loads(capsys.readouterr().out)
@@ -253,7 +253,7 @@ def test_make_client_prefers_runtime_api_key_over_stored_credentials():
 def test_cli_boards_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_boards
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
@@ -263,7 +263,7 @@ def test_cli_boards_command(client, auth_headers, test_user):
         {"id": 2, "name": "Another Board"},
     ]
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_boards()
 
         mock_client.boards.assert_called_once()
@@ -272,14 +272,14 @@ def test_cli_boards_command(client, auth_headers, test_user):
 def test_cli_board_create_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_board_create
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
     mock_client = MagicMock()
     mock_client.board_create.return_value = {"id": 42}
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_board_create(name="New Board")
 
         mock_client.board_create.assert_called_once_with("New Board")
@@ -288,14 +288,14 @@ def test_cli_board_create_command(client, auth_headers, test_user):
 def test_cli_card_create_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_card_create
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
     mock_client = MagicMock()
     mock_client.card_create.return_value = {"id": 99}
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_card_create(
             column_id=5, title="Test Card", description="A test description", position=0
         )
@@ -308,14 +308,14 @@ def test_cli_card_create_command(client, auth_headers, test_user):
 def test_cli_card_update_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_card_update
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
     mock_client = MagicMock()
     mock_client.card_update.return_value = {"id": 99}
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_card_update(
             card_id=99,
             title="Updated Card",
@@ -332,14 +332,14 @@ def test_cli_card_update_command(client, auth_headers, test_user):
 def test_cli_board_delete_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_board_delete
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
     mock_client = MagicMock()
     mock_client.board_delete.return_value = True
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_board_delete(board_id=42)
 
         mock_client.board_delete.assert_called_once_with(42)
@@ -348,14 +348,14 @@ def test_cli_board_delete_command(client, auth_headers, test_user):
 def test_cli_card_delete_command(client, auth_headers, test_user):
     from pkanban.cli import cmd_card_delete
     from pkanban.config import set_token
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
     set_token("test-token")
 
     mock_client = MagicMock()
     mock_client.card_delete.return_value = True
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_card_delete(card_id=99)
 
         mock_client.card_delete.assert_called_once_with(99)
@@ -365,10 +365,10 @@ def test_cli_card_delete_command(client, auth_headers, test_user):
 
 
 def _client_raising(exc):
-    """A KanbanClient whose underlying session always raises exc."""
-    from pkanban.client import KanbanClient
+    """A PkanbanClient whose underlying session always raises exc."""
+    from pkanban.client import PkanbanClient
 
-    pkanban_client = KanbanClient(server_url="http://localhost:9999", token="t")
+    pkanban_client = PkanbanClient(server_url="http://localhost:9999", token="t")
     pkanban_client.session = MagicMock()
     pkanban_client.session.request.side_effect = exc
     return pkanban_client
@@ -376,11 +376,11 @@ def _client_raising(exc):
 
 def test_client_connection_error_is_actionable():
     import requests
-    from pkanban.client import KanbanError
+    from pkanban.client import PkanbanError
 
     pkanban_client = _client_raising(requests.exceptions.ConnectionError())
 
-    with pytest.raises(KanbanError) as excinfo:
+    with pytest.raises(PkanbanError) as excinfo:
         pkanban_client.boards()
 
     message = str(excinfo.value)
@@ -390,11 +390,11 @@ def test_client_connection_error_is_actionable():
 
 def test_client_timeout_is_actionable():
     import requests
-    from pkanban.client import KanbanError
+    from pkanban.client import PkanbanError
 
     pkanban_client = _client_raising(requests.exceptions.Timeout())
 
-    with pytest.raises(KanbanError) as excinfo:
+    with pytest.raises(PkanbanError) as excinfo:
         pkanban_client.boards()
 
     assert "took too long to respond" in str(excinfo.value)
@@ -402,11 +402,11 @@ def test_client_timeout_is_actionable():
 
 def test_client_url_without_scheme_is_actionable():
     import requests
-    from pkanban.client import KanbanError
+    from pkanban.client import PkanbanError
 
     pkanban_client = _client_raising(requests.exceptions.InvalidSchema())
 
-    with pytest.raises(KanbanError) as excinfo:
+    with pytest.raises(PkanbanError) as excinfo:
         pkanban_client.boards()
 
     assert "http:// or https://" in str(excinfo.value)
@@ -414,9 +414,9 @@ def test_client_url_without_scheme_is_actionable():
 
 def test_client_sets_a_request_timeout():
     """Without a timeout a hung server makes the CLI wait forever."""
-    from pkanban.client import KanbanClient, DEFAULT_TIMEOUT
+    from pkanban.client import PkanbanClient, DEFAULT_TIMEOUT
 
-    pkanban_client = KanbanClient(server_url="http://localhost:9999", token="t")
+    pkanban_client = PkanbanClient(server_url="http://localhost:9999", token="t")
     pkanban_client.session = MagicMock()
     pkanban_client.session.request.return_value.json.return_value = []
 
@@ -588,7 +588,7 @@ def test_json_login_does_not_print_the_access_token(capsys, json_mode):
     mock_client = MagicMock()
     mock_client.login.return_value = "secret-token-value"
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_login(username="alice", password="pw", server=None)
 
     captured = capsys.readouterr()
@@ -733,9 +733,9 @@ def test_cli_card_update_leaves_the_title_alone_when_omitted():
 def test_client_card_update_omits_unset_fields():
     """A move must not carry a title, and the endpoint leaves out what it is
     not sent."""
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
-    client = KanbanClient(server_url="http://example.test", api_key="k")
+    client = PkanbanClient(server_url="http://example.test", api_key="k")
     with patch.object(client, "_request", return_value={}) as request:
         client.card_update(7, column_id=5)
 
@@ -777,9 +777,9 @@ def test_cli_column_create_omits_position_to_append():
 
 
 def test_client_column_create_omits_position_when_appending():
-    from pkanban.client import KanbanClient
+    from pkanban.client import PkanbanClient
 
-    client = KanbanClient(server_url="http://example.test", api_key="k")
+    client = PkanbanClient(server_url="http://example.test", api_key="k")
     with patch.object(client, "_request", return_value={}) as request:
         client.column_create(1, "Done")
 
@@ -799,7 +799,7 @@ def test_apikey_use_does_not_touch_the_config():
     mock_client = MagicMock()
     mock_client.boards.return_value = [{"id": 1}]
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_apikey_use(key="pkanban_probe_key")
 
     assert get_token() == "my-existing-session"
@@ -817,7 +817,7 @@ def test_apikey_use_failure_also_leaves_the_config_alone():
     mock_client = MagicMock()
     mock_client.boards.side_effect = Exception("401 Unauthorized")
 
-    with patch("pkanban.cli.KanbanClient", return_value=mock_client):
+    with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         with pytest.raises(typer.Exit):
             cmd_apikey_use(key="pkanban_bad_key")
 
@@ -846,10 +846,10 @@ def test_apikey_clear_removes_the_saved_key_but_leaves_the_token():
 
 
 def _client_returning(headers, token="stored-token"):
-    """A KanbanClient whose session returns a response carrying `headers`."""
-    from pkanban.client import KanbanClient
+    """A PkanbanClient whose session returns a response carrying `headers`."""
+    from pkanban.client import PkanbanClient
 
-    pkanban_client = KanbanClient(server_url="http://localhost:9999", token=token)
+    pkanban_client = PkanbanClient(server_url="http://localhost:9999", token=token)
     pkanban_client.session = MagicMock()
     response = MagicMock()
     response.headers = headers
@@ -905,11 +905,11 @@ def test_client_does_not_persist_a_renewal_for_someone_elses_token():
 def test_api_key_auth_ignores_a_renewed_token():
     """API keys do not expire. Persisting a JWT here would quietly downgrade an
     agent's non-expiring credential to one that runs out."""
-    from pkanban.client import KanbanClient, RENEWED_TOKEN_HEADER
+    from pkanban.client import PkanbanClient, RENEWED_TOKEN_HEADER
     from pkanban.config import get_token, set_token
 
     set_token("stored-token")
-    pkanban_client = KanbanClient(
+    pkanban_client = PkanbanClient(
         server_url="http://localhost:9999", token="stored-token", api_key="pkanban_x"
     )
     pkanban_client.session = MagicMock()

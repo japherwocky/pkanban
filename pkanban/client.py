@@ -11,11 +11,11 @@ DEFAULT_TIMEOUT = 30
 RENEWED_TOKEN_HEADER = "X-Renewed-Token"
 
 
-class KanbanError(Exception):
+class PkanbanError(Exception):
     """A problem the user can act on, reported without a traceback."""
 
 
-class KanbanClient:
+class PkanbanClient:
     def __init__(self, server_url=None, token=None, api_key=None):
         self.server_url = server_url or get_server_url()
         self.token = token or get_token()
@@ -40,25 +40,25 @@ class KanbanClient:
         try:
             response = self.session.request(method, url, **kwargs)
         except requests.exceptions.Timeout:
-            raise KanbanError(
+            raise PkanbanError(
                 f"The server at {self.server_url} took too long to respond "
                 f"(waited {DEFAULT_TIMEOUT}s). Try again shortly."
             )
         except requests.exceptions.SSLError as e:
-            raise KanbanError(f"Could not verify the TLS certificate for {self.server_url}: {e}")
+            raise PkanbanError(f"Could not verify the TLS certificate for {self.server_url}: {e}")
         except (
             requests.exceptions.MissingSchema,
             requests.exceptions.InvalidSchema,
             requests.exceptions.InvalidURL,
         ):
             # e.g. "localhost:8000", which requests reads as scheme "localhost".
-            raise KanbanError(
+            raise PkanbanError(
                 f"'{self.server_url}' is not a valid server URL - it needs an "
                 f"http:// or https:// prefix.\n"
                 f"Set one with: pkanban config --url https://pkanban.pearachute.com"
             )
         except requests.exceptions.ConnectionError:
-            raise KanbanError(
+            raise PkanbanError(
                 f"Could not reach the pkanban server at {self.server_url}.\n"
                 f"Check that the server is running and the URL is right "
                 f"(see: pkanban config)."

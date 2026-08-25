@@ -5,7 +5,7 @@ import typer
 from rich import print as rprint
 import requests
 
-from pkanban.client import KanbanClient, KanbanError
+from pkanban.client import PkanbanClient, PkanbanError
 from pkanban.config import (
     get_server_url,
     set_server_url,
@@ -100,13 +100,13 @@ def describe_http_error(e):
 def make_client():
     runtime_api_key = get_runtime_api_key()
     if runtime_api_key:
-        return KanbanClient(api_key=runtime_api_key)
+        return PkanbanClient(api_key=runtime_api_key)
     token = get_token()
     api_key = get_api_key()
     if not token and not api_key:
         emit_error("Not authenticated. Run 'pkanban login' first or use --api-key.")
         raise typer.Exit(1)
-    return KanbanClient(token=token, api_key=api_key)
+    return PkanbanClient(token=token, api_key=api_key)
 
 
 # === Auth Commands ===
@@ -155,7 +155,7 @@ def cmd_login(
     # login` works. Before this fell back to a hardcoded localhost, so login
     # ignored config and quietly hit the wrong server.
     server_url = server or get_server_url()
-    client = KanbanClient(server_url=server_url)
+    client = PkanbanClient(server_url=server_url)
     try:
         token = client.login(username, password)
     except Exception as e:
@@ -167,7 +167,7 @@ def cmd_login(
     set_token(token)
     if server is not None:
         set_server_url(server_url)
-    # KanbanClient prefers api_key over token (see config.get_api_key), so a
+    # PkanbanClient prefers api_key over token (see config.get_api_key), so a
     # saved API key silently outranks the login that just happened -- the new
     # token is on disk but every command keeps acting as the API key's
     # identity until that key is cleared.
@@ -812,7 +812,7 @@ def cmd_apikey_use(
     # and set_api_key(), so merely testing a key logged the user out and
     # overwrote their stored credentials -- the same bug that was fixed for
     # --api-key, which authenticates through the runtime key instead.
-    client = KanbanClient(api_key=key)
+    client = PkanbanClient(api_key=key)
 
     try:
         boards = client.boards()
@@ -925,7 +925,7 @@ def main():
 
     try:
         app()
-    except KanbanError as e:
+    except PkanbanError as e:
         emit_error(str(e))
         raise SystemExit(1)
     except requests.exceptions.HTTPError as e:
