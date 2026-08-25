@@ -121,7 +121,7 @@ class TestGeneratedSecret:
 class TestSecretFileLocation:
     def test_defaults_to_beside_the_database(self, tmp_path, monkeypatch):
         monkeypatch.delenv("JWT_SECRET_FILE", raising=False)
-        monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "kanban.db"))
+        monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "pkanban.db"))
 
         assert _secret_file_path() == str(tmp_path / ".jwt_secret")
 

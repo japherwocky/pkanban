@@ -1,7 +1,7 @@
 import os
 from peewee import SqliteDatabase
 
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "kanban.db")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", "pkanban.db")
 
 # A "file:..." DATABASE_PATH is an SQLite URI and needs uri=True to be parsed
 # as one rather than treated as a literal filename. The test suite uses this

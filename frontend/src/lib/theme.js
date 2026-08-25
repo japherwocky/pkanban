@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-const THEME_STORAGE_KEY = 'kanban-theme';
+const THEME_STORAGE_KEY = 'pkanban-theme';
 
 const getInitialTheme = () => {
   if (typeof window === 'undefined') return 'dark';

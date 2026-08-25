@@ -7,7 +7,7 @@ import os
 # database OBJECT in BaseModel.Meta.database, and backend/api.py captures the
 # same object via `from backend.database import db` for its db.atomic() calls.
 # Reassigning backend.database.db only moves the module attribute, leaving
-# both pointing at the real kanban.db -- which is how the suite used to wipe
+# both pointing at the real pkanban.db -- which is how the suite used to wipe
 # the developer's local database on every run. Pointing DATABASE_PATH at a
 # test database before import means only one db object is ever created, so
 # models, transactions, and fixtures all agree on it.

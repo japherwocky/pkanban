@@ -1,9 +1,9 @@
-# kanban login
+# pkanban login
 
-Login to the Kanban server.
+Login to the pkanban server.
 
 ```bash
-kanban login <username> --password PASSWORD [--server SERVER]
+pkanban login <username> --password PASSWORD [--server SERVER]
 ```
 
 **Arguments**
@@ -13,7 +13,7 @@ kanban login <username> --password PASSWORD [--server SERVER]
 **Options**
 
 - `--password`, `-p` (str) _(required)_ — Password. Omit to be prompted (input hidden, stays out of shell history).
-- `--server`, `-s` (str) — Server URL. Defaults to the configured URL (see 'kanban config'). Passing it also saves it as the configured URL.
+- `--server`, `-s` (str) — Server URL. Defaults to the configured URL (see 'pkanban config'). Passing it also saves it as the configured URL.
 
 ## See Also
 

@@ -5,15 +5,15 @@ This guide will help you deploy the Kanban Board application to production on an
 ## Prerequisites
 
 - Ubuntu LTS server with root/sudo access
-- Domain name `kanban.pearachute.com` pointing to your server
+- Domain name `pkanban.pearachute.com` pointing to your server
 - Git installed
 
 ## Quick Start
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/japherwocky/kanban.git /opt/kanban
-   cd /opt/kanban
+   git clone https://github.com/japherwocky/pkanban.git /opt/pkanban
+   cd /opt/pkanban
    ```
 
 2. Make scripts executable:
@@ -44,59 +44,59 @@ sudo apt-get install -y python3-venv python3-pip nginx certbot python3-certbot-n
 
 ```bash
 # Create system user
-sudo useradd --system --home /opt/kanban --shell /bin/bash kanban
+sudo useradd --system --home /opt/pkanban --shell /bin/bash pkanban
 
 # Create directories
-sudo mkdir -p /opt/kanban/{data,logs}
+sudo mkdir -p /opt/pkanban/{data,logs}
 sudo mkdir -p /var/www/certbot
-sudo chown -R kanban:kanban /opt/kanban
+sudo chown -R pkanban:pkanban /opt/pkanban
 ```
 
 ### 3. Application Setup
 
 ```bash
 # Clone repository
-sudo -u kanban git clone https://github.com/japherwocky/kanban.git /opt/kanban
+sudo -u pkanban git clone https://github.com/japherwocky/pkanban.git /opt/pkanban
 
 # Setup virtual environment
-sudo -u kanban python3 -m venv /opt/kanban/venv
+sudo -u pkanban python3 -m venv /opt/pkanban/venv
 
 # Install Python dependencies
-sudo -u kanban /opt/kanban/venv/bin/pip install --upgrade pip
-sudo -u kanban /opt/kanban/venv/bin/pip install -r /opt/kanban/backend/requirements.txt
+sudo -u pkanban /opt/pkanban/venv/bin/pip install --upgrade pip
+sudo -u pkanban /opt/pkanban/venv/bin/pip install -r /opt/pkanban/backend/requirements.txt
 
 # Build frontend
-sudo -u kanban bash -c "cd /opt/kanban/frontend && npm install && npm run build"
+sudo -u pkanban bash -c "cd /opt/pkanban/frontend && npm install && npm run build"
 ```
 
 ### 4. Database Setup
 
 ```bash
 # Initialize database
-sudo -u kanban /opt/kanban/venv/bin/python /opt/kanban/manage.py init
+sudo -u pkanban /opt/pkanban/venv/bin/python /opt/pkanban/manage.py init
 
 # Create admin user
-sudo -u kanban /opt/kanban/venv/bin/python /opt/kanban/manage.py user-create admin yourpassword --admin
+sudo -u pkanban /opt/pkanban/venv/bin/python /opt/pkanban/manage.py user-create admin yourpassword --admin
 ```
 
 ### 5. Systemd Service
 
 ```bash
 # Copy service file
-sudo cp /opt/kanban/sys/systemd/kanban.service /etc/systemd/system/
+sudo cp /opt/pkanban/sys/systemd/pkanban.service /etc/systemd/system/
 
 # Enable and start service
 sudo systemctl daemon-reload
-sudo systemctl enable kanban
-sudo systemctl start kanban
+sudo systemctl enable pkanban
+sudo systemctl start pkanban
 ```
 
 ### 6. Nginx Configuration
 
 ```bash
 # Copy nginx config
-sudo cp /opt/kanban/sys/nginx/kanban.pearachute.com.conf /etc/nginx/sites-available/
-sudo ln -sf /etc/nginx/sites-available/kanban.pearachute.com.conf /etc/nginx/sites-enabled/
+sudo cp /opt/pkanban/sys/nginx/pkanban.pearachute.com.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/pkanban.pearachute.com.conf /etc/nginx/sites-enabled/
 
 # Test and reload nginx
 sudo nginx -t
@@ -107,10 +107,10 @@ sudo systemctl reload nginx
 
 ```bash
 # Run SSL setup script
-sudo /opt/kanban/sys/scripts/setup-ssl.sh
+sudo /opt/pkanban/sys/scripts/setup-ssl.sh
 
 # Or manually:
-sudo certbot --nginx -d kanban.pearachute.com
+sudo certbot --nginx -d pkanban.pearachute.com
 ```
 
 ## Configuration
@@ -120,10 +120,10 @@ sudo certbot --nginx -d kanban.pearachute.com
 Copy the environment template and customize:
 
 ```bash
-sudo -u kanban cp /opt/kanban/sys/config/production.env /opt/kanban/.env
+sudo -u pkanban cp /opt/pkanban/sys/config/production.env /opt/pkanban/.env
 ```
 
-Edit `/opt/kanban/.env` to configure:
+Edit `/opt/pkanban/.env` to configure:
 - Database path
 - JWT secret key (optional -- see below)
 - CORS origins
@@ -134,14 +134,14 @@ an install from before that line existed, reinstall the unit so your settings
 actually reach the service:
 
 ```bash
-sudo cp /opt/kanban/sys/systemd/kanban.service /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl restart kanban
+sudo cp /opt/pkanban/sys/systemd/pkanban.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl restart pkanban
 ```
 
 Confirm what the running service actually has:
 
 ```bash
-systemctl show kanban --property=Environment
+systemctl show pkanban --property=Environment
 ```
 
 ### JWT signing key
@@ -150,7 +150,7 @@ You do not have to set one. With `JWT_SECRET_KEY` unset the service generates a
 random key on first start and stores it in `.jwt_secret` beside the database
 (mode 0600), reusing it across restarts.
 
-To manage the key yourself, generate one and put it in `/opt/kanban/.env`:
+To manage the key yourself, generate one and put it in `/opt/pkanban/.env`:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -167,16 +167,16 @@ again after the first restart.
 
 ```bash
 # Check service status
-sudo systemctl status kanban
+sudo systemctl status pkanban
 
 # View logs
-sudo journalctl -u kanban -f
+sudo journalctl -u pkanban -f
 
 # Restart service
-sudo systemctl restart kanban
+sudo systemctl restart pkanban
 
 # Stop service
-sudo systemctl stop kanban
+sudo systemctl stop pkanban
 ```
 
 ## Maintenance
@@ -187,24 +187,24 @@ To update the application:
 
 ```bash
 # Pull latest changes
-cd /opt/kanban
-sudo -u kanban git pull
+cd /opt/pkanban
+sudo -u pkanban git pull
 
 # Rebuild frontend (if needed)
-sudo -u kanban bash -c "cd frontend && npm install && npm run build"
+sudo -u pkanban bash -c "cd frontend && npm install && npm run build"
 
 # Restart service
-sudo systemctl restart kanban
+sudo systemctl restart pkanban
 ```
 
 ### Database Management
 
 ```bash
 # Check database status
-sudo -u kanban /opt/kanban/venv/bin/python /opt/kanban/manage.py status
+sudo -u pkanban /opt/pkanban/venv/bin/python /opt/pkanban/manage.py status
 
 # Backup database
-sudo cp /opt/kanban/data/kanban.db /opt/kanban/data/kanban.db.backup.$(date +%Y%m%d)
+sudo cp /opt/pkanban/data/pkanban.db /opt/pkanban/data/pkanban.db.backup.$(date +%Y%m%d)
 ```
 
 ### SSL Certificate Renewal
@@ -221,13 +221,13 @@ sudo certbot renew --dry-run
 
 Check logs for errors:
 ```bash
-sudo journalctl -u kanban -f
+sudo journalctl -u pkanban -f
 ```
 
 Common issues:
-- Missing dependencies: `sudo -u kanban /opt/kanban/venv/bin/pip install -r backend/requirements.txt`
-- Permissions: Ensure `/opt/kanban` is owned by `kanban` user
-- Database: Run `sudo -u kanban /opt/kanban/venv/bin/python /opt/kanban/manage.py init`
+- Missing dependencies: `sudo -u pkanban /opt/pkanban/venv/bin/pip install -r backend/requirements.txt`
+- Permissions: Ensure `/opt/pkanban` is owned by `pkanban` user
+- Database: Run `sudo -u pkanban /opt/pkanban/venv/bin/python /opt/pkanban/manage.py init`
 
 ### Nginx Issues
 
@@ -238,7 +238,7 @@ sudo nginx -t
 
 Check nginx logs:
 ```bash
-sudo tail -f /var/log/nginx/kanban.pearachute.com.error.log
+sudo tail -f /var/log/nginx/pkanban.pearachute.com.error.log
 ```
 
 ### SSL Issues
@@ -250,14 +250,14 @@ sudo certbot certificates
 
 Request new certificate:
 ```bash
-sudo certbot --nginx -d kanban.pearachute.com --force-renewal
+sudo certbot --nginx -d pkanban.pearachute.com --force-renewal
 ```
 
 ## Security Considerations
 
 1. **JWT Secret**: Never run on an example key. The service generates a real
    one if you set nothing, and refuses to start on a placeholder -- but verify
-   with `systemctl show kanban --property=Environment` that what you *think*
+   with `systemctl show pkanban --property=Environment` that what you *think*
    is configured is what the process actually received
 2. **Regular Updates**: Keep system packages updated
 3. **Backups**: Regularly backup the SQLite database
@@ -276,7 +276,7 @@ For higher traffic scenarios, consider:
 ## Directory Structure
 
 ```
-/opt/kanban/
+/opt/pkanban/
 ├── backend/                 # FastAPI backend
 ├── frontend/                # Svelte frontend
 ├── sys/                     # Deployment configuration
@@ -294,6 +294,6 @@ For higher traffic scenarios, consider:
 If you encounter issues:
 
 1. Check the troubleshooting section above
-2. Review service logs: `sudo journalctl -u kanban`
-3. Review nginx logs: `sudo tail -f /var/log/nginx/kanban.pearachute.com.error.log`
+2. Review service logs: `sudo journalctl -u pkanban`
+3. Review nginx logs: `sudo tail -f /var/log/nginx/pkanban.pearachute.com.error.log`
 4. Check the GitHub repository for known issues

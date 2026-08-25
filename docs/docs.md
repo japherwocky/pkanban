@@ -52,5 +52,5 @@ curl https://your-domain.com/docs/reference.md
 
 ## Support
 
-- Report issues on [GitHub](https://github.com/japherwocky/kanban)
-- View source code at [github.com/japherwocky/kanban](https://github.com/japherwocky/kanban)
+- Report issues on [GitHub](https://github.com/japherwocky/pkanban)
+- View source code at [github.com/japherwocky/pkanban](https://github.com/japherwocky/pkanban)

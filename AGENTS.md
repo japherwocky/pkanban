@@ -13,31 +13,31 @@ The Kanban project is a full-stack application with:
 
 ## Remote Configuration
 
-This project uses a remote Kanban server at **kanban.pearachute.com**.
+This project uses a remote Kanban server at **pkanban.pearachute.com**.
 
 ### Config
 The CLI is configured to connect to:
-- **Server**: https://kanban.pearachute.com
-- **Auth**: a JWT token or an API key, stored in `~/.kanban.yaml`
+- **Server**: https://pkanban.pearachute.com
+- **Auth**: a JWT token or an API key, stored in `~/.pkanban.yaml`
 
 
 ### Running the CLI from this repo
 
-The `kanban` command is not on the PATH unless the venv is activated. From
+The `pkanban` command is not on the PATH unless the venv is activated. From
 this repo root, call the venv binary directly:
 
 ```bash
 # Windows
-venv/Scripts/kanban.exe --help
+venv/Scripts/pkanban.exe --help
 
 # macOS/Linux
-venv/bin/kanban --help
+venv/bin/pkanban --help
 ```
 
 The CLI is installed in editable mode (`pip install -e .`), so changes under
-`kanban/` take effect immediately. Activating the venv
+`pkanban/` take effect immediately. Activating the venv
 (`venv/Scripts/activate` on Windows, `source venv/bin/activate` elsewhere)
-puts plain `kanban` on the PATH.
+puts plain `pkanban` on the PATH.
 
 ### Authenticating with an API key
 
@@ -46,7 +46,7 @@ in-memory runtime key and never touches the config file, so it is safe for
 per-command use by agents and scripts:
 
 ```bash
-venv/Scripts/kanban.exe --api-key kanban_1-<KEY> board list --json
+venv/Scripts/pkanban.exe --api-key pkanban_1-<KEY> board list --json
 ```
 
 ### Project Board
@@ -55,32 +55,32 @@ The **Dev** board (id=1) is the board for this project. Columns:
 
 ### Useful Commands
 ```bash
-kanban board list                    # List all boards
-kanban board get 1                    # Show Dev board details
-kanban board get <id>                 # Show board with columns & cards
-kanban card get <id>                  # Read one card's full contents
+pkanban board list                    # List all boards
+pkanban board get 1                    # Show Dev board details
+pkanban board get <id>                 # Show board with columns & cards
+pkanban card get <id>                  # Read one card's full contents
 ```
 
 ### Scripting the CLI
 
-Pass `--json` (or set `KANBAN_OUTPUT=json`) and every command prints the raw
+Pass `--json` (or set `PKANBAN_OUTPUT=json`) and every command prints the raw
 API response instead of formatted text. Use it rather than parsing the human
 output
 
 ```bash
-kanban column create 1 Todo 0 --json | jq -r .id
-kanban board get 1 --json | jq '.columns[].cards[] | {id, title, description}'
+pkanban column create 1 Todo 0 --json | jq -r .id
+pkanban board get 1 --json | jq '.columns[].cards[] | {id, title, description}'
 ```
 
 The flag works before or after the subcommand. In JSON mode stdout holds only
 the response; errors go to stderr as `{"error": ..., "status": ...}` alongside
 a non-zero exit code, so stdout is always safe to pipe into a parser.
 
-`kanban card get <id>` reads one card, including its description, the comments
+`pkanban card get <id>` reads one card, including its description, the comments
 and which board/column it sits on:
 
 ```bash
-kanban card get 92 --json | jq -r .description
+pkanban card get 92 --json | jq -r .description
 ```
 
 ### Setup
@@ -92,7 +92,7 @@ The virtualenv probably already exists at `./venv`. Please use it, or create a n
 pip install -e .
 
 # Run it
-kanban --help
+pkanban --help
 ```
 
 ### Running the Server
@@ -195,7 +195,7 @@ The CLI package is published as **pkanban** on PyPI. Publishing is automated via
 
 1. Update version in both files:
    - `pyproject.toml`: `version = "X.Y.Z"`
-   - `kanban/__init__.py`: `__version__ = "X.Y.Z"`
+   - `pkanban/__init__.py`: `__version__ = "X.Y.Z"`
 
 2. Commit and push:
    ```bash
@@ -223,5 +223,5 @@ The CLI package is published as **pkanban** on PyPI. Publishing is automated via
   build without failing it. Web fonts never loaded at all until PR #36, and
   every page rendered in the system fallback. Use `<link>` in `index.html`.
 
-- **Run the CLI from the venv: `venv/Scripts/kanban.exe`.** Plain `kanban` is
+- **Run the CLI from the venv: `venv/Scripts/pkanban.exe`.** Plain `pkanban` is
   not on PATH unless the venv is activated

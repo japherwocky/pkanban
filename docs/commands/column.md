@@ -1,20 +1,20 @@
-# kanban column
+# pkanban column
 
 Column management commands
 
 ## Commands
 
-- [`kanban column create`](#kanban-column-create) — Create a new column.
-- [`kanban column delete`](#kanban-column-delete) — Delete a column.
+- [`pkanban column create`](#pkanban-column-create) — Create a new column.
+- [`pkanban column delete`](#pkanban-column-delete) — Delete a column.
 
 ---
 
-## `kanban column create`
+## `pkanban column create`
 
 Create a new column.
 
 ```bash
-kanban column create <board_id> <name> [position]
+pkanban column create <board_id> <name> [position]
 ```
 
 **Arguments**
@@ -23,12 +23,12 @@ kanban column create <board_id> <name> [position]
 - `name` (str) — Column name
 - `position` (int) _(optional)_ — Position. Omit to append after the last column.
 
-## `kanban column delete`
+## `pkanban column delete`
 
 Delete a column.
 
 ```bash
-kanban column delete <column_id>
+pkanban column delete <column_id>
 ```
 
 **Arguments**

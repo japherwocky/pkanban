@@ -9,7 +9,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-DEPLOY_DIR="/opt/kanban"
+DEPLOY_DIR="/opt/pkanban"
 
 # The commit the server was on before this deploy pulled. Change detection has
 # to compare against it rather than HEAD~1: a push of several commits moves
@@ -32,12 +32,12 @@ echo -e "${GREEN}🚀 Deploying Kanban Board updates${NC}"
 echo "Deploy Directory: $DEPLOY_DIR"
 echo ""
 
-# Check if running as kanban user
+# Check if running as pkanban user
 check_user() {
     CURRENT_USER=$(whoami)
-    if [ "$CURRENT_USER" != "kanban" ]; then
-        echo -e "${RED}This script must be run as the kanban user:${NC}"
-        echo "  sudo -u kanban $DEPLOY_DIR/sys/scripts/deploy.sh"
+    if [ "$CURRENT_USER" != "pkanban" ]; then
+        echo -e "${RED}This script must be run as the pkanban user:${NC}"
+        echo "  sudo -u pkanban $DEPLOY_DIR/sys/scripts/deploy.sh"
         exit 1
     fi
 }
@@ -131,9 +131,9 @@ run_migrations() {
 
     # Migrate the database the SERVICE uses, which is not necessarily the one
     # manage.py would pick on its own. systemd sets DATABASE_PATH from
-    # /opt/kanban/.env (EnvironmentFile) falling back to the Environment= line
-    # in kanban.service; this shell has neither, so without the lookup below
-    # manage.py defaults to ./kanban.db and would happily migrate the wrong
+    # /opt/pkanban/.env (EnvironmentFile) falling back to the Environment= line
+    # in pkanban.service; this shell has neither, so without the lookup below
+    # manage.py defaults to ./pkanban.db and would happily migrate the wrong
     # file -- leaving the live database untouched and unmigrated.
     #
     # Read rather than sourced: .env is systemd-format, where values are
@@ -144,8 +144,8 @@ run_migrations() {
         DB_PATH=$(grep -E '^[[:space:]]*DATABASE_PATH=' "$DEPLOY_DIR/.env" \
             | tail -1 | cut -d= -f2- | tr -d '"'"'"'' | xargs)
     fi
-    # Matches Environment=DATABASE_PATH in sys/systemd/kanban.service.
-    DB_PATH="${DB_PATH:-$DEPLOY_DIR/kanban.db}"
+    # Matches Environment=DATABASE_PATH in sys/systemd/pkanban.service.
+    DB_PATH="${DB_PATH:-$DEPLOY_DIR/pkanban.db}"
 
     echo "Target database: $DB_PATH"
     DATABASE_PATH="$DB_PATH" $DEPLOY_DIR/venv/bin/python manage.py migrate
@@ -157,8 +157,8 @@ run_migrations() {
 install_unit() {
     echo -e "${YELLOW}⚙️ Checking systemd unit...${NC}"
 
-    REPO_UNIT="$DEPLOY_DIR/sys/systemd/kanban.service"
-    LIVE_UNIT="/etc/systemd/system/kanban.service"
+    REPO_UNIT="$DEPLOY_DIR/sys/systemd/pkanban.service"
+    LIVE_UNIT="/etc/systemd/system/pkanban.service"
 
     if [ ! -f "$REPO_UNIT" ]; then
         echo "No unit file in the repo, skipping"
@@ -189,17 +189,17 @@ install_unit() {
     # Deliberately fatal. Restarting now would come up on the stale unit and
     # report success, which is the exact failure this step exists to end: an
     # EnvironmentFile line sat in the repo for weeks while the running service
-    # knew nothing about it, so /opt/kanban/.env was never read and signup
+    # knew nothing about it, so /opt/pkanban/.env was never read and signup
     # sent no mail while looking healthy.
     echo -e "${RED}❌ Cannot install the unit -- deploy user lacks sudo rights${NC}"
     echo ""
     echo "Grant them once, as root:"
-    echo "  cat > /etc/sudoers.d/kanban-restart <<'EOF'"
-    echo "kanban ALL=(ALL) NOPASSWD: /bin/systemctl restart kanban"
-    echo "kanban ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload"
-    echo "kanban ALL=(ALL) NOPASSWD: /bin/cp $REPO_UNIT $LIVE_UNIT"
+    echo "  cat > /etc/sudoers.d/pkanban-restart <<'EOF'"
+    echo "pkanban ALL=(ALL) NOPASSWD: /bin/systemctl restart pkanban"
+    echo "pkanban ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload"
+    echo "pkanban ALL=(ALL) NOPASSWD: /bin/cp $REPO_UNIT $LIVE_UNIT"
     echo "EOF"
-    echo "  chmod 440 /etc/sudoers.d/kanban-restart"
+    echo "  chmod 440 /etc/sudoers.d/pkanban-restart"
     echo ""
     echo "Or apply this one change by hand and re-run the deploy:"
     echo "  sudo cp $REPO_UNIT $LIVE_UNIT"
@@ -213,8 +213,8 @@ install_unit() {
 install_nginx_config() {
     echo -e "${YELLOW}🌐 Checking nginx config...${NC}"
 
-    REPO_CONF="$DEPLOY_DIR/sys/nginx/kanban.pearachute.com.conf"
-    LIVE_CONF="/etc/nginx/sites-available/kanban.pearachute.com.conf"
+    REPO_CONF="$DEPLOY_DIR/sys/nginx/pkanban.pearachute.com.conf"
+    LIVE_CONF="/etc/nginx/sites-available/pkanban.pearachute.com.conf"
 
     if [ ! -f "$REPO_CONF" ]; then
         echo "No nginx config in the repo, skipping"
@@ -237,12 +237,12 @@ install_nginx_config() {
     print_nginx_sudoers_help() {
         echo ""
         echo "Grant them once, as root:"
-        echo "  cat > /etc/sudoers.d/kanban-nginx <<'EOF'"
-        echo "kanban ALL=(ALL) NOPASSWD: /bin/cp $REPO_CONF $LIVE_CONF"
-        echo "kanban ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t"
-        echo "kanban ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx"
+        echo "  cat > /etc/sudoers.d/pkanban-nginx <<'EOF'"
+        echo "pkanban ALL=(ALL) NOPASSWD: /bin/cp $REPO_CONF $LIVE_CONF"
+        echo "pkanban ALL=(ALL) NOPASSWD: /usr/sbin/nginx -t"
+        echo "pkanban ALL=(ALL) NOPASSWD: /bin/systemctl reload nginx"
         echo "EOF"
-        echo "  chmod 440 /etc/sudoers.d/kanban-nginx"
+        echo "  chmod 440 /etc/sudoers.d/pkanban-nginx"
         echo ""
         echo "Or apply this one change by hand and re-run the deploy:"
         echo "  sudo cp $REPO_CONF $LIVE_CONF"
@@ -303,16 +303,16 @@ install_nginx_config() {
 
 # Function to restart service
 restart_service() {
-    echo -e "${YELLOW}🔄 Restarting kanban service...${NC}"
-    sudo systemctl restart kanban
+    echo -e "${YELLOW}🔄 Restarting pkanban service...${NC}"
+    sudo systemctl restart pkanban
     sleep 2
 
     # Check if service is running
-    if systemctl is-active --quiet kanban; then
+    if systemctl is-active --quiet pkanban; then
         echo -e "${GREEN}✅ Service restarted successfully${NC}"
     else
         echo -e "${RED}❌ Service failed to start${NC}"
-        systemctl status kanban --no-pager
+        systemctl status pkanban --no-pager
         exit 1
     fi
 }
@@ -339,7 +339,7 @@ main() {
     echo -e "${GREEN}Step 5: Install systemd unit${NC}"
     install_unit
 
-    # Also before the restart -- reloading nginx is independent of the kanban
+    # Also before the restart -- reloading nginx is independent of the pkanban
     # service restart below, but keeping config changes together with the
     # restart step means a deploy either applies everything or fails loudly.
     echo -e "${GREEN}Step 6: Install nginx config${NC}"
@@ -352,8 +352,8 @@ main() {
     echo -e "${GREEN}✅ Deployment complete!${NC}"
     echo ""
     echo "Useful commands:"
-    echo "  Check service status: systemctl status kanban"
-    echo "  View logs: journalctl -u kanban -f"
+    echo "  Check service status: systemctl status pkanban"
+    echo "  View logs: journalctl -u pkanban -f"
 }
 
 # Run deployment

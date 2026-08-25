@@ -9,10 +9,10 @@
   // referenced card 12, which never existed: both update commands failed with
   // "Card 12 not found" on every run.
   const DEMO_COMMANDS = [
-    'kanban board get 1',
-    'kanban card create 1 "Fix API latency"',
-    'kanban card update 4 "Fix API latency" --column 2',
-    'kanban card update 4 "Fix API latency" --description "Optimize DB queries"'
+    'pkanban board get 1',
+    'pkanban card create 1 "Fix API latency"',
+    'pkanban card update 4 "Fix API latency" --column 2',
+    'pkanban card update 4 "Fix API latency" --description "Optimize DB queries"'
   ];
 
 let displayedText = '';

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pkanban"
-version = "0.2.0"
+version = "0.3.0"
 description = "CLI client for Kanban boards"
 readme = "README.md"
 license = {text = "MIT"}
@@ -33,13 +33,13 @@ dependencies = [
 ]
 
 [project.scripts]
-kanban = "kanban.cli:main"
+pkanban = "pkanban.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/japherwocky/kanban"
-Repository = "https://github.com/japherwocky/kanban"
-Issues = "https://github.com/japherwocky/kanban/issues"
+Homepage = "https://github.com/japherwocky/pkanban"
+Repository = "https://github.com/japherwocky/pkanban"
+Issues = "https://github.com/japherwocky/pkanban/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kanban*"]
+include = ["pkanban*"]

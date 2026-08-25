@@ -1,24 +1,24 @@
-# kanban team
+# pkanban team
 
 Team management commands
 
 ## Commands
 
-- [`kanban team create`](#kanban-team-create) — Create a new team.
-- [`kanban team get`](#kanban-team-get) — Show team details.
-- [`kanban team list`](#kanban-team-list) — List teams in an organization.
-- [`kanban team member-add`](#kanban-team-member-add) — Add member to team.
-- [`kanban team member-remove`](#kanban-team-member-remove) — Remove member from team.
-- [`kanban team members`](#kanban-team-members) — List team members.
+- [`pkanban team create`](#pkanban-team-create) — Create a new team.
+- [`pkanban team get`](#pkanban-team-get) — Show team details.
+- [`pkanban team list`](#pkanban-team-list) — List teams in an organization.
+- [`pkanban team member-add`](#pkanban-team-member-add) — Add member to team.
+- [`pkanban team member-remove`](#pkanban-team-member-remove) — Remove member from team.
+- [`pkanban team members`](#pkanban-team-members) — List team members.
 
 ---
 
-## `kanban team create`
+## `pkanban team create`
 
 Create a new team.
 
 ```bash
-kanban team create <org_id> <name>
+pkanban team create <org_id> <name>
 ```
 
 **Arguments**
@@ -26,36 +26,36 @@ kanban team create <org_id> <name>
 - `org_id` (int) — Organization ID
 - `name` (str) — Team name
 
-## `kanban team get`
+## `pkanban team get`
 
 Show team details.
 
 ```bash
-kanban team get <team_id>
+pkanban team get <team_id>
 ```
 
 **Arguments**
 
 - `team_id` (int) — Team ID
 
-## `kanban team list`
+## `pkanban team list`
 
 List teams in an organization.
 
 ```bash
-kanban team list --org-id ORG_ID
+pkanban team list --org-id ORG_ID
 ```
 
 **Options**
 
 - `--org-id`, `-o` (int) _(required)_ — Organization ID (required)
 
-## `kanban team member-add`
+## `pkanban team member-add`
 
 Add member to team.
 
 ```bash
-kanban team member-add <team_id> <username>
+pkanban team member-add <team_id> <username>
 ```
 
 **Arguments**
@@ -63,12 +63,12 @@ kanban team member-add <team_id> <username>
 - `team_id` (int) — Team ID
 - `username` (str) — Username to add
 
-## `kanban team member-remove`
+## `pkanban team member-remove`
 
 Remove member from team.
 
 ```bash
-kanban team member-remove <team_id> <user_id>
+pkanban team member-remove <team_id> <user_id>
 ```
 
 **Arguments**
@@ -76,12 +76,12 @@ kanban team member-remove <team_id> <user_id>
 - `team_id` (int) — Team ID
 - `user_id` (int) — User ID to remove
 
-## `kanban team members`
+## `pkanban team members`
 
 List team members.
 
 ```bash
-kanban team members <team_id>
+pkanban team members <team_id>
 ```
 
 **Arguments**

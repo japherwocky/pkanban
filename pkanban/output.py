@@ -24,12 +24,12 @@ def set_json_output(enabled):
 def json_output():
     """True when results should be printed as JSON.
 
-    KANBAN_OUTPUT is the fallback so a script can set the mode once for a whole
+    PKANBAN_OUTPUT is the fallback so a script can set the mode once for a whole
     run instead of threading --json through every invocation.
     """
     if _json_output is not None:
         return _json_output
-    return os.environ.get("KANBAN_OUTPUT", "").strip().lower() == "json"
+    return os.environ.get("PKANBAN_OUTPUT", "").strip().lower() == "json"
 
 
 def emit(payload, render):

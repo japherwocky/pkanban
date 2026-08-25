@@ -87,11 +87,11 @@
     <h3>Usage</h3>
     <p>Use this key to authenticate agents and CI pipelines:</p>
     <div class="code-example">
-      <code>kanban --api-key {apiKey || 'your-api-key'} board list</code>
+      <code>pkanban --api-key {apiKey || 'your-api-key'} board list</code>
     </div>
     <p class="header-note">Or set the <code>X-API-Key</code> header when making API requests:</p>
     <div class="code-example">
-      <code>curl -H "X-API-Key: {apiKey || 'your-api-key'}" https://kanban.pearachute.com/api/boards</code>
+      <code>curl -H "X-API-Key: {apiKey || 'your-api-key'}" https://pkanban.pearachute.com/api/boards</code>
     </div>
   </div>
 

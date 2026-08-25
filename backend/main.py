@@ -34,7 +34,7 @@ app = FastAPI(
 CORS_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
-        "CORS_ORIGINS", "https://kanban.pearachute.com"
+        "CORS_ORIGINS", "https://pkanban.pearachute.com"
     ).split(",")
     if origin.strip()
 ]
@@ -92,7 +92,7 @@ async def docs_handler(path: str):
     index_path = os.path.join(STATIC_PATH, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "Kanban API is running"}
+    return {"message": "pkanban API is running"}
 
 
 @app.get("/")
@@ -100,7 +100,7 @@ async def root():
     index_path = os.path.join(STATIC_PATH, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "Kanban API is running. Build the frontend to serve it here."}
+    return {"message": "pkanban API is running. Build the frontend to serve it here."}
 
 
 @app.get("/{path:path}")
@@ -117,4 +117,4 @@ async def catch_all(path: str):
     index_path = os.path.join(STATIC_PATH, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "Kanban API is running"}
+    return {"message": "pkanban API is running"}

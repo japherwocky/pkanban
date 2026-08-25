@@ -5,8 +5,8 @@ import typer
 from rich import print as rprint
 import requests
 
-from kanban.client import KanbanClient, KanbanError
-from kanban.config import (
+from pkanban.client import KanbanClient, KanbanError
+from pkanban.config import (
     get_server_url,
     set_server_url,
     get_token,
@@ -18,18 +18,18 @@ from kanban.config import (
     get_runtime_api_key,
     set_runtime_api_key,
 )
-from kanban.output import emit, emit_error, set_json_output
+from pkanban.output import emit, emit_error, set_json_output
 
 app = typer.Typer(
-    help="Kanban board CLI", no_args_is_help=True, invoke_without_command=True
+    help="pkanban board CLI", no_args_is_help=True, invoke_without_command=True
 )
 
 
 def _version_callback(value: bool):
     if value:
-        from kanban import __version__
+        from pkanban import __version__
 
-        emit({"version": __version__}, lambda: rprint(f"kanban {__version__}"))
+        emit({"version": __version__}, lambda: rprint(f"pkanban {__version__}"))
         raise typer.Exit()
 
 
@@ -47,13 +47,13 @@ def _root(
         False,
         "--json",
         help="Print the raw API response as JSON instead of formatted text. "
-        "Can also be set with KANBAN_OUTPUT=json.",
+        "Can also be set with PKANBAN_OUTPUT=json.",
     ),
 ):
-    """Kanban board CLI"""
+    """pkanban board CLI"""
     # main() usually strips --json before typer sees it, so this only fires
     # when app() is invoked directly. Declaring it here is what puts it in
-    # `kanban --help`.
+    # `pkanban --help`.
     if json_out:
         set_json_output(True)
 
@@ -83,8 +83,8 @@ def describe_http_error(e):
         # authenticated" alone reads like the credentials were never there.
         return (
             "Not authenticated -- your session may have expired. Run "
-            "'kanban login', or check that your API key is still active "
-            "(kanban apikey list)."
+            "'pkanban login', or check that your API key is still active "
+            "(pkanban apikey list)."
         )
     if status == 403:
         return detail or "You don't have permission to do that."
@@ -104,7 +104,7 @@ def make_client():
     token = get_token()
     api_key = get_api_key()
     if not token and not api_key:
-        emit_error("Not authenticated. Run 'kanban login' first or use --api-key.")
+        emit_error("Not authenticated. Run 'pkanban login' first or use --api-key.")
         raise typer.Exit(1)
     return KanbanClient(token=token, api_key=api_key)
 
@@ -146,12 +146,12 @@ def cmd_login(
         None,
         "--server",
         "-s",
-        help="Server URL. Defaults to the configured URL (see 'kanban config'). "
+        help="Server URL. Defaults to the configured URL (see 'pkanban config'). "
         "Passing it also saves it as the configured URL.",
     ),
 ):
-    """Login to the Kanban server."""
-    # Default to the configured URL so `kanban config --url ...` then `kanban
+    """Login to the pkanban server."""
+    # Default to the configured URL so `pkanban config --url ...` then `pkanban
     # login` works. Before this fell back to a hardcoded localhost, so login
     # ignored config and quietly hit the wrong server.
     server_url = server or get_server_url()
@@ -175,7 +175,7 @@ def cmd_login(
     if get_api_key():
         api_key_warning = (
             "A saved API key is still active and takes precedence over this "
-            "login. Run 'kanban apikey clear' to use this session instead."
+            "login. Run 'pkanban apikey clear' to use this session instead."
         )
     # The access token is deliberately left out of the JSON: it is already
     # saved to the config file, and stdout is exactly what CI logs capture.
@@ -805,8 +805,8 @@ def cmd_apikey_use(
 ):
     """Check that an API key works, without saving it anywhere.
 
-    Use 'kanban --api-key <key> <command>' to run a single command with it,
-    or 'kanban apikey save <key>' to store it.
+    Use 'pkanban --api-key <key> <command>' to run a single command with it,
+    or 'pkanban apikey save <key>' to store it.
     """
     # Nothing here touches the config file. This used to call clear_token()
     # and set_api_key(), so merely testing a key logged the user out and
@@ -824,9 +824,9 @@ def cmd_apikey_use(
         rprint(f"[green]API key verified[/green] - found {len(boards)} board(s)")
         rprint(
             "Run a single command with it: "
-            "[cyan]kanban --api-key <key> <command>[/cyan]"
+            "[cyan]pkanban --api-key <key> <command>[/cyan]"
         )
-        rprint("Or save it for future use: [cyan]kanban apikey save <key>[/cyan]")
+        rprint("Or save it for future use: [cyan]pkanban apikey save <key>[/cyan]")
 
     emit({"ok": True, "board_count": len(boards)}, render)
 
@@ -834,12 +834,12 @@ def cmd_apikey_use(
 @apikey_app.command("save")
 def cmd_apikey_save(key: str = typer.Argument(..., help="API key to save")):
     """Save API key to config file for future use."""
-    from kanban.config import set_api_key
+    from pkanban.config import set_api_key
 
     set_api_key(key)
 
     def render():
-        rprint("[green]API key saved to ~/.kanban.yaml[/green]")
+        rprint("[green]API key saved to ~/.pkanban.yaml[/green]")
         rprint("Run commands without --api-key from now on.")
 
     emit({"ok": True}, render)
@@ -849,14 +849,14 @@ def cmd_apikey_save(key: str = typer.Argument(..., help="API key to save")):
 def cmd_apikey_clear():
     """Remove the saved API key from config, without revoking it server-side.
 
-    An API key takes precedence over a logged-in session (see 'kanban
+    An API key takes precedence over a logged-in session (see 'pkanban
     login'), so a stale saved key silently outranks any later login. This
-    only forgets it locally -- use 'kanban apikey revoke' to invalidate it.
+    only forgets it locally -- use 'pkanban apikey revoke' to invalidate it.
     """
     clear_api_key()
 
     def render():
-        rprint("[green]API key cleared from ~/.kanban.yaml[/green]")
+        rprint("[green]API key cleared from ~/.pkanban.yaml[/green]")
 
     emit({"ok": True}, render)
 
@@ -879,14 +879,14 @@ def _extract_json_flag(argv):
     """Pull `--json` off the command line wherever it appears.
 
     Click only accepts an option on the command that declares it, so
-    `kanban --json board list` would work while `kanban board list --json`
+    `pkanban --json board list` would work while `pkanban board list --json`
     failed -- and the second form is the one people type. Strip it here
     instead, the same trick `--api-key` already uses.
 
     A `--json` sitting right after a value-taking option is left alone: there
     it is that option's value (`--description --json`), not a flag of ours.
     Following a flag that takes no value it is ours, which is why
-    `kanban --version --json` needs VALUELESS_FLAGS below rather than a blanket
+    `pkanban --version --json` needs VALUELESS_FLAGS below rather than a blanket
     "preceded by a dash" test.
     """
     found = False
@@ -920,7 +920,7 @@ def main():
             sys.argv.pop(idx)
             sys.argv.pop(idx)
             # Use this key for this invocation only -- do not touch the
-            # stored token/API key in ~/.kanban.yaml.
+            # stored token/API key in ~/.pkanban.yaml.
             set_runtime_api_key(api_key)
 
     try:

@@ -76,10 +76,10 @@ def _read_or_create_secret(path: str) -> str:
         handle.write(generated)
 
     print(
-        f"kanban: no JWT_SECRET_KEY set, generated a signing key at {path}.\n"
-        "kanban: existing sessions are now invalid; users will need to log in "
+        f"pkanban: no JWT_SECRET_KEY set, generated a signing key at {path}.\n"
+        "pkanban: existing sessions are now invalid; users will need to log in "
         "again.\n"
-        "kanban: set JWT_SECRET_KEY explicitly to manage the key yourself.",
+        "pkanban: set JWT_SECRET_KEY explicitly to manage the key yourself.",
         file=sys.stderr,
     )
     return generated

@@ -37,7 +37,7 @@ describe('theme.js agrees with the pre-paint guard in index.html', () => {
     const apply = (fn) => {
       document.documentElement.className = '';
       localStorage.clear();
-      if (stored !== null) localStorage.setItem('kanban-theme', stored);
+      if (stored !== null) localStorage.setItem('pkanban-theme', stored);
       fn();
       return document.documentElement.classList.contains('dark');
     };
@@ -79,7 +79,7 @@ describe('theme.js agrees with the pre-paint guard in index.html', () => {
 
 describe('theme store', () => {
   it('starts from the stored theme', async () => {
-    localStorage.setItem('kanban-theme', 'light');
+    localStorage.setItem('pkanban-theme', 'light');
     const { theme } = await freshTheme();
     expect(get(theme)).toBe('light');
   });
@@ -89,7 +89,7 @@ describe('theme store', () => {
     theme.setTheme('light');
 
     expect(get(theme)).toBe('light');
-    expect(localStorage.getItem('kanban-theme')).toBe('light');
+    expect(localStorage.getItem('pkanban-theme')).toBe('light');
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
@@ -99,11 +99,11 @@ describe('theme store', () => {
     theme.setTheme('chartreuse');
 
     expect(get(theme)).toBe('dark');
-    expect(localStorage.getItem('kanban-theme')).toBe('dark');
+    expect(localStorage.getItem('pkanban-theme')).toBe('dark');
   });
 
   it('cycles between light and dark', async () => {
-    localStorage.setItem('kanban-theme', 'dark');
+    localStorage.setItem('pkanban-theme', 'dark');
     const { theme } = await freshTheme();
 
     theme.cycleTheme();

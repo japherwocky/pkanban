@@ -1,6 +1,6 @@
 import requests
 
-from kanban.config import get_server_url, get_token, get_api_key, set_token
+from pkanban.config import get_server_url, get_token, get_api_key, set_token
 
 # Seconds before giving up on the server. Without this a hung or black-holed
 # host makes the CLI wait forever with no output.
@@ -55,13 +55,13 @@ class KanbanClient:
             raise KanbanError(
                 f"'{self.server_url}' is not a valid server URL - it needs an "
                 f"http:// or https:// prefix.\n"
-                f"Set one with: kanban config --url https://kanban.pearachute.com"
+                f"Set one with: pkanban config --url https://pkanban.pearachute.com"
             )
         except requests.exceptions.ConnectionError:
             raise KanbanError(
-                f"Could not reach the Kanban server at {self.server_url}.\n"
+                f"Could not reach the pkanban server at {self.server_url}.\n"
                 f"Check that the server is running and the URL is right "
-                f"(see: kanban config)."
+                f"(see: pkanban config)."
             )
 
         self._store_renewed_token(response)
@@ -76,7 +76,7 @@ class KanbanClient:
 
         JWTs expire; the server hands back a fresh one on this header when the
         current one is close to its expiry, which is what keeps a CLI that gets
-        used regularly from having to `kanban login` every day. API-key auth
+        used regularly from having to `pkanban login` every day. API-key auth
         never sees the header and is left alone.
         """
         if self.api_key or not self._token_from_config:

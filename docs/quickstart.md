@@ -14,10 +14,10 @@ commands and flags, see the [Command Reference](reference) and
 pip install pkanban
 ```
 
-This gives you the `kanban` command. Check it:
+This gives you the `pkanban` command. Check it:
 
 ```bash
-kanban --version
+pkanban --version
 ```
 
 ## 2. Connect and log in
@@ -25,23 +25,23 @@ kanban --version
 Point the CLI at a server, then log in. The hosted service is the usual choice:
 
 ```bash
-kanban config --url https://kanban.pearachute.com
-kanban login <your-username> --password <your-password>
+pkanban config --url https://pkanban.pearachute.com
+pkanban login <your-username> --password <your-password>
 ```
 
 ```
-Server URL set to: https://kanban.pearachute.com
+Server URL set to: https://pkanban.pearachute.com
 Logged in as <your-username>
 ```
 
 `login` uses whatever URL you configured, so you only set the URL once. Your
-token is saved to `~/.kanban.yaml` and reused by every later command — you stay
-logged in until you run `kanban logout`.
+token is saved to `~/.pkanban.yaml` and reused by every later command — you stay
+logged in until you run `pkanban logout`.
 
 Self-hosting instead? Point at your own server:
 
 ```bash
-kanban config --url http://localhost:8000
+pkanban config --url http://localhost:8000
 ```
 
 > **Heads up:** the password is passed on the command line, so it lands in your
@@ -51,8 +51,8 @@ kanban config --url http://localhost:8000
 Check your connection and identity any time:
 
 ```bash
-kanban config          # shows the current server URL
-kanban board list      # first thing to confirm you're authenticated
+pkanban config          # shows the current server URL
+pkanban board list      # first thing to confirm you're authenticated
 ```
 
 ## 3. Your first board
@@ -64,7 +64,7 @@ the next command.
 Create a board:
 
 ```bash
-kanban board create "Roadmap"
+pkanban board create "Roadmap"
 ```
 
 ```
@@ -74,9 +74,9 @@ Board created with id=7
 Add a few columns. The last argument is the position (left to right, 0-based):
 
 ```bash
-kanban column create 7 "To Do" 0
-kanban column create 7 "In Progress" 1
-kanban column create 7 "Done" 2
+pkanban column create 7 "To Do" 0
+pkanban column create 7 "In Progress" 1
+pkanban column create 7 "Done" 2
 ```
 
 ```
@@ -88,7 +88,7 @@ Column created with id=15
 Add a card to the "To Do" column (id `13`):
 
 ```bash
-kanban card create 13 "Ship v1" --description "Cut the first release" --position 0
+pkanban card create 13 "Ship v1" --description "Cut the first release" --position 0
 ```
 
 ```
@@ -99,7 +99,7 @@ Now look at the whole board. `board get` is the command you'll reach for most �
 it prints every column and card with their IDs:
 
 ```bash
-kanban board get 7
+pkanban board get 7
 ```
 
 ```
@@ -113,7 +113,7 @@ Board: Roadmap
 Move the card to "In Progress" (id `14`) by updating its column:
 
 ```bash
-kanban card update 21 "Ship v1" --column 14
+pkanban card update 21 "Ship v1" --column 14
 ```
 
 That's the full loop: create a board, shape it with columns, and move cards
@@ -125,32 +125,32 @@ For CI, scripts, or agents, authenticate with an API key instead of a password.
 Create one while logged in:
 
 ```bash
-kanban apikey create "CI agent"
+pkanban apikey create "CI agent"
 ```
 
 ```
 API Key created!
 
   Name:    CI agent
-  Key:     kanban_a1b2c3d4e5f6...
-  Prefix:  kanban_a....
+  Key:     pkanban_a1b2c3d4e5f6...
+  Prefix:  pkanban_a....
 
 IMPORTANT: This key is shown only once! Copy it now and store it securely.
 ```
 
-Save it once, and every later command uses it — no `kanban login` needed:
+Save it once, and every later command uses it — no `pkanban login` needed:
 
 ```bash
-kanban apikey save kanban_a1b2c3d4e5f6...
-kanban board list          # now authenticated by the key
+pkanban apikey save pkanban_a1b2c3d4e5f6...
+pkanban board list          # now authenticated by the key
 ```
 
 Manage keys as you'd expect:
 
 ```bash
-kanban apikey list                 # see keys, when each was last used
-kanban apikey revoke <key-id>      # deactivate a key
-kanban apikey activate <key-id>    # turn it back on
+pkanban apikey list                 # see keys, when each was last used
+pkanban apikey revoke <key-id>      # deactivate a key
+pkanban apikey activate <key-id>    # turn it back on
 ```
 
 Revoke a key the moment it leaks — that cuts off access without touching your
@@ -163,33 +163,33 @@ share a board with a team, and everyone on that team gets access. Teams live
 inside organizations, so the order is org → team → members → share.
 
 ```bash
-kanban org create "Acme"                 # prints an org id
-kanban team create <org-id> "Engineering" # prints a team id
-kanban org member-add <org-id> <username> # add the person to the org
-kanban team member-add <team-id> <username> # then to the team
-kanban share 7 <team-id>                 # share board 7 with the team
+pkanban org create "Acme"                 # prints an org id
+pkanban team create <org-id> "Engineering" # prints a team id
+pkanban org member-add <org-id> <username> # add the person to the org
+pkanban team member-add <team-id> <username> # then to the team
+pkanban share 7 <team-id>                 # share board 7 with the team
 ```
 
 Make a board private again at any time:
 
 ```bash
-kanban share 7 private
+pkanban share 7 private
 ```
 
 Inspect what exists:
 
 ```bash
-kanban org list
-kanban org members <org-id>
-kanban team list --org-id <org-id>
-kanban team members <team-id>
+pkanban org list
+pkanban org members <org-id>
+pkanban team list --org-id <org-id>
+pkanban team members <team-id>
 ```
 
 Not everyone you want to share with has an account yet? Invite them:
 
 ```bash
-kanban org invite-create <org-id> --email teammate@example.com
-kanban org invite-list <org-id>
+pkanban org invite-create <org-id> --email teammate@example.com
+pkanban org invite-list <org-id>
 ```
 
 ## How it fits together
@@ -210,7 +210,7 @@ User ── owns ──► Board ─► Column ─► Card
 
 - **New boards have no columns.** Create them yourself (step 3); there's no
   default set.
-- **You need to be authenticated first.** Run `kanban login` (or save an API
+- **You need to be authenticated first.** Run `pkanban login` (or save an API
   key) before any board command, or you'll get an auth error.
 - **Positions are 0-based** for both columns and cards, ordered left-to-right
   and top-to-bottom.
@@ -225,9 +225,9 @@ Every command and subcommand supports `--help`, which lists its exact arguments
 and flags:
 
 ```bash
-kanban --help
-kanban board --help
-kanban card create --help
+pkanban --help
+pkanban board --help
+pkanban card create --help
 ```
 
 From here:

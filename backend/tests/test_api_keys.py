@@ -40,15 +40,15 @@ class TestApiKeyModel:
         """Test that API key prefix extraction works"""
         from backend.models import get_api_key_prefix
 
-        key = "kanban_abc123def456"
+        key = "pkanban_abc123def456"
         prefix = get_api_key_prefix(key)
-        assert prefix == "kanban_a"  # First 8 chars
+        assert prefix == "pkanban_"  # First 8 chars (the prefix itself is 8 chars)
 
     def test_hash_api_key(self):
         """Test that API keys can be hashed and verified"""
         from backend.models import hash_api_key
 
-        key = "kanban_testkey123"
+        key = "pkanban_testkey123"
         hashed = hash_api_key(key)
 
         # Hash should be different from original
@@ -100,7 +100,7 @@ class TestApiKeyEndpoints:
         assert "id" in data
         assert "name" in data
         assert data["name"] == "CI Agent"
-        assert data["key"].startswith("kanban_")
+        assert data["key"].startswith("pkanban_")
 
     def test_create_api_key_requires_auth(self, client):
         """Test that creating an API key requires authentication"""
@@ -202,7 +202,7 @@ class TestApiKeyAuthentication:
         """Test that invalid API keys are rejected"""
         response = client.get(
             "/api/boards",
-            headers={"X-API-Key": "kanban_invalidkey123456789"},
+            headers={"X-API-Key": "pkanban_invalidkey123456789"},
         )
         assert response.status_code == 401
 

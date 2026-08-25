@@ -58,7 +58,7 @@ def test_docs_route_falls_through_to_spa(client):
     else:
         # It's the API message - also fine for testing
         assert (
-            "Kanban API is running" in response.text or "docs" in response.text.lower()
+            "pkanban API is running" in response.text or "docs" in response.text.lower()
         )
 
 

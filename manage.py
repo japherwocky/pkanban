@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Kanban server management script.
+pkanban server management script.
 
 Usage:
     python manage.py init                         # Initialize database
@@ -175,7 +175,7 @@ def cmd_status(args=None):
 def main():
     parser = argparse.ArgumentParser(
         prog="python manage.py",
-        description="Kanban server management"
+        description="pkanban server management"
     )
     parser.add_argument(
         "--log-level",

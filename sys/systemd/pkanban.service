@@ -4,17 +4,17 @@ After=network.target
 
 [Service]
 Type=simple
-User=kanban
-Group=kanban
-WorkingDirectory=/opt/kanban
-Environment=PATH=/opt/kanban/venv/bin
-Environment=DATABASE_PATH=/opt/kanban/kanban.db
-Environment=STATIC_PATH=/opt/kanban/backend/static
+User=pkanban
+Group=pkanban
+WorkingDirectory=/opt/pkanban
+Environment=PATH=/opt/pkanban/venv/bin
+Environment=DATABASE_PATH=/opt/pkanban/pkanban.db
+Environment=STATIC_PATH=/opt/pkanban/backend/static
 # DEPLOYMENT.md tells operators to put their config here. Without this line it
 # was never read, so a JWT_SECRET_KEY set in that file had no effect at all.
 # Leading "-" keeps the service startable when the file does not exist.
-EnvironmentFile=-/opt/kanban/.env
-ExecStart=/opt/kanban/venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8080 --app-dir /opt/kanban
+EnvironmentFile=-/opt/pkanban/.env
+ExecStart=/opt/pkanban/venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8080 --app-dir /opt/pkanban
 Restart=always
 RestartSec=10
 
@@ -23,7 +23,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/kanban
+ReadWritePaths=/opt/pkanban
 
 [Install]
 WantedBy=multi-user.target

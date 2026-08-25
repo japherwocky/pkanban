@@ -51,22 +51,22 @@
             <span class="code-comment"># Human: Generate and save an API key</span>
           </div>
           <div class="code-line">
-            <span class="code-prompt">$</span> kanban apikey create <span class="code-string">"My Agent"</span>
+            <span class="code-prompt">$</span> pkanban apikey create <span class="code-string">"My Agent"</span>
           </div>
           <div class="code-line code-indent">
-            <span class="code-comment"># Output: kanban_abc123xyz789...</span>
+            <span class="code-comment"># Output: pkanban_abc123xyz789...</span>
           </div>
           <div class="code-line">
-            <span class="code-prompt">$</span> kanban apikey save <span class="code-string">kanban_abc123xyz789...</span>
+            <span class="code-prompt">$</span> pkanban apikey save <span class="code-string">pkanban_abc123xyz789...</span>
           </div>
           <div class="code-line" style="margin-top: 8px;">
             <span class="code-comment"># Agent: Just run CLI commands</span>
           </div>
           <div class="code-line">
-            <span class="code-prompt">$</span> kanban board list
+            <span class="code-prompt">$</span> pkanban board list
           </div>
           <div class="code-line code-indent">
-            <span class="code-comment"># Works automatically - reads from ~/.kanban.yaml</span>
+            <span class="code-comment"># Works automatically - reads from ~/.pkanban.yaml</span>
           </div>
         </div>
       </div>

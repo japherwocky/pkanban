@@ -1,5 +1,5 @@
-// Demo API Service - Simulates realistic kanban CLI commands
-// Output formatting matches the actual CLI from kanban/cli.py
+// Demo API Service - Simulates realistic pkanban CLI commands
+// Output formatting matches the actual CLI from pkanban/cli.py
 
 // Initial demo board state
 const initialState = {
@@ -85,7 +85,7 @@ function parseCommand(cmd) {
   return { command, args, options };
 }
 
-// Generate realistic board get output (matches kanban/cli.py cmd_board_get)
+// Generate realistic board get output (matches pkanban/cli.py cmd_board_get)
 function formatBoardGet(board) {
   let output = `Board: ${board.name}\n`;
   for (const col of board.columns) {
@@ -116,9 +116,9 @@ export function executeCommand(cmd) {
     };
   }
 
-  // Handle 'kanban' prefix
-  const baseCommand = command === "kanban" ? args[0] : command;
-  const baseArgs = command === "kanban" ? args.slice(1) : args;
+  // Handle 'pkanban' prefix
+  const baseCommand = command === "pkanban" ? args[0] : command;
+  const baseArgs = command === "pkanban" ? args.slice(1) : args;
 
   // Reset state at start of demo sequence
   if (baseCommand === "board" && baseArgs[0] === "get" && baseArgs[1] === "1") {
@@ -136,18 +136,18 @@ export function executeCommand(cmd) {
       return {
         command,
         stdout: `Available commands:
-  kanban board list                        List all boards
-  kanban board get <board_id>              Show board details
-  kanban card create <column_id> <title>   Create a card
-  kanban card update <card_id> <title>     Update a card
-  kanban help                              Show this help`,
+  pkanban board list                        List all boards
+  pkanban board get <board_id>              Show board details
+  pkanban card create <column_id> <title>   Create a card
+  pkanban card update <card_id> <title>     Update a card
+  pkanban help                              Show this help`,
         exitCode: 0
       };
 
     default:
       return {
         command,
-        stderr: `Error: Unknown command '${command}'\nRun 'kanban help' for usage.`,
+        stderr: `Error: Unknown command '${command}'\nRun 'pkanban help' for usage.`,
         exitCode: 1
       };
   }
@@ -159,7 +159,7 @@ function handleBoardCommand(args, options) {
   switch (subCommand) {
     case "list":
       return {
-        command: "kanban board list",
+        command: "pkanban board list",
         stdout: `   1  Sprint 1`,
         exitCode: 0
       };
@@ -168,13 +168,13 @@ function handleBoardCommand(args, options) {
       const boardId = parseInt(args[1]);
       if (isNaN(boardId)) {
         return {
-          command: "kanban board get",
+          command: "pkanban board get",
           stderr: "Error: Invalid board ID",
           exitCode: 1
         };
       }
       return {
-        command: `kanban board get ${boardId}`,
+        command: `pkanban board get ${boardId}`,
         stdout: formatBoardGet(currentState.board),
         exitCode: 0,
         state: JSON.parse(JSON.stringify(currentState))
@@ -183,14 +183,14 @@ function handleBoardCommand(args, options) {
 
     case "create":
       return {
-        command: "kanban board create",
+        command: "pkanban board create",
         stderr: "Error: Board creation requires a name argument",
         exitCode: 1
       };
 
     default:
       return {
-        command: `kanban board ${subCommand}`,
+        command: `pkanban board ${subCommand}`,
         stderr: `Error: Unknown board command '${subCommand}'`,
         exitCode: 1
       };
@@ -207,8 +207,8 @@ function handleCardCommand(args, options) {
 
       if (isNaN(columnId) || !title) {
         return {
-          command: "kanban card create",
-          stderr: "Error: Missing required arguments. Usage: kanban card create <column_id> <title>",
+          command: "pkanban card create",
+          stderr: "Error: Missing required arguments. Usage: pkanban card create <column_id> <title>",
           exitCode: 1
         };
       }
@@ -217,7 +217,7 @@ function handleCardCommand(args, options) {
       const column = currentState.board.columns.find(c => c.id === columnId);
       if (!column) {
         return {
-          command: `kanban card create ${columnId} ${title}`,
+          command: `pkanban card create ${columnId} ${title}`,
           stderr: `Error: Column ${columnId} not found`,
           exitCode: 1
         };
@@ -235,7 +235,7 @@ function handleCardCommand(args, options) {
       column.cards.push(newCard);
 
       return {
-        command: `kanban card create ${columnId} ${title}`,
+        command: `pkanban card create ${columnId} ${title}`,
         stdout: `Card created with id=${newCard.id}`,
         exitCode: 0,
         state: JSON.parse(JSON.stringify(currentState))
@@ -248,8 +248,8 @@ function handleCardCommand(args, options) {
 
       if (isNaN(cardId) || !title) {
         return {
-          command: "kanban card update",
-          stderr: "Error: Missing required arguments. Usage: kanban card update <card_id> <title>",
+          command: "pkanban card update",
+          stderr: "Error: Missing required arguments. Usage: pkanban card update <card_id> <title>",
           exitCode: 1
         };
       }
@@ -268,7 +268,7 @@ function handleCardCommand(args, options) {
 
       if (!card) {
         return {
-          command: `kanban card update ${cardId} ${title}`,
+          command: `pkanban card update ${cardId} ${title}`,
           stderr: `Error: Card ${cardId} not found`,
           exitCode: 1
         };
@@ -280,7 +280,7 @@ function handleCardCommand(args, options) {
         const newColumn = currentState.board.columns.find(c => c.id === parseInt(newColumnId));
         if (!newColumn) {
           return {
-            command: `kanban card update ${cardId} ${title}`,
+            command: `pkanban card update ${cardId} ${title}`,
             stderr: `Error: Column ${newColumnId} not found`,
             exitCode: 1
           };
@@ -305,7 +305,7 @@ function handleCardCommand(args, options) {
       }
 
       return {
-        command: `kanban card update ${cardId} ${title}${newColumnId ? ` --column ${newColumnId}` : ""}${description ? ` --description "${description}"` : ""}`,
+        command: `pkanban card update ${cardId} ${title}${newColumnId ? ` --column ${newColumnId}` : ""}${description ? ` --description "${description}"` : ""}`,
         stdout: "Card updated",
         exitCode: 0,
         state: JSON.parse(JSON.stringify(currentState))
@@ -316,7 +316,7 @@ function handleCardCommand(args, options) {
       const cardId = parseInt(args[1]);
       if (isNaN(cardId)) {
         return {
-          command: "kanban card delete",
+          command: "pkanban card delete",
           stderr: "Error: Missing card ID",
           exitCode: 1
         };
@@ -328,7 +328,7 @@ function handleCardCommand(args, options) {
         if (idx !== -1) {
           col.cards.splice(idx, 1);
           return {
-            command: `kanban card delete ${cardId}`,
+            command: `pkanban card delete ${cardId}`,
             stdout: "Card deleted",
             exitCode: 0,
             state: JSON.parse(JSON.stringify(currentState))
@@ -337,7 +337,7 @@ function handleCardCommand(args, options) {
       }
 
       return {
-        command: `kanban card delete ${cardId}`,
+        command: `pkanban card delete ${cardId}`,
         stderr: `Error: Card ${cardId} not found`,
         exitCode: 1
       };
@@ -345,7 +345,7 @@ function handleCardCommand(args, options) {
 
     default:
       return {
-        command: `kanban card ${subCommand}`,
+        command: `pkanban card ${subCommand}`,
         stderr: `Error: Unknown card command '${subCommand}'`,
         exitCode: 1
       };

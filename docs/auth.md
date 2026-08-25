@@ -6,24 +6,24 @@ The API accepts two independent credential types. [`get_current_user_or_api_key`
 
 ### JWT (session login)
 
-Used by `kanban login` and the web UI.
+Used by `pkanban login` and the web UI.
 
 - `POST /token` (username + password) returns a signed JWT (`create_access_token` in [`backend/auth.py`](../backend/auth.py)), sent back as `Authorization: Bearer <token>`.
 - Signed with HS256 using a server-side secret (`JWT_SECRET_KEY`, or an auto-generated key persisted next to the database — see [`_load_secret_key`](../backend/auth.py)).
 - **Expiration slides while the session is in use.** `ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24` (24 hours) is still baked into the `exp` claim at issuance, but a token presented with less than `TOKEN_RENEWAL_WINDOW_MINUTES` (12 hours) of life left is replaced: the server returns a fresh one on the `X-Renewed-Token` response header, and both clients persist it. A session in continuous use therefore does not hit the 24-hour cliff; one left alone for a full day does.
 - **Renewal is capped.** Every token carries `auth_time`, the moment the user actually authenticated, and renewal carries it forward unchanged rather than resetting it. Past `SESSION_ABSOLUTE_MAX_DAYS` (30 days) the server stops renewing and a real login is required. These JWTs are stateless and cannot be revoked, so without the cap a stolen token could be kept alive indefinitely.
 - Renewal happens in a single middleware (`renew_session_token` in [`backend/main.py`](../backend/main.py)) rather than in the auth dependencies, so it applies to every authenticated request whichever dependency guarded it. API keys arrive on `X-API-Key`, never as a Bearer token, so they never reach it.
-- The CLI persists the token in its config file (see `kanban config`); there's no refresh-token flow and no server-side session — expiry past the cap just means re-authenticating.
+- The CLI persists the token in its config file (see `pkanban config`); there's no refresh-token flow and no server-side session — expiry past the cap just means re-authenticating.
 
 ### API Keys (headless / agent access)
 
-Used for CI, bots, and other non-interactive clients — see [`kanban apikey`](commands/apikey.md).
+Used for CI, bots, and other non-interactive clients — see [`pkanban apikey`](commands/apikey.md).
 
-- Created via `kanban apikey create <name>` (`POST /api-keys`), sent as `X-API-Key: <key>`.
+- Created via `pkanban apikey create <name>` (`POST /api-keys`), sent as `X-API-Key: <key>`.
 - The raw key is shown only once at creation; the server stores only a hash plus an 8-character lookup prefix.
-- **No expiration by default.** `expires_at` is optional and unset unless explicitly passed at creation — an API key otherwise lives forever until revoked (`kanban apikey revoke`).
+- **No expiration by default.** `expires_at` is optional and unset unless explicitly passed at creation — an API key otherwise lives forever until revoked (`pkanban apikey revoke`).
 - `last_used_at` is updated on every successful use, but — like the JWT — this is informational only and does not extend `expires_at` if one was set.
-- Keys can be deactivated (`kanban apikey revoke`) and later reactivated (`kanban apikey activate`) without changing the underlying key value.
+- Keys can be deactivated (`pkanban apikey revoke`) and later reactivated (`pkanban apikey activate`) without changing the underlying key value.
 
 ## Authorization: Organization Schema
 

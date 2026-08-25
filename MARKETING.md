@@ -8,7 +8,7 @@ It is the **Shared Memory Layer** for hybrid teams of Humans and AI Agents.
 * **The Problem:** AI Agents (like AutoGPT, CrewAI, custom scripts) are becoming autonomous workers. But they currently work in "black boxes" (terminals). You can't see their plan, and you can't easily intervene without stopping them. Existing tools (Jira, Trello) are too heavy, require complex OAuth, and have messy DOMs that agents struggle to read.
 * **The Solution:** A Kanban board that treats the **Command Line Interface (CLI)** as a first-class citizen.
     * **For Humans:** It’s a fast, beautiful web dashboard to track progress.
-    * **For Agents:** It’s a simple CLI command (`pkanban move`) that lets them report status instantly using standard IO.
+    * **For Agents:** It’s a simple CLI command (`pkanban card move`) that lets them report status instantly using standard IO.
 
 ## 2. Positioning & Audience
 We are pivoting from "A Dev Tool" to **"The Agent-Native Orchestration Layer."**

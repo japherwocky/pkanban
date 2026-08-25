@@ -1,9 +1,9 @@
-# kanban config
+# pkanban config
 
 Configure the CLI or show current settings.
 
 ```bash
-kanban config [--url URL]
+pkanban config [--url URL]
 ```
 
 **Options**

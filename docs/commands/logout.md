@@ -1,9 +1,9 @@
-# kanban logout
+# pkanban logout
 
 Logout and clear credentials.
 
 ```bash
-kanban logout
+pkanban logout
 ```
 
 ## See Also

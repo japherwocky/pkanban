@@ -15,95 +15,95 @@ Complete reference for all Kanban CLI commands.
 
 ## Authentication & Configuration
 
-### [`kanban apikey`](/docs/commands/apikey)
+### [`pkanban apikey`](/docs/commands/apikey)
 
 API key management commands
 
-- `kanban apikey activate` — Reactivate a deactivated API key.
-- `kanban apikey clear` — Remove the saved API key from config, without revoking it server-side.
-- `kanban apikey create` — Create a new API key. The key is shown only once - save it securely!
-- `kanban apikey list` — List all API keys.
-- `kanban apikey revoke` — Revoke (deactivate) an API key.
-- `kanban apikey save` — Save API key to config file for future use.
-- `kanban apikey use` — Check that an API key works, without saving it anywhere.
+- `pkanban apikey activate` — Reactivate a deactivated API key.
+- `pkanban apikey clear` — Remove the saved API key from config, without revoking it server-side.
+- `pkanban apikey create` — Create a new API key. The key is shown only once - save it securely!
+- `pkanban apikey list` — List all API keys.
+- `pkanban apikey revoke` — Revoke (deactivate) an API key.
+- `pkanban apikey save` — Save API key to config file for future use.
+- `pkanban apikey use` — Check that an API key works, without saving it anywhere.
 
-### [`kanban config`](/docs/commands/config)
+### [`pkanban config`](/docs/commands/config)
 
 Configure the CLI or show current settings.
 
-### [`kanban login`](/docs/commands/login)
+### [`pkanban login`](/docs/commands/login)
 
-Login to the Kanban server.
+Login to the pkanban server.
 
-### [`kanban logout`](/docs/commands/logout)
+### [`pkanban logout`](/docs/commands/logout)
 
 Logout and clear credentials.
 
 ## Board Management
 
-### [`kanban board`](/docs/commands/board)
+### [`pkanban board`](/docs/commands/board)
 
 Board management commands
 
-- `kanban board create` — Create a new board.
-- `kanban board delete` — Delete a board.
-- `kanban board get` — Show board details with column and card IDs.
-- `kanban board list` — List all boards.
-- `kanban board update` — Update board name.
+- `pkanban board create` — Create a new board.
+- `pkanban board delete` — Delete a board.
+- `pkanban board get` — Show board details with column and card IDs.
+- `pkanban board list` — List all boards.
+- `pkanban board update` — Update board name.
 
-### [`kanban share`](/docs/commands/share)
+### [`pkanban share`](/docs/commands/share)
 
 Share board with team or make private.
 
 ## Column Management
 
-### [`kanban column`](/docs/commands/column)
+### [`pkanban column`](/docs/commands/column)
 
 Column management commands
 
-- `kanban column create` — Create a new column.
-- `kanban column delete` — Delete a column.
+- `pkanban column create` — Create a new column.
+- `pkanban column delete` — Delete a column.
 
 ## Card Management
 
-### [`kanban card`](/docs/commands/card)
+### [`pkanban card`](/docs/commands/card)
 
 Card management commands
 
-- `kanban card create` — Create a new card.
-- `kanban card delete` — Delete a card.
-- `kanban card get` — Show a card's full contents, including its description.
-- `kanban card move` — Move a card to another column or position, leaving its text alone.
-- `kanban card update` — Update a card. Anything you don't pass is left unchanged.
+- `pkanban card create` — Create a new card.
+- `pkanban card delete` — Delete a card.
+- `pkanban card get` — Show a card's full contents, including its description.
+- `pkanban card move` — Move a card to another column or position, leaving its text alone.
+- `pkanban card update` — Update a card. Anything you don't pass is left unchanged.
 
 ## Organization Management
 
-### [`kanban org`](/docs/commands/org)
+### [`pkanban org`](/docs/commands/org)
 
 Organization management commands
 
-- `kanban org create` — Create a new organization.
-- `kanban org get` — Show organization details.
-- `kanban org invite-create` — Create an invite link for an organization.
-- `kanban org invite-list` — List pending invites for an organization.
-- `kanban org invite-revoke` — Revoke a pending invite.
-- `kanban org list` — List all organizations.
-- `kanban org member-add` — Add member to organization.
-- `kanban org member-remove` — Remove member from organization.
-- `kanban org members` — List organization members.
+- `pkanban org create` — Create a new organization.
+- `pkanban org get` — Show organization details.
+- `pkanban org invite-create` — Create an invite link for an organization.
+- `pkanban org invite-list` — List pending invites for an organization.
+- `pkanban org invite-revoke` — Revoke a pending invite.
+- `pkanban org list` — List all organizations.
+- `pkanban org member-add` — Add member to organization.
+- `pkanban org member-remove` — Remove member from organization.
+- `pkanban org members` — List organization members.
 
 ## Team Management
 
-### [`kanban team`](/docs/commands/team)
+### [`pkanban team`](/docs/commands/team)
 
 Team management commands
 
-- `kanban team create` — Create a new team.
-- `kanban team get` — Show team details.
-- `kanban team list` — List teams in an organization.
-- `kanban team member-add` — Add member to team.
-- `kanban team member-remove` — Remove member from team.
-- `kanban team members` — List team members.
+- `pkanban team create` — Create a new team.
+- `pkanban team get` — Show team details.
+- `pkanban team list` — List teams in an organization.
+- `pkanban team member-add` — Add member to team.
+- `pkanban team member-remove` — Remove member from team.
+- `pkanban team members` — List team members.
 
 ---
 

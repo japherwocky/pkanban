@@ -1,4 +1,4 @@
-from kanban.cli import main
+from pkanban.cli import main
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,9 @@
-# kanban share
+# pkanban share
 
 Share board with team or make private.
 
 ```bash
-kanban share <board_id> <team_id>
+pkanban share <board_id> <team_id>
 ```
 
 **Arguments**

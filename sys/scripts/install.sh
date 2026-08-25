@@ -10,11 +10,11 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-DEPLOY_USER="kanban"
-DEPLOY_DIR="/opt/kanban"
-SOURCE_DIR="${SOURCE_DIR:-/tmp/kanban}"
-SERVICE_NAME="kanban"
-DOMAIN="kanban.pearachute.com"
+DEPLOY_USER="pkanban"
+DEPLOY_DIR="/opt/pkanban"
+SOURCE_DIR="${SOURCE_DIR:-/tmp/pkanban}"
+SERVICE_NAME="pkanban"
+DOMAIN="pkanban.pearachute.com"
 
 echo -e "${GREEN}🚀 Installing Kanban Board to production${NC}"
 echo "Source: $SOURCE_DIR"
@@ -156,8 +156,8 @@ build_frontend() {
 # Function to setup database
 setup_database() {
     echo -e "${YELLOW}🗄️ Setting up database...${NC}"
-    if [ ! -f "$DEPLOY_DIR/kanban.db" ]; then
-        sudo -u $DEPLOY_USER DATABASE_PATH=$DEPLOY_DIR/kanban.db $DEPLOY_DIR/venv/bin/python $DEPLOY_DIR/manage.py init
+    if [ ! -f "$DEPLOY_DIR/pkanban.db" ]; then
+        sudo -u $DEPLOY_USER DATABASE_PATH=$DEPLOY_DIR/pkanban.db $DEPLOY_DIR/venv/bin/python $DEPLOY_DIR/manage.py init
         echo "Database initialized"
     else
         echo "Database already exists"
@@ -167,12 +167,12 @@ setup_database() {
 # Function to setup systemd service
 setup_systemd() {
     echo -e "${YELLOW}⚙️ Setting up systemd service...${NC}"
-    cp $DEPLOY_DIR/sys/systemd/kanban.service /etc/systemd/system/
+    cp $DEPLOY_DIR/sys/systemd/pkanban.service /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable kanban
+    systemctl enable pkanban
     # Restart service if it's already running to pick up config changes
-    if systemctl is-active --quiet kanban; then
-        systemctl restart kanban
+    if systemctl is-active --quiet pkanban; then
+        systemctl restart pkanban
         echo "Kanban service restarted with new configuration"
     fi
     echo "Systemd service configured"
@@ -182,12 +182,12 @@ setup_systemd() {
 setup_nginx() {
     echo -e "${YELLOW}🌐 Setting up nginx...${NC}"
     # Install nginx config but don't test/reload yet (certs don't exist)
-    cp $DEPLOY_DIR/sys/nginx/kanban.pearachute.com.conf /etc/nginx/sites-available/
-    ln -sf /etc/nginx/sites-available/kanban.pearachute.com.conf /etc/nginx/sites-enabled/
+    cp $DEPLOY_DIR/sys/nginx/pkanban.pearachute.com.conf /etc/nginx/sites-available/
+    ln -sf /etc/nginx/sites-available/pkanban.pearachute.com.conf /etc/nginx/sites-enabled/
     echo "Nginx config installed (SSL pending certbot)"
 }
 
-# Function to setup sudoers for kanban user
+# Function to setup sudoers for pkanban user
 setup_sudoers() {
     echo -e "${YELLOW}🔐 Setting up sudoers permissions...${NC}"
 
@@ -197,31 +197,31 @@ setup_sudoers() {
     #   cp <exact args>    unit itself. Without these a unit edit reaches the
     #                      repo and the box but never the running service, and
     #                      says nothing about it -- which is how EnvironmentFile
-    #                      went unapplied long enough for /opt/kanban/.env to be
+    #                      went unapplied long enough for /opt/pkanban/.env to be
     #                      silently ignored.
     #
     # The cp rule pins both paths, so it grants exactly "install this project's
     # unit file" and not "copy anything anywhere". Note it does let anyone who
-    # can write $DEPLOY_DIR/sys/systemd/kanban.service choose what the unit
+    # can write $DEPLOY_DIR/sys/systemd/pkanban.service choose what the unit
     # says, including User=root -- acceptable here only because pushing to main
     # already runs arbitrary code as this user. Do not widen it further.
-    cat > /etc/sudoers.d/kanban-restart <<EOF
-kanban ALL=(ALL) NOPASSWD: /bin/systemctl restart kanban
-kanban ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload
-kanban ALL=(ALL) NOPASSWD: /bin/cp $DEPLOY_DIR/sys/systemd/kanban.service /etc/systemd/system/kanban.service
+    cat > /etc/sudoers.d/pkanban-restart <<EOF
+pkanban ALL=(ALL) NOPASSWD: /bin/systemctl restart pkanban
+pkanban ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload
+pkanban ALL=(ALL) NOPASSWD: /bin/cp $DEPLOY_DIR/sys/systemd/pkanban.service /etc/systemd/system/pkanban.service
 EOF
-    chmod 440 /etc/sudoers.d/kanban-restart
+    chmod 440 /etc/sudoers.d/pkanban-restart
 
     # A malformed sudoers file locks out every rule in it, including the
     # restart that deploys depend on. Fail the install rather than discover
     # that on the next deploy.
-    if ! visudo -c -f /etc/sudoers.d/kanban-restart; then
+    if ! visudo -c -f /etc/sudoers.d/pkanban-restart; then
         echo -e "${RED}Sudoers file is invalid, removing it${NC}"
-        rm -f /etc/sudoers.d/kanban-restart
+        rm -f /etc/sudoers.d/pkanban-restart
         exit 1
     fi
 
-    echo "Sudoers configured - kanban can restart, daemon-reload, and install the unit"
+    echo "Sudoers configured - pkanban can restart, daemon-reload, and install the unit"
 }
 
 # Function to setup SSL with Let's Encrypt
@@ -236,10 +236,10 @@ setup_ssl() {
         systemctl start nginx
     fi
 
-    # Disable any existing kanban configs
+    # Disable any existing pkanban configs
     if [ -L "/etc/nginx/sites-enabled/$DOMAIN.conf" ] || [ -f "/etc/nginx/sites-enabled/$DOMAIN.conf" ]; then
         rm -f /etc/nginx/sites-enabled/$DOMAIN.conf
-        echo "Disabled existing kanban nginx config"
+        echo "Disabled existing pkanban nginx config"
     fi
 
     # Create a simple nginx config for HTTP only to pass certbot challenges
@@ -293,7 +293,7 @@ EOF
     if [ -f "/etc/nginx/sites-enabled/$DOMAIN.conf.bak" ]; then
         mv /etc/nginx/sites-enabled/$DOMAIN.conf.bak /etc/nginx/sites-enabled/$DOMAIN.conf
     else
-        # Re-enable the kanban config if it wasn't backed up
+        # Re-enable the pkanban config if it wasn't backed up
         ln -sf /etc/nginx/sites-available/$DOMAIN.conf /etc/nginx/sites-enabled/
     fi
     
@@ -321,14 +321,14 @@ create_admin_user() {
     read ADMIN_PASS
     stty echo
     echo
-    sudo -u $DEPLOY_USER DATABASE_PATH=$DEPLOY_DIR/kanban.db $DEPLOY_DIR/venv/bin/python $DEPLOY_DIR/manage.py user-create $ADMIN_USER $ADMIN_PASS --admin
+    sudo -u $DEPLOY_USER DATABASE_PATH=$DEPLOY_DIR/pkanban.db $DEPLOY_DIR/venv/bin/python $DEPLOY_DIR/manage.py user-create $ADMIN_USER $ADMIN_PASS --admin
 }
 
 # Function to start service
 start_service() {
-    echo -e "${GREEN}🚀 Starting kanban service...${NC}"
-    systemctl restart kanban  # Use restart to ensure it picks up any config changes
-    systemctl status kanban --no-pager
+    echo -e "${GREEN}🚀 Starting pkanban service...${NC}"
+    systemctl restart pkanban  # Use restart to ensure it picks up any config changes
+    systemctl status pkanban --no-pager
 }
 
 # Main installation flow
@@ -371,15 +371,15 @@ main() {
     echo ""
     echo "Next steps:"
     echo "1. Add the SSH public key above to GitHub as a deploy key"
-    echo "2. Test deployment with: sudo -u kanban $DEPLOY_DIR/sys/scripts/deploy.sh"
+    echo "2. Test deployment with: sudo -u pkanban $DEPLOY_DIR/sys/scripts/deploy.sh"
     echo ""
     echo "Your Kanban board is now running at: https://$DOMAIN"
     echo ""
     echo "Useful commands:"
-    echo "  Check service status: systemctl status kanban"
-    echo "  View logs: journalctl -u kanban -f"
-    echo "  Restart service: sudo systemctl restart kanban"
-    echo "  Update application: sudo -u kanban $DEPLOY_DIR/sys/scripts/deploy.sh"
+    echo "  Check service status: systemctl status pkanban"
+    echo "  View logs: journalctl -u pkanban -f"
+    echo "  Restart service: sudo systemctl restart pkanban"
+    echo "  Update application: sudo -u pkanban $DEPLOY_DIR/sys/scripts/deploy.sh"
 }
 
 # Run installation

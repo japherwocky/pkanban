@@ -1,89 +1,89 @@
-# kanban apikey
+# pkanban apikey
 
 API key management commands
 
 ## Commands
 
-- [`kanban apikey activate`](#kanban-apikey-activate) — Reactivate a deactivated API key.
-- [`kanban apikey clear`](#kanban-apikey-clear) — Remove the saved API key from config, without revoking it server-side.
-- [`kanban apikey create`](#kanban-apikey-create) — Create a new API key. The key is shown only once - save it securely!
-- [`kanban apikey list`](#kanban-apikey-list) — List all API keys.
-- [`kanban apikey revoke`](#kanban-apikey-revoke) — Revoke (deactivate) an API key.
-- [`kanban apikey save`](#kanban-apikey-save) — Save API key to config file for future use.
-- [`kanban apikey use`](#kanban-apikey-use) — Check that an API key works, without saving it anywhere.
+- [`pkanban apikey activate`](#pkanban-apikey-activate) — Reactivate a deactivated API key.
+- [`pkanban apikey clear`](#pkanban-apikey-clear) — Remove the saved API key from config, without revoking it server-side.
+- [`pkanban apikey create`](#pkanban-apikey-create) — Create a new API key. The key is shown only once - save it securely!
+- [`pkanban apikey list`](#pkanban-apikey-list) — List all API keys.
+- [`pkanban apikey revoke`](#pkanban-apikey-revoke) — Revoke (deactivate) an API key.
+- [`pkanban apikey save`](#pkanban-apikey-save) — Save API key to config file for future use.
+- [`pkanban apikey use`](#pkanban-apikey-use) — Check that an API key works, without saving it anywhere.
 
 ---
 
-## `kanban apikey activate`
+## `pkanban apikey activate`
 
 Reactivate a deactivated API key.
 
 ```bash
-kanban apikey activate <key_id>
+pkanban apikey activate <key_id>
 ```
 
 **Arguments**
 
 - `key_id` (int) — API key ID to activate
 
-## `kanban apikey clear`
+## `pkanban apikey clear`
 
 Remove the saved API key from config, without revoking it server-side.
 
 ```bash
-kanban apikey clear
+pkanban apikey clear
 ```
 
-## `kanban apikey create`
+## `pkanban apikey create`
 
 Create a new API key. The key is shown only once - save it securely!
 
 ```bash
-kanban apikey create <name>
+pkanban apikey create <name>
 ```
 
 **Arguments**
 
 - `name` (str) — Name for the API key (e.g., 'CI Agent')
 
-## `kanban apikey list`
+## `pkanban apikey list`
 
 List all API keys.
 
 ```bash
-kanban apikey list
+pkanban apikey list
 ```
 
-## `kanban apikey revoke`
+## `pkanban apikey revoke`
 
 Revoke (deactivate) an API key.
 
 ```bash
-kanban apikey revoke <key_id>
+pkanban apikey revoke <key_id>
 ```
 
 **Arguments**
 
 - `key_id` (int) — API key ID to revoke
 
-## `kanban apikey save`
+## `pkanban apikey save`
 
 Save API key to config file for future use.
 
 ```bash
-kanban apikey save <key>
+pkanban apikey save <key>
 ```
 
 **Arguments**
 
 - `key` (str) — API key to save
 
-## `kanban apikey use`
+## `pkanban apikey use`
 
 Check that an API key works, without saving it anywhere.
 
 ```bash
-kanban apikey use <key>
+pkanban apikey use <key>
 ```
 
 **Arguments**

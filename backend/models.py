@@ -74,12 +74,12 @@ class User(BaseModel):
         )  # type: ignore
 
 
-API_KEY_PREFIX = "kanban_"
+API_KEY_PREFIX = "pkanban_"
 API_KEY_LENGTH = 32  # Length of the random part (32 chars = 192 bits of entropy)
 
 
 def generate_api_key():
-    """Generate a new API key with the kanban_ prefix."""
+    """Generate a new API key with the pkanban_ prefix."""
     import secrets
     import base64
 

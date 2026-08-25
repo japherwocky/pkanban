@@ -13,7 +13,7 @@
 
       <div class="contact-item">
         <h3>GitHub</h3>
-        <a href="https://github.com/japherwocky/kanban" target="_blank" rel="noopener">github.com/japherwocky/kanban</a>
+        <a href="https://github.com/japherwocky/pkanban" target="_blank" rel="noopener">github.com/japherwocky/pkanban</a>
       </div>
 
       <div class="contact-item">

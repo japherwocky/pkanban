@@ -23,13 +23,13 @@ SEND_TIMEOUT_SECONDS = 10
 
 
 def _from_address() -> str:
-    # pearachute.com, not kanban.pearachute.com. In Resend a subdomain is a
+    # pearachute.com, not pkanban.pearachute.com. In Resend a subdomain is a
     # separate domain with its own DKIM records, and only the apex is
     # verified -- it is also what the pearachute.com site sends from, so both
     # apps share one verified domain. A default pointing at an unverified
     # subdomain would have every send rejected while signup still succeeded,
     # visible only in the service log.
-    return os.environ.get("RESEND_FROM", "Kanban <noreply@pearachute.com>")
+    return os.environ.get("RESEND_FROM", "pkanban <noreply@pearachute.com>")
 
 
 def public_base_url() -> str:
@@ -39,7 +39,7 @@ def public_base_url() -> str:
     Host is attacker-controlled, so a forged Host would let someone send mail
     from us pointing at their own server.
     """
-    return os.environ.get("PUBLIC_BASE_URL", "https://kanban.pearachute.com").rstrip(
+    return os.environ.get("PUBLIC_BASE_URL", "https://pkanban.pearachute.com").rstrip(
         "/"
     )
 
@@ -55,10 +55,10 @@ def send_email(to: str, subject: str, html: str) -> bool:
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     if not api_key:
         print(
-            f"kanban: RESEND_API_KEY not set, not sending mail.\n"
-            f"kanban:   to: {to}\n"
-            f"kanban:   subject: {subject}\n"
-            f"kanban:   body:\n{html}",
+            f"pkanban: RESEND_API_KEY not set, not sending mail.\n"
+            f"pkanban:   to: {to}\n"
+            f"pkanban:   subject: {subject}\n"
+            f"pkanban:   body:\n{html}",
             file=sys.stderr,
         )
         return False
@@ -79,14 +79,14 @@ def send_email(to: str, subject: str, html: str) -> bool:
             timeout=SEND_TIMEOUT_SECONDS,
         )
     except requests.RequestException as exc:
-        print(f"kanban: failed to send mail to {to}: {exc}", file=sys.stderr)
+        print(f"pkanban: failed to send mail to {to}: {exc}", file=sys.stderr)
         return False
 
     if not response.ok:
         # Resend puts the reason in the body; the status alone is rarely enough
         # to tell "unverified sending domain" from "malformed address".
         print(
-            f"kanban: Resend rejected mail to {to}: "
+            f"pkanban: Resend rejected mail to {to}: "
             f"{response.status_code} {response.text}",
             file=sys.stderr,
         )
@@ -111,13 +111,13 @@ def send_verification_email(user, token: str) -> bool:
     url = f"{public_base_url()}/verify?token={token}"
     html = (
         f"<p>Hi {escape(user.username)},</p>"
-        "<p>Confirm your email address to finish setting up your Kanban "
+        "<p>Confirm your email address to finish setting up your pkanban "
         "account.</p>"
         f"{_button(url, 'Verify email')}"
         "<p style=\"color:#6b7280;font-size:13px\">This link expires in 24 "
         "hours. If you didn't sign up, you can ignore this email.</p>"
     )
-    return send_email(user.email, "Verify your Kanban email address", html)
+    return send_email(user.email, "Verify your pkanban email address", html)
 
 
 def send_invite_email(
@@ -127,7 +127,7 @@ def send_invite_email(
     url = f"{public_base_url()}/invite/{invite_token}"
     html = (
         f"<p><strong>{escape(inviter_username)}</strong> invited you to join "
-        f"<strong>{escape(org_name)}</strong> on Kanban.</p>"
+        f"<strong>{escape(org_name)}</strong> on pkanban.</p>"
         f"{_button(url, 'Accept invitation')}"
         "<p style=\"color:#6b7280;font-size:13px\">This invitation expires in "
         "7 days.</p>"

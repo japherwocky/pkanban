@@ -3,7 +3,7 @@
 # SSL Certificate Setup Script
 # This script handles Let's Encrypt SSL certificate setup and renewal
 
-DOMAIN="kanban.pearachute.com"
+DOMAIN="pkanban.pearachute.com"
 EMAIL="admin@pearachute.com"  # Change this to your admin email
 
 echo "🔒 Setting up SSL certificate for $DOMAIN"

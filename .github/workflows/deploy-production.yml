@@ -13,9 +13,9 @@ on:
     branches: [main]
 
 env:
-  DEPLOY_HOST: kanban.pearachute.com
-  DEPLOY_USER: kanban
-  DEPLOY_PATH: /opt/kanban
+  DEPLOY_HOST: pkanban.pearachute.com
+  DEPLOY_USER: pkanban
+  DEPLOY_PATH: /opt/pkanban
 
 jobs:
   # Check if deployment is actually needed
@@ -141,7 +141,7 @@ jobs:
           script: |
             echo "🚀 Starting deployment to production..."
 
-            # Configure git for the kanban user (needed for git pull)
+            # Configure git for the pkanban user (needed for git pull)
             cd ${{ env.DEPLOY_PATH }}
             git config --global user.email "deploy@github.actions"
             git config --global user.name "GitHub Actions"
@@ -185,7 +185,7 @@ jobs:
           # connection problem surfaces as 503. Match on the JSON body, not the
           # status code, so removing the route fails the deploy rather than
           # quietly satisfying it again.
-          BODY=$(curl -s --max-time 15 https://kanban.pearachute.com/api/health || true)
+          BODY=$(curl -s --max-time 15 https://pkanban.pearachute.com/api/health || true)
           echo "Health response: $BODY"
 
           if echo "$BODY" | grep -q '"status":"ok"'; then
@@ -193,7 +193,7 @@ jobs:
           else
             echo "❌ Health check failed"
             echo "--- /api/health ---"
-            curl -s -i --max-time 15 https://kanban.pearachute.com/api/health || true
+            curl -s -i --max-time 15 https://pkanban.pearachute.com/api/health || true
             echo "--- service logs ---"
             exit 1
           fi
@@ -231,7 +231,7 @@ jobs:
             **Commit:** ${{ github.sha }}
             **Deployed by:** ${{ github.actor }}
 
-            🌐 **Live at:** https://kanban.pearachute.com`;
+            🌐 **Live at:** https://pkanban.pearachute.com`;
 
             // Find any open PRs that might be related to this push
             const { data: pulls } = await github.rest.pulls.list({

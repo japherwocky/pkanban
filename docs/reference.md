@@ -16,67 +16,67 @@ Complete reference for all Kanban CLI commands. Perfect for quick lookups during
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `kanban config` | `kanban config [--url URL]` | Show or set server URL |
-| `kanban login` | `kanban login <user> --password <pass>` | Login to server |
-| `kanban logout` | `kanban logout` | Logout and clear credentials |
+| `pkanban config` | `pkanban config [--url URL]` | Show or set server URL |
+| `pkanban login` | `pkanban login <user> --password <pass>` | Login to server |
+| `pkanban logout` | `pkanban logout` | Logout and clear credentials |
 
 ## 📋 Board Management
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `kanban board list` | `kanban board list` | List all accessible boards |
-| `kanban board create` | `kanban board create <name>` | Create new board |
-| `kanban board get` | `kanban board get <board-id>` | Show board details |
-| `kanban board update` | `kanban board update <board-id> <name>` | Rename board |
-| `kanban board delete` | `kanban board delete <board-id>` | Delete board |
-| `kanban share` | `kanban share <board-id> <team-id\|private>` | Share with team or make private |
+| `pkanban board list` | `pkanban board list` | List all accessible boards |
+| `pkanban board create` | `pkanban board create <name>` | Create new board |
+| `pkanban board get` | `pkanban board get <board-id>` | Show board details |
+| `pkanban board update` | `pkanban board update <board-id> <name>` | Rename board |
+| `pkanban board delete` | `pkanban board delete <board-id>` | Delete board |
+| `pkanban share` | `pkanban share <board-id> <team-id\|private>` | Share with team or make private |
 
 ## 📊 Column Management
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `kanban column create` | `kanban column create <board-id> <name> <position>` | Create column |
-| `kanban column delete` | `kanban column delete <column-id>` | Delete column |
+| `pkanban column create` | `pkanban column create <board-id> <name> <position>` | Create column |
+| `pkanban column delete` | `pkanban column delete <column-id>` | Delete column |
 
 ## 🃏 Card Management
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `kanban card create` | `kanban card create <column-id> <title> [--description TEXT] [--position NUM]` | Create card |
-| `kanban card update` | `kanban card update <card-id> <title> [--description TEXT] [--position NUM] [--column NUM]` | Update card |
-| `kanban card delete` | `kanban card delete <card-id>` | Delete card |
+| `pkanban card create` | `pkanban card create <column-id> <title> [--description TEXT] [--position NUM]` | Create card |
+| `pkanban card update` | `pkanban card update <card-id> <title> [--description TEXT] [--position NUM] [--column NUM]` | Update card |
+| `pkanban card delete` | `pkanban card delete <card-id>` | Delete card |
 
-## 🏢 Organization Commands (`kanban org`)
-
-| Sub-command | Usage | Description |
-|-------------|-------|-------------|
-| `kanban org list` | `kanban org list` | List all organizations |
-| `kanban org create` | `kanban org create <name>` | Create organization |
-| `kanban org get` | `kanban org get <org-id>` | Show organization details |
-| `kanban org members` | `kanban org members <org-id>` | List organization members |
-| `kanban org member-add` | `kanban org member-add <org-id> <username>` | Add member |
-| `kanban org member-remove` | `kanban org member-remove <org-id> <user-id>` | Remove member |
-
-## 👥 Team Commands (`kanban team`)
+## 🏢 Organization Commands (`pkanban org`)
 
 | Sub-command | Usage | Description |
 |-------------|-------|-------------|
-| `kanban team list` | `kanban team list --org-id <org-id>` | List teams in org |
-| `kanban team create` | `kanban team create <org-id> <name>` | Create team |
-| `kanban team get` | `kanban team get <team-id>` | Show team details |
-| `kanban team members` | `kanban team members <team-id>` | List team members |
-| `kanban team member-add` | `kanban team member-add <team-id> <username>` | Add member |
-| `kanban team member-remove` | `kanban team member-remove <team-id> <user-id>` | Remove member |
+| `pkanban org list` | `pkanban org list` | List all organizations |
+| `pkanban org create` | `pkanban org create <name>` | Create organization |
+| `pkanban org get` | `pkanban org get <org-id>` | Show organization details |
+| `pkanban org members` | `pkanban org members <org-id>` | List organization members |
+| `pkanban org member-add` | `pkanban org member-add <org-id> <username>` | Add member |
+| `pkanban org member-remove` | `pkanban org member-remove <org-id> <user-id>` | Remove member |
 
-## 🔑 API Key Commands (`kanban apikey`)
+## 👥 Team Commands (`pkanban team`)
 
 | Sub-command | Usage | Description |
 |-------------|-------|-------------|
-| `kanban apikey list` | `kanban apikey list` | List all API keys |
-| `kanban apikey create` | `kanban apikey create <name>` | Create new API key |
-| `kanban apikey revoke` | `kanban apikey revoke <key-id>` | Revoke/deactivate an API key |
-| `kanban apikey activate` | `kanban apikey activate <key-id>` | Reactivate a deactivated API key |
-| `kanban apikey use` | `kanban apikey use <key> <command>` | Run command using an API key |
+| `pkanban team list` | `pkanban team list --org-id <org-id>` | List teams in org |
+| `pkanban team create` | `pkanban team create <org-id> <name>` | Create team |
+| `pkanban team get` | `pkanban team get <team-id>` | Show team details |
+| `pkanban team members` | `pkanban team members <team-id>` | List team members |
+| `pkanban team member-add` | `pkanban team member-add <team-id> <username>` | Add member |
+| `pkanban team member-remove` | `pkanban team member-remove <team-id> <user-id>` | Remove member |
+
+## 🔑 API Key Commands (`pkanban apikey`)
+
+| Sub-command | Usage | Description |
+|-------------|-------|-------------|
+| `pkanban apikey list` | `pkanban apikey list` | List all API keys |
+| `pkanban apikey create` | `pkanban apikey create <name>` | Create new API key |
+| `pkanban apikey revoke` | `pkanban apikey revoke <key-id>` | Revoke/deactivate an API key |
+| `pkanban apikey activate` | `pkanban apikey activate <key-id>` | Reactivate a deactivated API key |
+| `pkanban apikey use` | `pkanban apikey use <key> <command>` | Run command using an API key |
 
 ## 🎯 Common Parameter Patterns
 
@@ -96,52 +96,52 @@ Complete reference for all Kanban CLI commands. Perfect for quick lookups during
 ### Required vs Optional Parameters
 ```bash
 # Required parameters (no brackets)
-kanban board create "Board Name"
+pkanban board create "Board Name"
 
 # Optional parameters (shown in brackets)
-kanban card create 1 "Title" --description "Optional" --position 0
+pkanban card create 1 "Title" --description "Optional" --position 0
 ```
 
 ## 🚀 Quick Command Sequences
 
 ### New Board Setup
 ```bash
-kanban board create "Project Name"
-kanban board get <new-board-id>  # Get default columns
-kanban column create <board-id> "To Do" 0
-kanban column create <board-id> "Doing" 1
-kanban column create <board-id> "Done" 2
+pkanban board create "Project Name"
+pkanban board get <new-board-id>  # Get default columns
+pkanban column create <board-id> "To Do" 0
+pkanban column create <board-id> "Doing" 1
+pkanban column create <board-id> "Done" 2
 ```
 
 ### Team Setup
 ```bash
-kanban org create "Company"
-kanban team create <org-id> "Dev Team"
-kanban org member-add <org-id> <username>
-kanban team member-add <team-id> <username>
+pkanban org create "Company"
+pkanban team create <org-id> "Dev Team"
+pkanban org member-add <org-id> <username>
+pkanban team member-add <team-id> <username>
 ```
 
 ### Card Workflow
 ```bash
-kanban card create <todo-column-id> "New Task" --position 0
-kanban card update <card-id> "Updated Task" --column <doing-column-id> --position 0
-kanban card update <card-id> "Completed Task" --column <done-column-id> --position 0
+pkanban card create <todo-column-id> "New Task" --position 0
+pkanban card update <card-id> "Updated Task" --column <doing-column-id> --position 0
+pkanban card update <card-id> "Completed Task" --column <done-column-id> --position 0
 ```
 
 ## 🔧 Help System
 
 Get help for any command:
 ```bash
-kanban --help                    # All commands
-kanban board create --help       # Specific command
-kanban org --help               # Organization sub-commands
-kanban team --help              # Team sub-commands
+pkanban --help                    # All commands
+pkanban board create --help       # Specific command
+pkanban org --help               # Organization sub-commands
+pkanban team --help              # Team sub-commands
 ```
 
 ## ⚡ Pro Tips
 
-1. **Always run `kanban board list` first** to see available board IDs
-2. **Use `kanban board get <id>`** to see column IDs for card operations
+1. **Always run `pkanban board list` first** to see available board IDs
+2. **Use `pkanban board get <id>`** to see column IDs for card operations
 3. **Team commands require `--org-id`** flag except for `team get`
 4. **Board sharing overwrites** existing sharing settings
 5. **Positions are per-column** for cards, per-board for columns

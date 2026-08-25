@@ -2,7 +2,7 @@ import os
 import yaml
 from pathlib import Path
 
-DEFAULT_CONFIG_FILE = Path.home() / ".kanban.yaml"
+DEFAULT_CONFIG_FILE = Path.home() / ".pkanban.yaml"
 
 
 def config_file():
@@ -22,7 +22,7 @@ def config_file():
 # localhost nobody is running -- a fresh `pip install` should reach a real
 # server on the first command, not a connection error. Self-hosters point
 # elsewhere with `kanban config --url http://localhost:8000`.
-DEFAULT_SERVER_URL = "https://kanban.pearachute.com"
+DEFAULT_SERVER_URL = "https://pkanban.pearachute.com"
 
 
 def ensure_config_dir():
