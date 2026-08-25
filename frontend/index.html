@@ -32,7 +32,7 @@
       // getInitialTheme() in src/lib/theme.js.
       (function () {
         try {
-          var t = localStorage.getItem('kanban-theme');
+          var t = localStorage.getItem('pkanban-theme');
           if (t !== 'light') document.documentElement.classList.add('dark');
         } catch (e) {
           document.documentElement.classList.add('dark');
