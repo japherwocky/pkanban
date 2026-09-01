@@ -576,6 +576,12 @@ def cmd_organization_invites(org_id: int = typer.Argument(..., help="Organizatio
     invites = client.organization_invites(org_id)
     base = get_server_url().rstrip("/")
 
+    # The server returns the token to the org owner only, so a member listing
+    # invites sees who is pending without getting a link they could pass on.
+    def invite_url(invite):
+        token = invite.get("token")
+        return f"{base}/invite/{token}" if token else None
+
     def render():
         if not invites:
             rprint("No pending invites")
@@ -583,11 +589,11 @@ def cmd_organization_invites(org_id: int = typer.Argument(..., help="Organizatio
         rprint("[bold]Pending Invites:[/bold]")
         for invite in invites:
             rprint(f"  {invite['id']:4}  {invite['email'] or '(anonymous)'}")
-            rprint(f"       Link: {base}/invite/{invite['token']}")
+            url = invite_url(invite)
+            if url:
+                rprint(f"       Link: {url}")
 
-    emit(
-        [{**i, "invite_url": f"{base}/invite/{i['token']}"} for i in invites], render
-    )
+    emit([{**i, "invite_url": invite_url(i)} for i in invites], render)
 
 
 @org_app.command("invite-revoke")

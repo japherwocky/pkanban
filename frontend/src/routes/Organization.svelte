@@ -337,9 +337,14 @@
                     <span class="invite-meta">Created {formatDate(invite.created_at)}</span>
                   </div>
                   <div class="invite-actions">
-                    <button class="copy-btn" onclick={() => copyInviteLink(invite)}>
-                      Copy Link
-                    </button>
+                    <!-- The server sends the token to the owner only, so a
+                         member sees that an invite exists without being able
+                         to pass it on. -->
+                    {#if invite.token}
+                      <button class="copy-btn" onclick={() => copyInviteLink(invite)}>
+                        Copy Link
+                      </button>
+                    {/if}
                     {#if isOwner()}
                       <button
                         class="revoke-btn"
