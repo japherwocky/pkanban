@@ -39,6 +39,12 @@
 
   function goToSignup() {
     localStorage.setItem('redirectPath', `/invite/${params.token}`);
+    // An addressed invite can only be accepted by the address it was sent to,
+    // so carry it into the signup form rather than letting someone register a
+    // different one and hit a wall on the way back here.
+    if (invite?.email) {
+      localStorage.setItem('inviteEmail', invite.email);
+    }
     navigate('/signup');
   }
 </script>
@@ -59,6 +65,11 @@
         <strong>{invite.created_by_username}</strong> has invited you to join
         <span class="org-name">{invite.organization_name}</span>
       </p>
+      {#if invite.email}
+        <p class="invite-addressee">
+          This invitation is for <strong>{invite.email}</strong>
+        </p>
+      {/if}
 
       <div class="actions">
         {#if localStorage.getItem('token')}
@@ -114,6 +125,12 @@
   .org-name {
     color: var(--color-primary);
     font-weight: 600;
+  }
+
+  .invite-addressee {
+    font-size: var(--text-sm);
+    color: var(--color-muted-foreground);
+    margin: calc(-1 * var(--space-3)) 0 0;
   }
 
   .loading {

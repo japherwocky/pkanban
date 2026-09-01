@@ -18,6 +18,15 @@
       const redirectPath = localStorage.getItem('redirectPath') || '/boards';
       localStorage.removeItem('redirectPath');
       navigate(redirectPath);
+      return;
+    }
+
+    // Arrived from an invite addressed to a particular address. Accepting
+    // requires holding that address, so start the form on it.
+    const invited = localStorage.getItem('inviteEmail');
+    if (invited) {
+      email = invited;
+      localStorage.removeItem('inviteEmail');
     }
   });
 

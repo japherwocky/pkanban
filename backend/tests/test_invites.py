@@ -278,7 +278,7 @@ class TestAcceptInvite:
         slug = make_unique_slug("test-org")
         org = Organization.create_with_columns("Test Org", slug, test_user)
 
-        new_user = User.create_user("newmember", "password")
+        new_user = User.create_user("newmember", "password", email="new@test.com")
         invite, token = OrganizationInvite.create_invite(org, test_user, "new@test.com")
 
         member_token = create_access_token(
@@ -459,7 +459,9 @@ class TestInviteGrantsBoardAccess:
 
     def test_invited_user_can_open_a_shared_board(self, client, db_session):
         owner = User.create_user("e2e_owner", "password")
-        invitee = User.create_user("e2e_invitee", "password")
+        invitee = User.create_user(
+            "e2e_invitee", "password", email="invitee@example.com"
+        )
         owner_headers = self._headers(owner)
         invitee_headers = self._headers(invitee)
 

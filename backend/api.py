@@ -2054,6 +2054,26 @@ async def create_organization_invite(
     if org.owner != current_user:
         raise HTTPException(status_code=403, detail="Only the owner can create invites")
 
+    # One live token per address. Nothing used to stop the same person being
+    # invited ten times, and since each invite carries its own token, revoking
+    # the one visible in the UI left the other nine working -- revocation did
+    # not actually revoke.
+    if request.email:
+        already = User.get_or_none(fn.LOWER(User.email) == request.email.strip().lower())
+        if already is not None and (
+            is_org_member(already, org) or org.owner_id == already.id
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{request.email} is already a member of this organization",
+            )
+
+        OrganizationInvite.update(status="revoked").where(
+            (OrganizationInvite.organization == org)
+            & (OrganizationInvite.status == "pending")
+            & (fn.LOWER(OrganizationInvite.email) == request.email.strip().lower())
+        ).execute()
+
     invite, token = OrganizationInvite.create_invite(
         organization=org,
         created_by=current_user,
@@ -2100,6 +2120,10 @@ async def list_organization_invites(
         (OrganizationInvite.organization == org)
         & (OrganizationInvite.status == "pending")
     )
+    # Expiry is only ever evaluated when a token is read, so an expired invite
+    # sits in the table still marked pending. Filter here rather than listing
+    # dead invites as live ones.
+    invites = [invite for invite in invites if not invite.is_expired()]
 
     def format_datetime(dt):
         if isinstance(dt, str):
@@ -2110,7 +2134,11 @@ async def list_organization_invites(
         {
             "id": invite.id,
             "email": invite.email,
-            "token": invite.token,
+            # Owner only. Any member could otherwise lift the token of an
+            # invite addressed to someone else and hand it to an outsider,
+            # which routes straight around "only the owner can create
+            # invites". Members still see that an invite exists and to whom.
+            **({"token": invite.token} if is_owner else {}),
             "status": invite.status,
             "created_at": format_datetime(invite.created_at),
             "expires_at": format_datetime(invite.expires_at),
@@ -2194,6 +2222,23 @@ async def accept_invite(
         raise HTTPException(
             status_code=400, detail="You are already a member of this organization"
         )
+
+    # An invite sent to a specific address is for that person. Without this it
+    # is a bearer token: a forwarded mail, a shared inbox or a mail archive is
+    # enough for anyone to take the seat. Anonymous invites (email is null) are
+    # deliberately bearer -- that is what they are for, and what the owner
+    # should create when they want a link they can pass around.
+    if invite.email:
+        invited = invite.email.strip().lower()
+        held = (current_user.email or "").strip().lower()
+        if held != invited:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"This invitation was sent to {invite.email}. Sign in with "
+                    "that address, or ask for an invitation to the one you use."
+                ),
+            )
 
     invite.accept(current_user)
     return {
