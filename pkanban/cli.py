@@ -700,16 +700,48 @@ def cmd_team_member_remove(
 def cmd_board_share(
     board_id: int = typer.Argument(..., help="Board ID"),
     team_id: str = typer.Argument(
-        ..., help="Team ID or 'private' to make board private"
+        None, help="Team ID or 'private' to make board private"
+    ),
+    org: bool = typer.Option(
+        False, "--org", help="Share with a whole organization instead of a team"
+    ),
+    organization_id: int = typer.Option(
+        None,
+        "--org-id",
+        help="Which organization, when you belong to more than one",
     ),
 ):
-    """Share board with team or make private."""
+    """Share board with a team or a whole organization, or make it private."""
+    # --org-id on its own means --org: naming the organization is a clear
+    # enough statement of intent that making people pass both is just friction.
+    share_with_org = org or organization_id is not None
+
+    if share_with_org and team_id and team_id != "private":
+        rprint("[red]Pass a team id or --org, not both.[/red]", file=sys.stderr)
+        raise typer.Exit(code=1)
+    if not share_with_org and team_id is None:
+        rprint(
+            "[red]Pass a team id, 'private', or --org.[/red]",
+            file=sys.stderr,
+        )
+        raise typer.Exit(code=1)
+
     client = make_client()
-    team_id_value = None if team_id == "private" else team_id
-    result = client.board_share(board_id, team_id_value)
+    team_id_value = None if (team_id == "private" or share_with_org) else team_id
+    result = client.board_share(
+        board_id,
+        team_id_value,
+        is_public_to_org=share_with_org,
+        organization_id=organization_id,
+    )
 
     def render():
-        if team_id_value:
+        if share_with_org:
+            rprint(
+                f"Board [green]{board_id}[/green] shared with organization "
+                f"{result.get('organization_id')}"
+            )
+        elif team_id_value:
             rprint(f"Board [green]{board_id}[/green] shared with team {team_id_value}")
         else:
             rprint(f"Board [green]{board_id}[/green] made private")

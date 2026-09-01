@@ -1,15 +1,20 @@
 # pkanban share
 
-Share board with team or make private.
+Share board with a team or a whole organization, or make it private.
 
 ```bash
-pkanban share <board_id> <team_id>
+pkanban share <board_id> [team_id] [--org] [--org-id ORGANIZATION_ID]
 ```
 
 **Arguments**
 
 - `board_id` (int) — Board ID
-- `team_id` (str) — Team ID or 'private' to make board private
+- `team_id` (str) _(optional)_ — Team ID or 'private' to make board private
+
+**Options**
+
+- `--org` (bool) — Share with a whole organization instead of a team
+- `--org-id` (int) — Which organization, when you belong to more than one
 
 ## See Also
 

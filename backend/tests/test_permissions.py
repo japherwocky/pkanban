@@ -373,25 +373,39 @@ def test_add_team_member_requires_team_membership(client, test_db):
     assert response.status_code == 403
 
 
-def test_add_team_member_requires_org_membership(client, test_db):
-    """Adding to team requires user to be org member first"""
+def test_add_team_member_allows_someone_outside_the_org(client, test_db):
+    """A team may include people who are not in its organization.
+
+    This test used to assert the opposite. Teams are the unit of
+    authorization -- can_access_board checks team membership, not org
+    membership -- and they are allowed to span organizations so a contractor
+    can be put on one project's team without being given the run of the org.
+    """
     team_member = create_user("teammember", "password")
     outsider = create_user("outsider", "password")
 
     org = create_organization("Org1", team_member)
     OrganizationMember.create(user=team_member, organization=org, joined_at=datetime.now(timezone.utc))
-    # outsider is NOT an org member
+    # outsider is NOT an org member, and does not need to be
 
     team = Team.create(name="Team1", organization=org, created_at=datetime.now(timezone.utc))
     TeamMember.create(user=team_member, team=team, joined_at=datetime.now(timezone.utc))
 
-    # Cannot add non-org-member to team
     response = client.post(
         f"/api/teams/{team.id}/members",
         json={"username": outsider.username},
         headers=get_auth_headers(team_member)
     )
-    assert response.status_code == 400
+    assert response.status_code == 200
+
+    # ...and joining the team is what grants access, with no org membership.
+    board = Board.create_with_columns(owner=team_member, name="Shared", shared_team=team)
+    assert client.get(
+        f"/api/boards/{board.id}", headers=get_auth_headers(outsider)
+    ).status_code == 200
+    assert OrganizationMember.get_or_none(
+        (OrganizationMember.organization == org) & (OrganizationMember.user == outsider)
+    ) is None
 
 
 def test_list_team_members_requires_org_membership(client, test_db):

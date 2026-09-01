@@ -53,7 +53,7 @@ Board management commands
 
 ### [`pkanban share`](/docs/commands/share)
 
-Share board with team or make private.
+Share board with a team or a whole organization, or make it private.
 
 ## Column Management
 

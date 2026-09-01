@@ -158,16 +158,25 @@ password or other keys.
 
 ## 5. Sharing with a team
 
-Boards are private to you until you share them. Sharing is **team-based**: you
-share a board with a team, and everyone on that team gets access. Teams live
-inside organizations, so the order is org → team → members → share.
+Boards are private to you until you share them. **Teams are what grant
+access** -- being on a team that a board is shared with is the check that runs.
 
 ```bash
-pkanban org create "Acme"                 # prints an org id
-pkanban team create <org-id> "Engineering" # prints a team id
-pkanban org member-add <org-id> <username> # add the person to the org
-pkanban team member-add <team-id> <username> # then to the team
-pkanban share 7 <team-id>                 # share board 7 with the team
+pkanban org create "Acme"                    # prints an org id
+pkanban team create <org-id> "Engineering"   # prints a team id
+pkanban team member-add <team-id> <username> # put them on the team
+pkanban share 7 <team-id>                    # share board 7 with the team
+```
+
+A team may include people who are **not** in the organization, which is how you
+give a contractor one project without the run of the org. `org member-add` is
+about org membership -- invites, and org-wide sharing below -- not about board
+access, so it is not a required step here.
+
+To share a board with everyone in an organization instead of one team:
+
+```bash
+pkanban share 7 --org <org-id>
 ```
 
 Make a board private again at any time:
@@ -203,8 +212,10 @@ User ── owns ──► Board ─► Column ─► Card
 ```
 
 - **Boards** belong to a user and hold **columns**, which hold **cards**.
-- **Organizations** group people; **teams** are subsets of an org.
-- **Sharing** connects a board to a team — that's how other people see it.
+- **Organizations** group people and carry invites. **Teams** grant access, and
+  may include people from outside the org they belong to.
+- **Sharing** connects a board to a team — that's how other people see it. A
+  board can also be shared with a whole organization.
 
 ## Common gotchas
 
