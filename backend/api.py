@@ -2113,7 +2113,11 @@ async def accept_invite(
         )
 
     invite.accept(current_user)
-    return {"ok": True, "organization_name": invite.organization.name}
+    return {
+        "ok": True,
+        "organization_id": invite.organization.id,
+        "organization_name": invite.organization.name,
+    }
 
 
 @api.post("/organizations/{org_id}/teams", response_model=TeamResponse)
@@ -2132,7 +2136,14 @@ async def create_team(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
-    team = Team.create_with_columns(name=team_data.name, organization=org)
+    # The creator joins the team they just made. Without this the team is born
+    # empty, and add_team_member's "must already be a member" check then locks
+    # everyone out of it permanently -- including the org owner.
+    with db.atomic():
+        team = Team.create_with_columns(name=team_data.name, organization=org)
+        TeamMember.create(
+            user=current_user, team=team, joined_at=datetime.now(timezone.utc)
+        )
     return {
         "id": team.id,
         "name": team.name,
@@ -2225,11 +2236,14 @@ async def add_team_member(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    # Any team member can add other org members (Unix group model)
+    # Any team member can add other org members (Unix group model). The org
+    # owner is root here whether or not they are in the team -- otherwise a
+    # team that lost its last member, or one auto-created with the org, could
+    # never be refilled by anyone.
     tm = TeamMember.get_or_none(
         (TeamMember.team == team) & (TeamMember.user == current_user)
     )
-    if not tm:
+    if not tm and team.organization.owner != current_user:
         raise HTTPException(status_code=403, detail="Not authorized to add members")
 
     user = User.get_or_none(User.username == request.username)
@@ -2299,10 +2313,11 @@ async def remove_team_member(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
+    is_owner = team.organization.owner == current_user
     tm = TeamMember.get_or_none(
         (TeamMember.team == team) & (TeamMember.user == current_user)
     )
-    if not tm:
+    if not tm and not is_owner:
         raise HTTPException(status_code=403, detail="Not a team member")
 
     target = TeamMember.get_or_none(
@@ -2311,9 +2326,10 @@ async def remove_team_member(
     if not target:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    is_self = user_id == current_user.id
-
-    if not is_self:
+    # Members can only remove themselves; the org owner can remove anyone.
+    # Without the owner case, an owner could add someone to a team and then
+    # have no way to take them back out again.
+    if user_id != current_user.id and not is_owner:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     target.delete_instance()

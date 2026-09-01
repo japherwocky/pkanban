@@ -395,3 +395,175 @@ class TestGetInvite:
 
         response = client.get(f"/api/invites/{token}")
         assert response.status_code == 404
+
+
+class TestInviteGrantsBoardAccess:
+    """The point of an invite: the invited person can reach a board.
+
+    Every other test in this file stops at "a membership row exists", which is
+    why two separate bugs that made the whole flow useless survived -- teams
+    were created empty and could never be filled, so the only working share
+    path was unreachable through the API.
+    """
+
+    def _headers(self, user):
+        return {
+            "Authorization": "Bearer "
+            + create_access_token(data={"sub": user.id, "username": user.username})
+        }
+
+    def test_team_creator_is_a_member_of_their_own_team(self, client, db_session):
+        owner = User.create_user("tc_owner", "password")
+        headers = self._headers(owner)
+
+        org = client.post(
+            "/api/organizations", json={"name": "TC Org"}, headers=headers
+        ).json()
+        team = client.post(
+            f"/api/organizations/{org['id']}/teams",
+            json={"name": "Devs"},
+            headers=headers,
+        ).json()
+
+        members = client.get(
+            f"/api/teams/{team['id']}/members", headers=headers
+        ).json()
+        assert [m["username"] for m in members] == ["tc_owner"]
+
+    def test_org_owner_can_fill_a_team_they_are_not_in(self, client, db_session):
+        """The auto-created "Administrators" team has no members at all."""
+        owner = User.create_user("af_owner", "password")
+        invitee = User.create_user("af_invitee", "password")
+        headers = self._headers(owner)
+
+        org = client.post(
+            "/api/organizations", json={"name": "AF Org"}, headers=headers
+        ).json()
+        teams = client.get(
+            f"/api/organizations/{org['id']}/teams", headers=headers
+        ).json()
+        admins = next(t for t in teams if t["name"] == "Administrators")
+        assert client.get(
+            f"/api/teams/{admins['id']}/members", headers=headers
+        ).json() == []
+
+        OrganizationMember.create(
+            user=invitee, organization=org["id"], joined_at=datetime.now(timezone.utc)
+        )
+        response = client.post(
+            f"/api/teams/{admins['id']}/members",
+            json={"username": "af_invitee"},
+            headers=headers,
+        )
+        assert response.status_code == 200, response.json()
+
+    def test_invited_user_can_open_a_shared_board(self, client, db_session):
+        owner = User.create_user("e2e_owner", "password")
+        invitee = User.create_user("e2e_invitee", "password")
+        owner_headers = self._headers(owner)
+        invitee_headers = self._headers(invitee)
+
+        org = client.post(
+            "/api/organizations", json={"name": "E2E Org"}, headers=owner_headers
+        ).json()
+        board = client.post(
+            "/api/boards", json={"name": "Project X"}, headers=owner_headers
+        ).json()
+
+        # Before anything, the invitee cannot see it.
+        assert client.get(
+            f"/api/boards/{board['id']}", headers=invitee_headers
+        ).status_code == 403
+
+        invite = client.post(
+            f"/api/organizations/{org['id']}/invites",
+            json={"email": "invitee@example.com"},
+            headers=owner_headers,
+        ).json()
+        accepted = client.post(
+            f"/api/invites/{invite['token']}/accept", headers=invitee_headers
+        )
+        assert accepted.status_code == 200
+        assert accepted.json()["organization_id"] == org["id"]
+
+        team = client.post(
+            f"/api/organizations/{org['id']}/teams",
+            json={"name": "Project X Team"},
+            headers=owner_headers,
+        ).json()
+        added = client.post(
+            f"/api/teams/{team['id']}/members",
+            json={"username": "e2e_invitee"},
+            headers=owner_headers,
+        )
+        assert added.status_code == 200, added.json()
+
+        shared = client.post(
+            f"/api/boards/{board['id']}/share",
+            json={"team_id": team["id"]},
+            headers=owner_headers,
+        )
+        assert shared.status_code == 200
+
+        assert client.get(
+            f"/api/boards/{board['id']}", headers=invitee_headers
+        ).status_code == 200
+        assert board["id"] in [
+            b["id"] for b in client.get("/api/boards", headers=invitee_headers).json()
+        ]
+
+    def test_org_owner_can_remove_a_team_member(self, client, db_session):
+        owner = User.create_user("rm_owner", "password")
+        member = User.create_user("rm_member", "password")
+        headers = self._headers(owner)
+
+        org = client.post(
+            "/api/organizations", json={"name": "RM Org"}, headers=headers
+        ).json()
+        team = client.post(
+            f"/api/organizations/{org['id']}/teams", json={"name": "T"}, headers=headers
+        ).json()
+        OrganizationMember.create(
+            user=member, organization=org["id"], joined_at=datetime.now(timezone.utc)
+        )
+        client.post(
+            f"/api/teams/{team['id']}/members",
+            json={"username": "rm_member"},
+            headers=headers,
+        )
+
+        response = client.delete(
+            f"/api/teams/{team['id']}/members/{member.id}", headers=headers
+        )
+        assert response.status_code == 200
+        assert [
+            m["username"]
+            for m in client.get(
+                f"/api/teams/{team['id']}/members", headers=headers
+            ).json()
+        ] == ["rm_owner"]
+
+    def test_outsider_still_cannot_add_team_members(self, client, db_session):
+        """The owner bypass must not open the door to everyone else."""
+        owner = User.create_user("os_owner", "password")
+        outsider = User.create_user("os_outsider", "password")
+        target = User.create_user("os_target", "password")
+
+        org = client.post(
+            "/api/organizations", json={"name": "OS Org"}, headers=self._headers(owner)
+        ).json()
+        team = client.post(
+            f"/api/organizations/{org['id']}/teams",
+            json={"name": "T"},
+            headers=self._headers(owner),
+        ).json()
+        OrganizationMember.create(
+            user=target, organization=org["id"], joined_at=datetime.now(timezone.utc)
+        )
+
+        response = client.post(
+            f"/api/teams/{team['id']}/members",
+            json={"username": "os_target"},
+            headers=self._headers(outsider),
+        )
+        assert response.status_code == 403

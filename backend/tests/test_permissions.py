@@ -437,11 +437,19 @@ def test_remove_team_member_can_remove_self(client, test_db):
 
 
 def test_remove_team_member_cannot_remove_others(client, test_db):
-    """Team member cannot remove other team members"""
+    """Team member cannot remove other team members
+
+    The org owner is a third user here on purpose. This test used to make
+    team_member1 the owner, so it was really asserting that the *owner* could
+    not remove people -- it passed only because the owner had no way to, which
+    also left an owner unable to undo their own add.
+    """
+    org_owner = create_user("teamremoveowner", "password")
     team_member1 = create_user("teammember1", "password")
     team_member2 = create_user("teammember2", "password")
 
-    org = create_organization("Org1", team_member1)
+    org = create_organization("Org1", org_owner)
+    OrganizationMember.create(user=org_owner, organization=org, joined_at=datetime.now(timezone.utc))
     OrganizationMember.create(user=team_member1, organization=org, joined_at=datetime.now(timezone.utc))
     OrganizationMember.create(user=team_member2, organization=org, joined_at=datetime.now(timezone.utc))
 
@@ -449,12 +457,19 @@ def test_remove_team_member_cannot_remove_others(client, test_db):
     TeamMember.create(user=team_member1, team=team, joined_at=datetime.now(timezone.utc))
     team_member2_record = TeamMember.create(user=team_member2, team=team, joined_at=datetime.now(timezone.utc))
 
-    # team_member1 cannot remove team_member2
+    # A plain team member cannot remove someone else...
     response = client.delete(
         f"/api/teams/{team.id}/members/{team_member2.id}",
         headers=get_auth_headers(team_member1)
     )
     assert response.status_code == 403
+
+    # ...but the org owner can.
+    response = client.delete(
+        f"/api/teams/{team.id}/members/{team_member2.id}",
+        headers=get_auth_headers(org_owner)
+    )
+    assert response.status_code == 200
 
 
 # ===============================
