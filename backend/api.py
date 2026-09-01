@@ -55,11 +55,19 @@ def can_access_board(user, board):
     if board.owner == user:
         return True
 
-    # Board shared with team - check if user is team member
-    if board.shared_team:
+    # Board shared with team - check if user is team member.
+    #
+    # Read shared_team_id, not shared_team: the FK may point at a team that no
+    # longer exists, and resolving it would raise Team.DoesNotExist out of a
+    # call path with no handler -- a 500 on every non-owner request for the
+    # board, with no way to repair it from the UI. Deleting a team used to
+    # leave exactly that behind, because the query meant to clear the column
+    # was never executed. Treat a dangling reference as "not shared".
+    if board.shared_team_id:
         return (
             TeamMember.get_or_none(
-                (TeamMember.user == user) & (TeamMember.team == board.shared_team)
+                (TeamMember.user == user)
+                & (TeamMember.team == board.shared_team_id)
             )
             is not None
         )
@@ -975,9 +983,9 @@ async def delete_admin_team(
 
     with db.atomic():
         # Remove team from any boards
-        Board.update(shared_team=None).where(Board.shared_team == team)
+        Board.update(shared_team=None).where(Board.shared_team == team).execute()
         # Delete team members
-        TeamMember.delete().where(TeamMember.team == team)
+        TeamMember.delete().where(TeamMember.team == team).execute()
         # Delete team
         team.delete_instance()
 
@@ -1211,7 +1219,7 @@ async def delete_admin_board(
     with db.atomic():
         # Delete cards, columns, board
         for column in board.columns:
-            Card.delete().where(Card.column == column)
+            Card.delete().where(Card.column == column).execute()
             column.delete_instance()
         board.delete_instance()
 
@@ -1932,7 +1940,13 @@ async def remove_organization_member(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     with db.atomic():
-        TeamMember.delete().where(TeamMember.user_id == user_id)
+        # Only this org's teams. The predicate used to be TeamMember.user alone,
+        # which never ran -- and would have dropped the user out of every team
+        # in every other organization had it ever been executed.
+        org_team_ids = Team.select(Team.id).where(Team.organization == org)
+        TeamMember.delete().where(
+            (TeamMember.user_id == user_id) & (TeamMember.team.in_(org_team_ids))
+        ).execute()
         target.delete_instance()
 
     return {"ok": True}
@@ -2219,8 +2233,8 @@ async def delete_team(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     with db.atomic():
-        Board.update(shared_team=None).where(Board.shared_team == team)
-        TeamMember.delete().where(TeamMember.team == team)
+        Board.update(shared_team=None).where(Board.shared_team == team).execute()
+        TeamMember.delete().where(TeamMember.team == team).execute()
         team.delete_instance()
 
     return {"ok": True}
