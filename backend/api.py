@@ -1109,16 +1109,11 @@ async def add_admin_team_member(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Ensure user is a member of the organization
-    org_member = OrganizationMember.get_or_none(
-        (OrganizationMember.organization == team.organization)
-        & (OrganizationMember.user == user)
-    )
-    if not org_member:
-        raise HTTPException(
-            status_code=400,
-            detail=f"User '{user.username}' is not a member of the organization '{team.organization.name}'",
-        )
+    # Deliberately no organization-membership requirement. A team is the unit
+    # of authorization -- it is what can_access_board actually checks -- and a
+    # team is allowed to span organizations, so that a contractor or a partner
+    # can be put on one project's team without being given the run of the org.
+    # Organizations group people and carry invites; teams grant access.
 
     # Check if already a team member
     existing = TeamMember.get_or_none(
@@ -2011,6 +2006,12 @@ async def remove_organization_member(
         # Only this org's teams. The predicate used to be TeamMember.user alone,
         # which never ran -- and would have dropped the user out of every team
         # in every other organization had it ever been executed.
+        #
+        # Teams may include people from outside the org, but removing someone
+        # from the org still takes them off its teams: otherwise the removal
+        # would revoke nothing they could actually reach. Genuine outsiders,
+        # who were never org members, are untouched -- there is no
+        # OrganizationMember row to remove them by.
         org_team_ids = Team.select(Team.id).where(Team.organization == org)
         TeamMember.delete().where(
             (TeamMember.user_id == user_id) & (TeamMember.team.in_(org_team_ids))
@@ -2332,14 +2333,13 @@ async def add_team_member(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    org_member = OrganizationMember.get_or_none(
-        (OrganizationMember.organization == team.organization)
-        & (OrganizationMember.user == user)
-    )
-    if not org_member:
-        raise HTTPException(
-            status_code=400, detail="User is not a member of this organization"
-        )
+    # No organization-membership requirement on the person being added: teams
+    # may span organizations. See the admin endpoint above for why.
+    #
+    # This does mean any team member can hand board access to any account on
+    # the server, which is the Unix group model the rest of this file follows
+    # -- being in the group is what lets you add to the group. The org owner is
+    # the backstop: they can remove anyone from any team in their org.
 
     existing = TeamMember.get_or_none(
         (TeamMember.team == team) & (TeamMember.user == user)
@@ -2366,11 +2366,23 @@ async def list_team_members(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    org_member = OrganizationMember.get_or_none(
-        (OrganizationMember.organization == team.organization)
-        & (OrganizationMember.user == current_user)
+    # Anyone in the org, plus anyone on the team. The second half matters now
+    # that teams can span organizations: a member from outside the org could
+    # not otherwise see the team they are actually on.
+    is_org_member_of_team = (
+        OrganizationMember.get_or_none(
+            (OrganizationMember.organization == team.organization)
+            & (OrganizationMember.user == current_user)
+        )
+        is not None
     )
-    if not org_member:
+    is_team_member = (
+        TeamMember.get_or_none(
+            (TeamMember.team == team) & (TeamMember.user == current_user)
+        )
+        is not None
+    )
+    if not is_org_member_of_team and not is_team_member:
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
     members = TeamMember.select().where(TeamMember.team == team)

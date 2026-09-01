@@ -739,20 +739,25 @@ def test_add_team_member_admin(client, admin_token, admin_user, regular_user):
 
 
 def test_add_team_member_not_in_org(client, admin_token, admin_user, regular_user):
-    """Cannot add user to team if they're not in the organization"""
+    """A user outside the organization can still be put on its team.
+
+    This asserted a 400 until teams became the unit of authorization. Teams
+    may span organizations, so there is nothing to reject here.
+    """
     org = Organization.create_with_columns(name="Test Org", slug="test-org", owner=admin_user)
     team = Team.create_with_columns(name="Test Team", organization=org)
     OrganizationMember.create(user=admin_user, organization=org, joined_at=datetime.now())
     TeamMember.create(user=admin_user, team=team, joined_at=datetime.now())
 
-    # Try to add a user who is not in the org
     response = client.post(
         f"/api/admin/teams/{team.id}/members",
         json={"username": regular_user.username},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    assert response.status_code == 400
-    assert "not a member of the organization" in response.json()["detail"]
+    assert response.status_code == 200
+    assert TeamMember.get_or_none(
+        (TeamMember.team == team) & (TeamMember.user == regular_user)
+    ) is not None
 
 
 def test_add_team_member_already_in_team(client, admin_token, admin_user, regular_user):

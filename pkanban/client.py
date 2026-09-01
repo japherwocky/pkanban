@@ -249,8 +249,14 @@ class PkanbanClient:
         return self._request("DELETE", f"/api/teams/{team_id}/members/{user_id}")
 
     # Board sharing
-    def board_share(self, board_id, team_id=None):
-        data = {"team_id": team_id}
+    def board_share(
+        self, board_id, team_id=None, is_public_to_org=False, organization_id=None
+    ):
+        data = {
+            "team_id": team_id,
+            "is_public_to_org": is_public_to_org,
+            "organization_id": organization_id,
+        }
         return self._request("POST", f"/api/boards/{board_id}/share", json=data)
 
     # API Key methods

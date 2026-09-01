@@ -937,3 +937,84 @@ def test_expired_session_401_names_expiry():
 
     assert "expired" in message.lower()
     assert "pkanban login" in message
+
+
+# === share, team vs organization ===
+
+
+def test_share_with_a_team_sends_no_org_flag():
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    mock_client.board_share.return_value = {"ok": True, "shared_team_id": 5}
+
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        cmd_board_share(board_id=7, team_id="5", org=False, organization_id=None)
+
+    assert mock_client.board_share.call_args.args == (7, "5")
+    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is False
+
+
+def test_share_private_clears_the_team():
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    mock_client.board_share.return_value = {"ok": True, "shared_team_id": None}
+
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        cmd_board_share(board_id=7, team_id="private", org=False, organization_id=None)
+
+    assert mock_client.board_share.call_args.args == (7, None)
+    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is False
+
+
+def test_share_org_sends_the_flag_and_no_team():
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    mock_client.board_share.return_value = {"ok": True, "organization_id": 3}
+
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        cmd_board_share(board_id=7, team_id=None, org=True, organization_id=None)
+
+    assert mock_client.board_share.call_args.args == (7, None)
+    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is True
+
+
+def test_org_id_alone_implies_org():
+    """Naming the organization is a clear enough statement of intent."""
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    mock_client.board_share.return_value = {"ok": True, "organization_id": 3}
+
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        cmd_board_share(board_id=7, team_id=None, org=False, organization_id=3)
+
+    kwargs = mock_client.board_share.call_args.kwargs
+    assert kwargs["is_public_to_org"] is True
+    assert kwargs["organization_id"] == 3
+
+
+def test_share_refuses_a_team_and_an_org_together():
+    import typer
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        with pytest.raises(typer.Exit):
+            cmd_board_share(board_id=7, team_id="5", org=True, organization_id=None)
+
+    mock_client.board_share.assert_not_called()
+
+
+def test_share_refuses_neither_a_team_nor_an_org():
+    import typer
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        with pytest.raises(typer.Exit):
+            cmd_board_share(board_id=7, team_id=None, org=False, organization_id=None)
+
+    mock_client.board_share.assert_not_called()
