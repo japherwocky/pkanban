@@ -1,12 +1,13 @@
 <script>
    import Modal from './Modal.svelte';
 
-   let { open, onClose, board, availableTeams, onShare } = $props();
+   let { open, onClose, board, availableTeams, availableOrgs = [], onShare } = $props();
 
    // Seeded by the $effect below rather than from `board` directly. Reading a
    // prop inside $state() captures only its initial value, so a different
    // board shown without remounting would keep the first board's settings.
    let selectedTeamId = $state(null);
+   let selectedOrgId = $state(null);
    let isPublicToOrg = $state(false);
    let loading = $state(false);
 
@@ -15,6 +16,12 @@
    $effect(() => {
      selectedTeamId = board?.shared_team_id ?? null;
      isPublicToOrg = board?.is_public_to_org ?? false;
+     // Whichever org it is already shared into, else the only candidate.
+     // With several to choose from we leave it unset and make the user pick:
+     // the server refuses an ambiguous share rather than guessing, because
+     // guessing wrong exposes the board to the wrong people silently.
+     selectedOrgId =
+       board?.organization_id ?? (availableOrgs.length === 1 ? availableOrgs[0].id : null);
    });
 
    async function handleShare() {
@@ -22,7 +29,11 @@
      try {
        // If public to org, don't send team_id
        // Otherwise, send the selected team_id (or null to unshare)
-       await onShare(isPublicToOrg ? null : selectedTeamId, isPublicToOrg);
+       await onShare(
+         isPublicToOrg ? null : selectedTeamId,
+         isPublicToOrg,
+         isPublicToOrg ? selectedOrgId : null
+       );
        onClose();
      } catch (e) {
        alert('Failed to share board: ' + e.message);
@@ -42,7 +53,7 @@
 {#if open}
   <Modal open={open} onClose={onClose} title={board?.name ? `Share Board: ${board.name}` : 'Share Board'}>
     {#snippet children()}
-      {#if availableTeams.length === 0}
+      {#if availableTeams.length === 0 && availableOrgs.length === 0}
         <div class="no-teams-message">
           <div class="message-icon">📋</div>
           <h3>Create an organization first</h3>
@@ -63,6 +74,16 @@
             <p class="share-help">When public, all organization members can view and edit this board.</p>
           </div>
 
+          {#if isPublicToOrg && availableOrgs.length > 1}
+            <label class="share-label" for="org-select">Which organization:</label>
+            <select id="org-select" class="team-select" bind:value={selectedOrgId}>
+              <option value={null}>Choose an organization</option>
+              {#each availableOrgs as org (org.id)}
+                <option value={org.id}>{org.name}</option>
+              {/each}
+            </select>
+          {/if}
+
           {#if !isPublicToOrg}
             <label class="share-label" for="team-select">Share with team:</label>
             <select
@@ -72,7 +93,7 @@
               disabled={isPublicToOrg}
             >
               <option value={null}>Not shared</option>
-              {#each availableTeams as team}
+              {#each availableTeams as team (team.id)}
                 <option value={team.id}>{team.name} ({team.organization})</option>
               {/each}
             </select>
@@ -95,7 +116,7 @@
 
         <div class="modal-actions">
           <button type="button" class="cancel-btn" onclick={onClose}>Cancel</button>
-          <button type="button" class="create-btn" onclick={handleShare} disabled={loading}>
+          <button type="button" class="create-btn" onclick={handleShare} disabled={loading || (isPublicToOrg && !selectedOrgId)}>
             {loading ? 'Saving...' : 'Save'}
           </button>
         </div>

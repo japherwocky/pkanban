@@ -55,6 +55,11 @@ def can_access_board(user, board):
     if board.owner == user:
         return True
 
+    # Neither branch may return early on a miss. A board can carry both a
+    # shared_team and is_public_to_org -- share_board does not clear the team
+    # when the org flag goes on -- and an early return meant whichever was
+    # checked first silently decided the answer for both.
+    #
     # Board shared with team - check if user is team member.
     #
     # Read shared_team_id, not shared_team: the FK may point at a team that no
@@ -64,20 +69,22 @@ def can_access_board(user, board):
     # leave exactly that behind, because the query meant to clear the column
     # was never executed. Treat a dangling reference as "not shared".
     if board.shared_team_id:
-        return (
+        if (
             TeamMember.get_or_none(
                 (TeamMember.user == user)
                 & (TeamMember.team == board.shared_team_id)
             )
             is not None
-        )
+        ):
+            return True
 
-    # Board public to org - check if user is org member
-    if board.is_public_to_org:
-        # This requires going through teams to get the org
-        # Or we could add a org_id to boards directly
-        # For now, skip this - we'll handle it via the shared_team approach
-        pass
+    # Board public to org - check if user is org member. organization_id is
+    # null for a personal board and for any board whose org could not be
+    # derived when the column was added, and the flag means nothing without it.
+    if board.is_public_to_org and board.organization_id:
+        org = Organization.get_or_none(Organization.id == board.organization_id)
+        if org is not None:
+            return is_org_member(user, org) or org.owner_id == user.id
 
     return False
 
@@ -103,6 +110,38 @@ def can_delete_board(user, board):
 
 def can_share_board(user, board):
     return board.owner == user
+
+
+def _resolve_share_organization(user, organization_id):
+    """Which organization a board is being shared into.
+
+    Explicit when given, inferred when the user has exactly one organization
+    to choose from. Refuses to guess between several -- picking the wrong one
+    would expose the board to the wrong set of people, and silently.
+    """
+    orgs = list(get_user_organizations(user))
+    if organization_id is not None:
+        org = Organization.get_or_none(Organization.id == organization_id)
+        if org is None:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        if not is_org_member(user, org) and org.owner_id != user.id:
+            raise HTTPException(
+                status_code=403, detail="Not a member of this organization"
+            )
+        return org
+
+    if not orgs:
+        raise HTTPException(
+            status_code=400,
+            detail="You are not a member of any organization to share this board with",
+        )
+    if len(orgs) > 1:
+        names = ", ".join(f"{o.name} (id={o.id})" for o in orgs)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Specify organization_id -- you belong to several: {names}",
+        )
+    return orgs[0]
 
 
 def get_user_organizations(user):
@@ -147,6 +186,10 @@ class BoardUpdate(BaseModel):
 class BoardShare(BaseModel):
     team_id: Optional[int] = None
     is_public_to_org: Optional[bool] = False
+    # Which org "public to org" means. Optional: with exactly one organization
+    # to choose from the server infers it, which is the common case and keeps
+    # the existing single-checkbox UI working unchanged.
+    organization_id: Optional[int] = None
 
 
 class BoardResponse(BaseModel):
@@ -158,6 +201,7 @@ class BoardResponse(BaseModel):
     columns: list
     shared_team_id: Optional[int] = None
     is_public_to_org: bool = False
+    organization_id: Optional[int] = None
     owner_id: int
 
 
@@ -1135,6 +1179,7 @@ async def list_admin_boards(current_admin_user: User = Depends(get_current_admin
                 "shared_team_id": board.shared_team_id,
                 "shared_team_name": shared_team_name,
                 "is_public_to_org": board.is_public_to_org,
+                "organization_id": board.organization_id,
                 "column_count": column_count,
                 "card_count": card_count,
                 "created_at": board.created_at,
@@ -1168,6 +1213,7 @@ async def create_admin_board(
         "shared_team_id": board.shared_team_id,
         "shared_team_name": None,
         "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
         "column_count": column_count,
         "card_count": card_count,
         "created_at": board.created_at,
@@ -1200,6 +1246,7 @@ async def update_admin_board(
         "shared_team_id": board.shared_team_id,
         "shared_team_name": shared_team_name,
         "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
         "column_count": column_count,
         "card_count": card_count,
         "created_at": board.created_at,
@@ -1252,6 +1299,16 @@ async def list_boards(current_user: User = Depends(get_current_user_or_api_key))
         for board in tm.team.boards:
             if board.id not in board_ids:
                 board_ids.append(board.id)
+    # Boards shared with an org this user belongs to. Without this an
+    # org-public board is reachable by direct URL -- can_access_board allows
+    # it -- but invisible in the list, which is a worse failure than the
+    # honest 403 the flag used to produce.
+    for org in get_user_organizations(current_user):
+        for board in Board.select().where(
+            (Board.organization == org) & (Board.is_public_to_org == True)  # noqa: E712
+        ):
+            if board.id not in board_ids:
+                board_ids.append(board.id)
 
     boards = Board.select().where(Board.id.in_(board_ids))
     return [
@@ -1261,6 +1318,7 @@ async def list_boards(current_user: User = Depends(get_current_user_or_api_key))
             "created_at": board.created_at,
             "shared_team_id": board.shared_team_id,
             "is_public_to_org": board.is_public_to_org,
+            "organization_id": board.organization_id,
             "owner_id": board.owner_id,
         }
         for board in boards
@@ -1290,6 +1348,7 @@ async def update_board(
         "columns": columns,
         "shared_team_id": board.shared_team_id,
         "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
         "owner_id": board.owner_id,
     }
 
@@ -1351,6 +1410,7 @@ async def get_board(
         "columns": columns,
         "shared_team_id": board.shared_team_id,
         "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
         "owner_id": board.owner_id,
     }
 
@@ -1389,6 +1449,13 @@ async def share_board(
     if share_data.is_public_to_org is not None:
         board.is_public_to_org = share_data.is_public_to_org
 
+    # A board is not owned by an organization, it is shared into one, so the
+    # org is resolved at the moment it goes public rather than at creation.
+    if board.is_public_to_org:
+        board.organization = _resolve_share_organization(
+            current_user, share_data.organization_id
+        )
+
     # Set shared team (only if not public to org)
     if not board.is_public_to_org and share_data.team_id is not None:
         team = Team.get_or_none(Team.id == share_data.team_id)
@@ -1403,6 +1470,7 @@ async def share_board(
         "ok": True,
         "shared_team_id": board.shared_team_id,
         "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
     }
 
 
