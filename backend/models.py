@@ -186,12 +186,24 @@ class Board(BaseModel):
     owner = ForeignKeyField(User, backref="boards")
     name = CharField(max_length=200)
     shared_team = ForeignKeyField(Team, null=True, backref="boards")
+    # Which organization "public to org" means. Null for a personal board, and
+    # set when the board is first shared org-wide -- boards are not owned by an
+    # organization, they are shared into one. is_public_to_org was dead for as
+    # long as this column did not exist: there was nothing to check membership
+    # against, so the flag persisted and was read by nothing.
+    organization = ForeignKeyField(Organization, null=True, backref="boards")
     is_public_to_org = BooleanField(default=False)
     created_at = DateTimeField()
 
     @classmethod
     def create_with_columns(
-        cls, owner, name, shared_team=None, is_public_to_org=False, column_names=None
+        cls,
+        owner,
+        name,
+        shared_team=None,
+        is_public_to_org=False,
+        organization=None,
+        column_names=None,
     ):
         if column_names is None:
             column_names = ["To Do", "In Progress", "For Review"]
@@ -201,6 +213,7 @@ class Board(BaseModel):
             name=name,
             shared_team=shared_team,
             is_public_to_org=is_public_to_org,
+            organization=organization,
             created_at=datetime.now(timezone.utc),
         )
         for i, col_name in enumerate(column_names):

@@ -10,15 +10,19 @@
   let loading = $state(true);
   let error = $state(null);
   let availableTeams = $state([]);
+  let availableOrgs = $state([]);
 
   onMount(async () => {
 
     try {
       loading = true;
-      [board, availableTeams] = await Promise.all([
+      const [loadedBoard, shareTargets] = await Promise.all([
         api.boards.get(params.id),
-        loadAvailableTeams()
+        loadShareTargets()
       ]);
+      board = loadedBoard;
+      availableTeams = shareTargets.teams;
+      availableOrgs = shareTargets.orgs;
     } catch (e) {
       error = e.message;
     } finally {
@@ -26,7 +30,10 @@
     }
   });
 
-  async function loadAvailableTeams() {
+  // Orgs as well as teams: a board can be shared with a whole organization,
+  // and that is possible with no teams defined at all. Gating the share UI on
+  // teams alone hid the option entirely for a brand new org.
+  async function loadShareTargets() {
     try {
       const teams = [];
       const orgs = await api.organizations.list();
@@ -42,10 +49,10 @@
         }
       }
 
-      return teams;
+      return { teams, orgs };
     } catch (e) {
-      console.error('Failed to load teams:', e);
-      return [];
+      console.error('Failed to load share targets:', e);
+      return { teams: [], orgs: [] };
     }
   }
 
@@ -53,8 +60,8 @@
     navigate('/boards');
   }
 
-  async function handleShare(teamId, isPublicToOrg) {
-    await api.boards.share(board.id, teamId, isPublicToOrg);
+  async function handleShare(teamId, isPublicToOrg, organizationId = null) {
+    await api.boards.share(board.id, teamId, isPublicToOrg, organizationId);
     // Reload board to get updated shared_team_id and is_public_to_org
     board = await api.boards.get(board.id);
   }
@@ -73,7 +80,7 @@
     <button onclick={goBack}>Back to Boards</button>
   </div>
  {:else if board}
-  <BoardView board={board} onBack={goBack} availableTeams={availableTeams} onShare={handleShare} onRename={handleRename} initialCardId={params.cardId} />
+  <BoardView board={board} onBack={goBack} availableTeams={availableTeams} availableOrgs={availableOrgs} onShare={handleShare} onRename={handleRename} initialCardId={params.cardId} />
  {/if}
 
 <style>

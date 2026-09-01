@@ -149,9 +149,16 @@ export const api = {
       body: JSON.stringify({ name }),
     }),
     delete: (id) => apiFetch(`/api/boards/${id}`, { method: 'DELETE' }),
-    share: (id, teamId, isPublicToOrg = false) => apiFetch(`/api/boards/${id}/share`, {
+    // organizationId is only needed when the user belongs to more than one
+    // org; the server infers it otherwise and rejects an ambiguous share
+    // rather than guessing which set of people to expose the board to.
+    share: (id, teamId, isPublicToOrg = false, organizationId = null) => apiFetch(`/api/boards/${id}/share`, {
       method: 'POST',
-      body: JSON.stringify({ team_id: teamId, is_public_to_org: isPublicToOrg }),
+      body: JSON.stringify({
+        team_id: teamId,
+        is_public_to_org: isPublicToOrg,
+        organization_id: organizationId,
+      }),
     }),
   },
   columns: {
