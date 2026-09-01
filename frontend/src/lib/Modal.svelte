@@ -119,13 +119,19 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* No align-items/justify-content: centering comes from .modal's auto
+       margins below. align-items: center clips a modal taller than the
+       viewport instead of scrolling to it -- overflow above the centered
+       point becomes unreachable, since a fixed, centered flex item isn't
+       part of anything scrollable. auto margins center the same way when
+       there's room, and fall back to flush-top-scrollable when there isn't. */
+    overflow-y: auto;
     padding: var(--space-4);
     z-index: 50;
   }
 
   .modal {
+    margin: auto;
     background: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);

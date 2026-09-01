@@ -398,11 +398,12 @@
               placeholder="Card title"
               required
             />
-            <textarea
-              bind:value={newCardDescription}
-              placeholder="Description (optional)"
-              rows="3"
-            ></textarea>
+            <div class="grow-wrap" data-replicated-value={newCardDescription}>
+              <textarea
+                bind:value={newCardDescription}
+                placeholder="Description (optional)"
+              ></textarea>
+            </div>
             <div class="modal-actions">
               <button type="button" class="cancel-btn" onclick={() => showCreateCardModal = false}>Cancel</button>
               <button type="submit" class="create-btn" disabled={createLoading}>
@@ -423,11 +424,12 @@
               placeholder="Card title"
               required
             />
-            <textarea
-              bind:value={editDescription}
-              placeholder="Description (optional)"
-              rows="3"
-            ></textarea>
+            <div class="grow-wrap" data-replicated-value={editDescription}>
+              <textarea
+                bind:value={editDescription}
+                placeholder="Description (optional)"
+              ></textarea>
+            </div>
             <div class="modal-actions">
               <button type="button" class="cancel-btn" onclick={closeEditCard}>Cancel</button>
               <button type="submit" class="create-btn" disabled={editLoading}>
@@ -813,16 +815,40 @@
     box-shadow: 0 0 0 3px var(--color-primary);
   }
 
-  textarea {
+  /* CSS-only autosizing textarea. The invisible ::after replica and the
+     textarea occupy the same grid cell, so the cell -- and the textarea --
+     grow to fit the content instead of the textarea scrolling internally.
+     No JS: the replica's content comes from data-replicated-value, which
+     Svelte keeps in sync with the bound value on every keystroke. */
+  .grow-wrap {
+    display: grid;
+  }
+
+  .grow-wrap::after {
+    content: attr(data-replicated-value) ' ';
+    white-space: pre-wrap;
+    visibility: hidden;
+  }
+
+  .grow-wrap > textarea,
+  .grow-wrap::after {
+    grid-area: 1 / 1 / 2 / 2;
     padding: var(--space-3) var(--space-4);
     font-size: var(--text-base);
+    font-family: inherit;
     border-radius: var(--radius-lg);
+    min-height: 80px;
+  }
+
+  textarea {
     border: 1px solid var(--color-border);
     background: var(--color-card);
     color: var(--color-foreground);
-    font-family: inherit;
-    resize: vertical;
-    min-height: 80px;
+    /* Grows via the grid cell above instead; a resize handle or an internal
+       scrollbar would fight that -- and disabling scroll here, not just
+       hiding it, is what lets a wheel over the field scroll the modal. */
+    resize: none;
+    overflow: hidden;
   }
 
   textarea:focus {
