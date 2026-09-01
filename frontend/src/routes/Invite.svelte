@@ -24,8 +24,7 @@
     accepting = true;
     try {
       const result = await api.invites.accept(params.token);
-      localStorage.setItem('redirectPath', `/organizations/${invite.id}`);
-      navigate('/organizations');
+      navigate(`/organizations/${result.organization_id}`);
     } catch (e) {
       alert(e.message);
     } finally {
@@ -34,12 +33,12 @@
   }
 
   function goToLogin() {
-    localStorage.setItem('redirectPath', `#!/invite/${params.token}`);
+    localStorage.setItem('redirectPath', `/invite/${params.token}`);
     navigate('/login');
   }
 
   function goToSignup() {
-    localStorage.setItem('redirectPath', `#!/invite/${params.token}`);
+    localStorage.setItem('redirectPath', `/invite/${params.token}`);
     navigate('/signup');
   }
 </script>

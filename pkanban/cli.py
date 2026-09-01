@@ -554,7 +554,7 @@ def cmd_organization_invite_create(
     client = make_client()
     result = client.organization_invite_create(org_id, email)
     server_url = get_server_url()
-    invite_link = f"{server_url.rstrip('/')}/#!/invite/{result['token']}"
+    invite_link = f"{server_url.rstrip('/')}/invite/{result['token']}"
 
     def render():
         rprint("[bold]Invite created![/bold]")
@@ -583,10 +583,10 @@ def cmd_organization_invites(org_id: int = typer.Argument(..., help="Organizatio
         rprint("[bold]Pending Invites:[/bold]")
         for invite in invites:
             rprint(f"  {invite['id']:4}  {invite['email'] or '(anonymous)'}")
-            rprint(f"       Link: {base}/#!/invite/{invite['token']}")
+            rprint(f"       Link: {base}/invite/{invite['token']}")
 
     emit(
-        [{**i, "invite_url": f"{base}/#!/invite/{i['token']}"} for i in invites], render
+        [{**i, "invite_url": f"{base}/invite/{i['token']}"} for i in invites], render
     )
 
 

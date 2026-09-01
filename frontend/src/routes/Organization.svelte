@@ -181,7 +181,7 @@
   }
 
   function copyInviteLink(invite) {
-    const link = `${window.location.origin}/#!/invite/${invite.token}`;
+    const link = `${window.location.origin}/invite/${invite.token}`;
     navigator.clipboard.writeText(link);
     alert('Invite link copied to clipboard!');
   }
