@@ -106,6 +106,14 @@ def _button(url: str, label: str) -> str:
     )
 
 
+def _signoff() -> str:
+    # The one house joke, told once, at the bottom where a signature goes --
+    # not explained, not repeated in the subject or body above it. Colors
+    # match this file's existing (pre-rebrand) muted-text style; card 361
+    # repaints the whole template in the real brand palette.
+    return '<p style="color:#6b7280;font-size:13px">— pkanban (the p is silent)</p>'
+
+
 def send_verification_email(user, token: str) -> bool:
     """Email a new signup the link that activates their account."""
     url = f"{public_base_url()}/verify?token={token}"
@@ -116,6 +124,7 @@ def send_verification_email(user, token: str) -> bool:
         f"{_button(url, 'Verify email')}"
         "<p style=\"color:#6b7280;font-size:13px\">This link expires in 24 "
         "hours. If you didn't sign up, you can ignore this email.</p>"
+        f"{_signoff()}"
     )
     return send_email(user.email, "Verify your pkanban email address", html)
 
@@ -131,5 +140,6 @@ def send_invite_email(
         f"{_button(url, 'Accept invitation')}"
         "<p style=\"color:#6b7280;font-size:13px\">This invitation expires in "
         "7 days.</p>"
+        f"{_signoff()}"
     )
     return send_email(to_email, f"{inviter_username} invited you to {org_name}", html)

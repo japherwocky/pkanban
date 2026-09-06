@@ -4,7 +4,7 @@
 
 <div class="not-found">
   <h1>404</h1>
-  <p>Page not found</p>
+  <p>This page is as silent as the p.</p>
   <button onclick={() => navigate('/boards')}>Go to Boards</button>
 </div>
 

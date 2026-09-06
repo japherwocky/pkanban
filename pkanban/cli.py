@@ -29,7 +29,14 @@ def _version_callback(value: bool):
     if value:
         from pkanban import __version__
 
-        emit({"version": __version__}, lambda: rprint(f"pkanban {__version__}"))
+        def _print_version():
+            rprint(f"pkanban {__version__}")
+            # The joke goes here once, dry, and nowhere near the JSON payload
+            # above -- scripts parse {"version": ...} and shouldn't have to
+            # skip a punchline to get it.
+            rprint('[dim]The "p" is silent, like in "pneumonia".[/dim]')
+
+        emit({"version": __version__}, _print_version)
         raise typer.Exit()
 
 
