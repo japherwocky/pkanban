@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { navigate } from 'svelte-routing';
   import ThemeToggle from '../lib/ThemeToggle.svelte';
+  import Logo from '../lib/Logo.svelte';
   import { api } from '../lib/api.js';
   import Modal from '../lib/Modal.svelte';
 
@@ -103,8 +104,7 @@
 <div class="app">
 <header>
     <a href="/" class="logo-link">
-      <span class="logo-icon">⬡</span>
-      <h1>Kanban Board</h1>
+      <Logo />
     </a>
     <div class="header-actions">
       <button class="nav-btn" onclick={() => navigate('/organizations')}>Organizations</button>
@@ -200,18 +200,6 @@
 
   .logo-link:hover {
     opacity: 0.8;
-  }
-
-  .logo-icon {
-    font-size: var(--text-2xl);
-    color: var(--color-primary);
-  }
-
-  header h1 {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: var(--color-primary);
-    margin: 0;
   }
 
   .header-actions {

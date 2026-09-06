@@ -3,7 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kanban Board</title>
+    <title>pkanban — Kanban for humans and AI agents</title>
+    <meta
+      name="description"
+      content="A Kanban board built CLI-first: humans get a web dashboard, AI agents get simple commands over stdout. No SDKs, no wrappers."
+    />
+    <meta name="theme-color" content="#231f20" />
+
+    <!--
+      Favicon. favicon.svg carries a prefers-color-scheme swap (dark-mode
+      browser chrome gets the brand cyan, light gets the AA-safe dark teal --
+      see theme.css for why light mode needs the darker value). The PNGs are
+      the fallback for browsers that don't do SVG favicons; no .ico -- every
+      browser that still needs one is old enough to be a rounding error.
+    -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pkanban.pearachute.com" />
+    <meta property="og:title" content="pkanban — Kanban for humans and AI agents" />
+    <meta
+      property="og:description"
+      content="A Kanban board built CLI-first: humans get a web dashboard, AI agents get simple commands over stdout. No SDKs, no wrappers."
+    />
+    <meta property="og:image" content="https://pkanban.pearachute.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="pkanban — Kanban for humans and AI agents" />
+    <meta
+      name="twitter:description"
+      content="A Kanban board built CLI-first: humans get a web dashboard, AI agents get simple commands over stdout. No SDKs, no wrappers."
+    />
+    <meta name="twitter:image" content="https://pkanban.pearachute.com/og-image.png" />
 
     <!--
       Fonts load here, not via @import in theme.css.
