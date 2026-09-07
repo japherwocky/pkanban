@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { navigate } from 'svelte-routing';
   import SignupCTA from '../components/SignupCTA.svelte';
+  import Logo from '../lib/Logo.svelte';
   import { api } from '../lib/api.js';
 
   // Must match UNVERIFIED_EMAIL_DETAIL in backend/api.py.
@@ -74,7 +75,7 @@
 
 <div class="login-container">
   <div class="login">
-    <h1>Kanban Board</h1>
+    <Logo size={36} />
     <form onsubmit={(e) => { e.preventDefault(); login(); }}>
       <input bind:value={username} placeholder="Username" required autocomplete="username" />
       <input type="password" bind:value={password} placeholder="Password" required autocomplete="current-password" />
@@ -133,12 +134,6 @@
     justify-content: center;
     gap: var(--space-4);
     width: 100%;
-  }
-
-  .login h1 {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: var(--color-primary);
   }
 
   .login form {

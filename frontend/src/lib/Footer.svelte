@@ -1,5 +1,6 @@
 <script>
   import { navigate } from 'svelte-routing';
+  import Logo from './Logo.svelte';
 
   function goTo(path) {
     navigate(path);
@@ -11,14 +12,7 @@
     <!-- Brand Column -->
     <div class="footer-brand">
       <button class="logo" onclick={() => goTo('/')}>
-        <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="8" y="8" width="48" height="48" rx="8" stroke="currentColor" stroke-width="3" fill="none"/>
-          <rect x="16" y="20" width="12" height="8" rx="2" fill="currentColor"/>
-          <rect x="16" y="32" width="12" height="8" rx="2" fill="currentColor"/>
-          <rect x="32" y="20" width="12" height="8" rx="2" fill="currentColor"/>
-          <rect x="48" y="20" width="4" height="8" rx="2" fill="currentColor"/>
-        </svg>
-        <span>pkanban</span>
+        <Logo />
       </button>
       <p class="tagline">A kanban tool for humans and AI agents.</p>
     </div>
@@ -82,12 +76,8 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
     background: none;
     border: none;
-    color: var(--color-foreground);
-    font-size: var(--text-lg);
-    font-weight: 600;
     cursor: pointer;
     padding: 0;
     transition: opacity var(--transition-fast);
@@ -95,10 +85,6 @@
 
   .logo:hover {
     opacity: 0.8;
-  }
-
-  .logo svg {
-    color: var(--color-primary);
   }
 
   .tagline {

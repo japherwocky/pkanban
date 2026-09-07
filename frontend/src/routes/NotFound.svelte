@@ -1,8 +1,10 @@
 <script>
   import { navigate } from 'svelte-routing';
+  import Logo from '../lib/Logo.svelte';
 </script>
 
 <div class="not-found">
+  <Logo size={40} />
   <h1>404</h1>
   <p>Page not found</p>
   <button onclick={() => navigate('/boards')}>Go to Boards</button>
