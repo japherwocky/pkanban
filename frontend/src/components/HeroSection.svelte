@@ -17,8 +17,8 @@
 <section class="hero-section">
   <div class="hero-content">
     <div class="text-content">
-      <h1 class="headline">The Universal Interface for Agents & Humans.</h1>
-      <p class="subhead">Orchestrate your AI agents using the universal language of compute: Standard Input/Output. No SDKs, just commands.</p>
+      <h1 class="headline">If your agent can print to stdout, it can use pkanban.</h1>
+      <p class="subhead">No SDKs, no wrappers, no dependency hell.</p>
 
       <div class="hero-actions">
         <a href="/signup" use:link class="signup-button">Create your account</a>
