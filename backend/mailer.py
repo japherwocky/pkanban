@@ -95,35 +95,69 @@ def send_email(to: str, subject: str, html: str) -> bool:
     return True
 
 
+# Hardcoded, not tokens: email clients strip <style> blocks and mostly
+# don't support CSS custom properties even inline, so these duplicate
+# theme.css's values by hand. LIGHT-mode values specifically, not dark --
+# mail always renders on a white page regardless of the recipient's
+# system theme, so this reuses the same AA-corrected light-mode primary
+# theme.css uses for text on white (#63cdf5, the raw brand cyan, is a
+# pale tint that fails contrast at roughly 1.8:1 on white).
+_BRAND_DARK = "#231f20"  # --color-foreground (light mode) / pear-dark
+_BRAND_MUTED = "#6b6560"  # --color-muted-foreground (light mode)
+_BRAND_PRIMARY = "#0b6c91"  # --color-primary (light mode)
+_BRAND_PRIMARY_FG = "#ffffff"  # --color-primary-foreground (light mode)
+_BRAND_BORDER = "#ddd9d4"  # --color-border (light mode)
+
+
+def _wrap(body: str) -> str:
+    """Wraps an email body in the brand container and wordmark header.
+
+    No image logo: many mail clients block remote images by default, so an
+    <img> would render as a broken box (or nothing) until the recipient
+    opts in -- a text wordmark shows immediately, every time.
+    """
+    return (
+        '<div style="max-width:480px;margin:0 auto;padding:32px 24px;'
+        'font-family:Arial,Helvetica,sans-serif">'
+        f'<p style="margin:0 0 28px 0;font-size:18px;font-weight:700;'
+        f'color:{_BRAND_DARK}">pkanban</p>'
+        f"{body}"
+        "</div>"
+    )
+
+
 def _button(url: str, label: str) -> str:
     return (
         f'<p><a href="{escape(url)}" '
-        'style="display:inline-block;padding:12px 20px;background:#2563eb;'
-        'color:#ffffff;border-radius:8px;text-decoration:none;'
+        f'style="display:inline-block;padding:12px 20px;background:{_BRAND_PRIMARY};'
+        f'color:{_BRAND_PRIMARY_FG};border-radius:4px;text-decoration:none;'
         f'font-weight:500">{escape(label)}</a></p>'
-        f'<p style="color:#6b7280;font-size:13px">Or paste this into your '
+        f'<p style="color:{_BRAND_MUTED};font-size:13px">Or paste this into your '
         f'browser:<br>{escape(url)}</p>'
     )
 
 
 def _signoff() -> str:
     # The one house joke, told once, at the bottom where a signature goes --
-    # not explained, not repeated in the subject or body above it. Colors
-    # match this file's existing (pre-rebrand) muted-text style; card 361
-    # repaints the whole template in the real brand palette.
-    return '<p style="color:#6b7280;font-size:13px">— pkanban (the p is silent)</p>'
+    # not explained, not repeated in the subject or body above it.
+    return (
+        f'<hr style="border:none;border-top:1px solid {_BRAND_BORDER};'
+        'margin:28px 0 16px 0">'
+        f'<p style="color:{_BRAND_MUTED};font-size:13px;margin:0">'
+        "— pkanban (the p is silent)</p>"
+    )
 
 
 def send_verification_email(user, token: str) -> bool:
     """Email a new signup the link that activates their account."""
     url = f"{public_base_url()}/verify?token={token}"
-    html = (
-        f"<p>Hi {escape(user.username)},</p>"
-        "<p>Confirm your email address to finish setting up your pkanban "
-        "account.</p>"
+    html = _wrap(
+        f'<p style="color:{_BRAND_DARK}">Hi {escape(user.username)},</p>'
+        f'<p style="color:{_BRAND_DARK}">Confirm your email address to '
+        "finish setting up your pkanban account.</p>"
         f"{_button(url, 'Verify email')}"
-        "<p style=\"color:#6b7280;font-size:13px\">This link expires in 24 "
-        "hours. If you didn't sign up, you can ignore this email.</p>"
+        f'<p style="color:{_BRAND_MUTED};font-size:13px">This link expires '
+        "in 24 hours. If you didn't sign up, you can ignore this email.</p>"
         f"{_signoff()}"
     )
     return send_email(user.email, "Verify your pkanban email address", html)
@@ -134,12 +168,13 @@ def send_invite_email(
 ) -> bool:
     """Email someone the link to join an organization."""
     url = f"{public_base_url()}/invite/{invite_token}"
-    html = (
-        f"<p><strong>{escape(inviter_username)}</strong> invited you to join "
-        f"<strong>{escape(org_name)}</strong> on pkanban.</p>"
+    html = _wrap(
+        f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
+        f"</strong> invited you to join <strong>{escape(org_name)}</strong> "
+        "on pkanban.</p>"
         f"{_button(url, 'Accept invitation')}"
-        "<p style=\"color:#6b7280;font-size:13px\">This invitation expires in "
-        "7 days.</p>"
+        f'<p style="color:{_BRAND_MUTED};font-size:13px">This invitation '
+        "expires in 7 days.</p>"
         f"{_signoff()}"
     )
     return send_email(to_email, f"{inviter_username} invited you to {org_name}", html)
