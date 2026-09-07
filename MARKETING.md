@@ -18,17 +18,36 @@ We are pivoting from "A Dev Tool" to **"The Agent-Native Orchestration Layer."**
 * **The Hook:** "Stop parsing logs to see what your agent is doing. Give it a board."
 
 ## 3. Brand Voice & Tone
-Our voice is **Technical, Direct, and "Hard Sci-Fi."** We sound like the interface of a spaceship, not a SaaS marketing brochure.
+Our voice is **dry, concrete, and technically load-bearing.** We sound like a
+colleague who knows the codebase -- not a SaaS brochure, and not a mascot
+doing a bit.
+
+*(Revised 2026-09-06: the previous version of this section called for "Hard
+Sci-Fi," "the interface of a spaceship," and "slightly robotic." The shipped
+product never sounded like that -- see `routes/About.svelte`'s pteranodon --
+and forcing "robotic" onto a brand with a mascot was actively fighting itself.
+This section now describes the voice the product actually uses.)*
 
 ### The Vibe
-* **Esthetic:** Cyberpunk, Terminal-Chic, Dark Mode.
-* **Personality:** Efficient, precise, slightly robotic but helpful.
+* **Aesthetic:** Terminal-native, not cyberpunk -- see Visual Identity below
+  for why the background is a *warm* black rather than blue-violet near-black.
+  Restrained, not maximalist. Themeable: the product runs in light mode too,
+  so "dark mode" isn't the aesthetic, "terminal" is.
+* **Personality:** Precise, a little dry, occasionally funny. Humor is
+  allowed -- encouraged, even -- but it never announces itself. A joke that
+  has to explain itself has already failed. The model line is in section 6:
+  *"If your agent can print to stdout, it can use pkanban. No SDKs, no
+  wrappers, no dependency hell."* "No dependency hell" is a joke. It doesn't
+  pause to point at itself.
 
 ### Voice Rules
 1.  **No Fluff:** Avoid words like "Empower," "Unleash," "Revolutionize," or "Synergy."
 2.  **Use Engineering Terms:** Use words like "Orchestrate," "Deploy," "Sync," "StdOut," "Pipe," "Context Window."
 3.  **Show, Don't Tell:** Don't say "It's easy to use." Show the command: `pip install pkanban`.
 4.  **Respect the User:** Assume the user is smart. Don't dumb down the concepts.
+5.  **State the joke once.** If a bit needs a second sentence to land, or a
+    third callback later on the same page, cut it down to the one telling
+    that actually works.
 
 ## 4. Copy Guidelines (Do's & Don'ts)
 
@@ -41,19 +60,44 @@ Our voice is **Technical, Direct, and "Hard Sci-Fi."** We sound like the interfa
 | "Seamless integration." | "Zero-config handshake." | "Seamless" is a marketing buzzword. |
 
 ## 5. Visual Identity Guidelines
-When building UI components or generating assets, follow these strict aesthetic rules:
+This section describes what actually shipped in `frontend/src/theme.css`, not
+an earlier plan that was abandoned when the product moved onto the
+pearachute brand. **theme.css is the source of truth** for exact values and
+the reasoning behind them (contrast ratios, why the black is warm instead of
+blue-violet); this section is the summary. When the two disagree, theme.css
+wins.
 
 * **Color Palette:**
-    * **Backgrounds:** Deep Slate / Void Black (`#0f172a`, `#020617`).
-    * **Accents:** "Terminal Green" (`#22c55e`), "Cyber Cyan" (`#06b6d4`), or "Error Red" (`#ef4444`).
-    * **Text:** High contrast white/gray.
+    * **Backgrounds:** Warm black (`#231f20`), keyed to the pearachute logo
+      rather than a blue-violet near-black -- it's meant to read as a
+      terminal, not a dark-mode SaaS dashboard.
+    * **Accents:** Pear cyan (`#63cdf5`) and pear green (`#42ba3b`) -- the
+      brand's own colors, not a generic cyberpunk palette. Light mode uses
+      AA-corrected darker variants (`#0b6c91`, `#277322`) rather than the raw
+      brand hex: the pale cyan is roughly 1.8:1 as text on a light
+      background, well under the 4.5:1 AA floor.
+    * **Text:** Warm off-white (`#f2efec`) on dark, warm near-black
+      (`#231f20`) on light. Never pure `#fff` or `#000` -- both buzz against
+      the warm surfaces.
 * **Typography:**
-    * **Headlines:** Monospace fonts (e.g., *JetBrains Mono*, *Fira Code*, *Roboto Mono*). This reinforces the CLI nature.
-    * **Body:** Clean sans-serif (e.g., *Inter*, *System UI*) for readability.
+    * **Both faces are Ubuntu:** Ubuntu for headlines and body, Ubuntu Mono
+      for data -- ids, counts, timestamps, code, CLI output. Mono marks data,
+      not decoration; a headline set in Ubuntu Mono is not the house style.
+    * *(Open question, tracked on the Dev board: Ubuntu is a warm, humanist
+      face that suits a mascot-led brand -- it may not be the answer if the
+      brand instead leans toward a colder, more clinical terminal aesthetic.
+      Until that's decided, Ubuntu is what's shipped and what this section
+      describes.)*
 * **UI Elements:**
-    * **Buttons:** Should look like command inputs or stark, rectangular blocks. No pill shapes.
-    * **Borders:** Thin, subtle borders (1px) with low opacity.
-    * **Glassmorphism:** Use subtle blur effects for cards to give a modern feel.
+    * **Buttons:** Rectangular, never pill-shaped.
+    * **Borders:** Thin (1px), carrying the separation work a shadow would
+      do elsewhere -- deliberately tighter corners than earlier drafts ran,
+      since a soft-rounded card reads as generic SaaS.
+    * **Shadow:** A last resort, reserved for things that genuinely float
+      above the page -- modals, dropdowns, a card mid-drag. Not used for
+      routine separation.
+    * No glassmorphism, no blur. It never shipped, and it isn't the
+      direction: a terminal-native UI uses borders, not frosted glass.
 
 ## 6. Key Value Propositions (The "Elevator Pitch")
 
@@ -64,7 +108,7 @@ If you need to generate text for a new section, pick one of these three angles:
 2.  **Observability:**
     * "Turn the black box of agent execution into a visual board. Watch your agents think and act in real-time."
 3.  **Human-in-the-Loop:**
-    * "Agents get stuck. Humans get tired. pkanban lets you hand off tasks between biological and synthetic intelligence seamlessly."
+    * "Agents get stuck. Humans get tired. pkanban lets you hand off tasks between biological and synthetic intelligence -- no status meeting required."
 
 ---
 
