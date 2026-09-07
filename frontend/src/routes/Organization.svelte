@@ -878,7 +878,7 @@
     cursor: not-allowed;
   }
 
-  input, select {
+  input {
     padding: var(--space-3) var(--space-4);
     font-size: var(--text-base);
     border-radius: var(--radius-lg);
@@ -889,7 +889,7 @@
     width: 100%;
   }
 
-  input:focus, select:focus {
+  input:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary);

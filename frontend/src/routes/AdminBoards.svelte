@@ -304,24 +304,27 @@
     gap: var(--space-2);
   }
 
-  .badge {
+  /* The badge markup comes from sharingInfo() as an HTML string rendered
+     with {@html}, so the compiler cannot see these classes. Scope them
+     through the container instead. */
+  .sharing-info :global(.badge) {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);
     font-weight: 700;
     border-radius: var(--radius-md);
   }
 
-  .public-badge {
+  .sharing-info :global(.public-badge) {
     background: var(--color-primary);
     color: var(--color-primary-foreground);
   }
 
-  .shared-badge {
+  .sharing-info :global(.shared-badge) {
     background: var(--color-muted);
     color: var(--color-foreground);
   }
 
-  .private-badge {
+  .sharing-info :global(.private-badge) {
     background: var(--color-border);
     color: var(--color-muted-foreground);
   }

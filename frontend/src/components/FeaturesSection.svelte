@@ -335,25 +335,9 @@
     padding-left: var(--space-24);
   }
 
-  .code-keyword { color: var(--syntax-keyword); }
-  .code-type { color: var(--syntax-type); }
-  .code-function { color: var(--syntax-function); }
   .code-string { color: var(--color-success); }
   .code-comment { color: var(--color-muted-foreground); opacity: 0.7; }
   .code-prompt { color: var(--color-success); font-weight: 700; margin-right: var(--space-2); }
-
-  .code-line.highlight {
-    background: color-mix(in srgb, var(--color-success) 10%, transparent);
-    margin: 0 -16px;
-    padding: 0 var(--space-4);
-    border-left: 3px solid var(--color-success);
-    color: var(--color-code-fg);
-    transition: background-color var(--transition-normal);
-  }
-
-  .code-line.highlight.active {
-    background: color-mix(in srgb, var(--color-success) 20%, transparent);
-  }
 
   /* JSON Tree Styles */
   .structure-display {

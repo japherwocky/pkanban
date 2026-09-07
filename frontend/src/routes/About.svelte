@@ -151,18 +151,6 @@
     margin: 0 0 var(--space-4) 0;
   }
 
-  ul {
-    margin: 0;
-    padding-left: var(--space-5);
-    color: var(--color-muted-foreground);
-  }
-
-  li {
-    font-size: var(--text-base);
-    line-height: 1.7;
-    margin-bottom: var(--space-2);
-  }
-
   .built-for-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
