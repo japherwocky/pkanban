@@ -50,7 +50,7 @@
           <span class="box-icon">🔐</span>
           <h3>Zero-Config Handshake</h3>
         </div>
-        <p class="box-description">Generate a key once, save it, then let agents run CLI commands seamlessly.</p>
+        <p class="box-description">Generate a key once. Every agent on the machine is now authenticated.</p>
 
         <div class="code-panel">
           <div class="code-line">
