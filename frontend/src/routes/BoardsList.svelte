@@ -309,7 +309,7 @@
 
   .board-header h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
   }

@@ -217,7 +217,7 @@
   .sidebar button.active {
     background: var(--color-card);
     color: var(--color-primary);
-    font-weight: 600;
+    font-weight: 700;
     border-left: 3px solid var(--color-primary);
   }
 

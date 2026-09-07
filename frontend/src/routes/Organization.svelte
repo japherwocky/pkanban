@@ -602,7 +602,7 @@
 
   .section-header h2 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
   }
@@ -647,7 +647,7 @@
     background: var(--color-primary);
     color: var(--color-primary-foreground);
     border-radius: var(--radius-md);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
   }
 
@@ -668,7 +668,7 @@
 
   .team-info h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-1) 0;
   }
@@ -822,7 +822,7 @@
 
   .add-member-section h3 {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-2) 0;
   }

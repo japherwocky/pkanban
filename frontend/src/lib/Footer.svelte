@@ -108,7 +108,7 @@
   .link-group h4 {
     color: var(--color-foreground);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     margin: 0;
   }
 

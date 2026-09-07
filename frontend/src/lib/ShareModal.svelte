@@ -224,7 +224,7 @@
 
     .no-teams-message h3 {
       font-size: var(--text-xl);
-      font-weight: 600;
+      font-weight: 700;
       color: var(--color-foreground);
       margin: 0;
     }
