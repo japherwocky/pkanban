@@ -136,7 +136,7 @@
       <button onclick={() => goTo('/docs')}>Documentation</button>
       <button onclick={() => goTo('/pricing')}>Pricing</button>
       <button onclick={() => goTo('/about')}>About</button>
-      <button onclick={() => goTo('/about')}>Contact</button>
+      <button onclick={() => goTo('/contact')}>Contact</button>
       <div class="mobile-divider"></div>
       <button onclick={() => goTo('/login')}>Log in</button>
       <button onclick={() => goTo('/signup')}>Sign up</button>

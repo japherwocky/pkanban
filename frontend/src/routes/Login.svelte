@@ -100,8 +100,6 @@
       </div>
     {/if}
 
-    <p class="alt">Need an account? <a href="/signup">Sign up</a></p>
-
     <SignupCTA
       marginTop="2rem"
       maxWidth="400px"
@@ -213,20 +211,5 @@
     color: var(--color-muted-foreground);
     font-size: var(--text-sm);
     margin: 0;
-  }
-
-  .alt {
-    color: var(--color-muted-foreground);
-    font-size: var(--text-sm);
-    margin: 0;
-  }
-
-  .alt a {
-    color: var(--color-primary);
-    text-decoration: none;
-  }
-
-  .alt a:hover {
-    text-decoration: underline;
   }
 </style>
