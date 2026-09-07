@@ -343,7 +343,10 @@
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     font-family: var(--font-mono);
-    font-size: var(--text-xs);
+    /* Matches .code-panel's size, not a smaller one: this block exists to
+       prove the data model is legible, and Ubuntu Mono is weak enough at
+       --text-xs (12px) that it undercut its own point. */
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
 
