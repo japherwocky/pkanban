@@ -14,7 +14,7 @@
       <button class="logo" onclick={() => goTo('/')}>
         <Logo />
       </button>
-      <p class="tagline">A kanban tool for humans and AI agents.</p>
+      <p class="tagline">A CLI-first Kanban board for humans and AI agents.</p>
     </div>
 
     <!-- Links Columns -->

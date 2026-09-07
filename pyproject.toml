@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pkanban"
 version = "0.3.0"
-description = "CLI client for Kanban boards"
+description = "A CLI-first Kanban board for humans and AI agents."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
