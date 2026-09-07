@@ -24,7 +24,6 @@
         <a href="/signup" use:link class="signup-button">Create your account</a>
 
         <button class="install-button" onclick={copyInstallCommand}>
-          <span class="button-icon">⬡</span>
           <code class="button-command">pip install pkanban</code>
           <span class="button-copy">{copied ? 'Copied' : 'Copy'}</span>
         </button>
@@ -159,11 +158,6 @@
   .install-button:hover {
     border-color: var(--color-primary);
     background-color: var(--color-muted);
-  }
-
-  .button-icon {
-    font-size: var(--text-lg);
-    color: var(--color-primary);
   }
 
   .button-command {
