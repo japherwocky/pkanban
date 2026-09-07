@@ -9,7 +9,7 @@
 >
   <div class="about-content">
     <p class="mascot-note">
-      🦖 P.S. Our mascot is a pterodactyl. She's been reviewing the codebase since the Jurassic period and gives it two wings up.
+      🦖 Meet our mascot: a pteranodon. She's been reviewing pull requests since the Cretaceous and hasn't found a reason to stop.
     </p>
 
     <section>
@@ -30,12 +30,11 @@
       <h2>Why "pkanban"?</h2>
       <p>
         The "p" stands for <strong>Pearachute</strong> — our domain and freelance brand.
-        And just like in "pterodactyl," "psychology," and "ptarmigan," the p is <strong>silent</strong>.
-        We're not lyin', we're just really excited about kanban.
+        And like "pterodactyl" or "ptarmigan," it's <strong>silent</strong>.
       </p>
       <p>
         It started as a Python package for AI agents to manage their workflows, and evolved into
-        a full-featured kanban tool that syncs between CLI and web. Now with 100% more pterodactyl.
+        a full-featured kanban tool that syncs between CLI and web.
       </p>
     </section>
 
