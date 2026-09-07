@@ -1,6 +1,6 @@
 # pkanban
 
-A command-line tool for managing Kanban boards. (The "p" is silent, like in "pneumonia".)
+A CLI-first Kanban board for humans and AI agents. (The "p" is silent, like in "pneumonia".)
 
 Most users will connect to our hosted service at [pkanban.pearachute.com](https://pkanban.pearachute.com). If you want to run your own server, see the Self-Hosting section below.
 
