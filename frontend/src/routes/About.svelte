@@ -4,7 +4,7 @@
 </script>
 
 <PageLayout
-  title="About"
+  title="About pkanban"
   description="Building the kanban tool we wanted for orchestrating human and AI agent workflows."
 >
   <div class="about-content">
@@ -47,7 +47,7 @@
         </div>
         <div class="built-for-card">
           <h3>⌨️ CLI Devs</h3>
-          <p>Developers who prefer the terminal (and making friends with robot overlords)</p>
+          <p>Developers who prefer the terminal</p>
         </div>
         <div class="built-for-card">
           <h3>⚙️ Automation Pipelines</h3>
