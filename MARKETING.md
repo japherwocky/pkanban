@@ -83,11 +83,11 @@ wins.
     * **Both faces are Ubuntu:** Ubuntu for headlines and body, Ubuntu Mono
       for data -- ids, counts, timestamps, code, CLI output. Mono marks data,
       not decoration; a headline set in Ubuntu Mono is not the house style.
-    * *(Open question, tracked on the Dev board: Ubuntu is a warm, humanist
-      face that suits a mascot-led brand -- it may not be the answer if the
-      brand instead leans toward a colder, more clinical terminal aesthetic.
-      Until that's decided, Ubuntu is what's shipped and what this section
-      describes.)*
+    * *(Decided 2026-09-07: keeping Ubuntu. It's the warm, humanist choice
+      that suits a mascot-led brand, not the colder, more clinical aesthetic
+      an earlier draft of this document asked for -- see the "hard sci-fi"
+      note above. Still routed through tokens, so this can change without a
+      rewrite if the brand direction ever does.)*
 * **UI Elements:**
     * **Buttons:** Rectangular, never pill-shaped.
     * **Borders:** Thin (1px), carrying the separation work a shadow would
