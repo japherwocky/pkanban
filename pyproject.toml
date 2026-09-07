@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-keywords = ["kanban", "cli", "productivity", "task-management"]
+keywords = ["kanban", "cli", "productivity", "task-management", "ai-agents", "agents", "llm", "orchestration", "automation"]
 authors = [
     {name = "Pearachute", email = "pkanban@pearachute.com"}
 ]
@@ -36,7 +36,8 @@ dependencies = [
 pkanban = "pkanban.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/japherwocky/pkanban"
+Homepage = "https://pkanban.pearachute.com"
+Documentation = "https://pkanban.pearachute.com/docs"
 Repository = "https://github.com/japherwocky/pkanban"
 Issues = "https://github.com/japherwocky/pkanban/issues"
 
