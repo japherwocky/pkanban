@@ -1,2 +1,4 @@
-@import "tailwindcss";
+/* Tailwind is imported once, inside theme.css -- its own @theme bridge
+   block needs it loaded first, and a second @import here just duplicated
+   the same generated utilities. See theme.css's "Tailwind bridge" comment. */
 @import "./theme.css";

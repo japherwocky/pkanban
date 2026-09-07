@@ -1,0 +1,72 @@
+/* Prism syntax highlighting, themed against theme.css's --syntax-* tokens.
+   Replaces prismjs/themes/prism.css -- Prism's LIGHT theme, which rendered
+   light-on-light inside this app's dark code blocks and ignored the
+   ANSI-style palette theme.css already defines specifically for this.
+
+   Only the token classes prism-bash and prism-javascript actually emit are
+   covered here; see Docs.svelte's language imports. The --syntax-* tokens
+   themselves have no light-mode/dark-mode split -- code always sits on
+   --color-code-bg regardless of theme, so neither do these rules. */
+
+code[class*="language-"],
+pre[class*="language-"] {
+  color: var(--color-code-fg);
+  background: none;
+  font-family: var(--font-mono);
+  text-shadow: none;
+}
+
+pre[class*="language-"] {
+  background: var(--color-code-bg);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  overflow: auto;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--syntax-comment);
+}
+
+.token.punctuation,
+.token.operator,
+.token.entity,
+.token.url,
+.token.variable {
+  color: var(--syntax-punctuation);
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: var(--syntax-number);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: var(--syntax-string);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: var(--syntax-keyword);
+}
+
+.token.function,
+.token.class-name {
+  color: var(--syntax-function);
+}
+
+.token.regex,
+.token.important {
+  color: var(--syntax-type);
+}

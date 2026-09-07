@@ -41,13 +41,13 @@ Agents can access raw markdown documentation directly:
 
 ```bash
 # Get specific command docs
-curl https://your-domain.com/docs/commands/apikey.md
+curl https://pkanban.pearachute.com/docs/commands/apikey.md
 
 # Get quickstart
-curl https://your-domain.com/docs/quickstart.md
+curl https://pkanban.pearachute.com/docs/quickstart.md
 
 # Get full reference
-curl https://your-domain.com/docs/reference.md
+curl https://pkanban.pearachute.com/docs/reference.md
 ```
 
 ## Support
