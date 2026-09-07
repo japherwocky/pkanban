@@ -4,13 +4,19 @@
   let mouseX = $state(0);
   let mouseY = $state(0);
 
-  const logos = [
-    // Third-party brand colors -- intentionally NOT theme tokens.
-    { name: 'LangChain', color: '#0F172A' },
-    { name: 'AutoGPT', color: '#4B0082' },
-    { name: 'CrewAI', color: '#1E3A5F' },
-    { name: 'OpenAI', color: '#10A37F' },
-    { name: 'Anthropic', color: '#D4A574' }
+  // Capability, not partnership -- pkanban has no integration code for, and
+  // makes no claim about, any named company. These are the generic things
+  // that can shell out to a CLI, not brand logos with their own trademarks
+  // and legal teams.
+  const capabilities = [
+    'Bash script',
+    'Cron job',
+    'CI pipeline',
+    'Python script',
+    'GitHub Action',
+    'Makefile target',
+    'systemd timer',
+    'Node script'
   ];
 
   function handleMouseMove(event, boxId) {
@@ -132,24 +138,20 @@
       onmouseleave={() => hoveredBox = null}
       onmousemove={(e) => handleMouseMove(e, 3)}
       role="group"
-      aria-label="Integration partners"
+      aria-label="Works with anything that can run a command"
     >
       <div class="box-content">
         <div class="box-header">
           <span class="box-icon">🔗</span>
           <h3>Works where your Agents live</h3>
         </div>
-        <p class="box-description">Seamless integration with the tools powering your AI workforce.</p>
+        <p class="box-description">Anything that can shell out can use pkanban -- no SDK, no partner integration required.</p>
 
         <div class="logo-marquee">
           <div class="logo-track" class:paused={hoveredBox !== 3}>
-            {#each [...logos, ...logos, ...logos] as logo, i}
-              <div
-                class="logo-item"
-                class:colored={hoveredBox === 3}
-                style="--logo-color: {logo.color}"
-              >
-                <span class="logo-text">{logo.name}</span>
+            {#each [...capabilities, ...capabilities, ...capabilities] as capability}
+              <div class="logo-item" class:colored={hoveredBox === 3}>
+                <span class="logo-text">{capability}</span>
               </div>
             {/each}
           </div>
@@ -418,7 +420,7 @@
   .logo-item:hover,
   .logo-item.colored {
     background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
-    color: var(--logo-color, var(--color-primary));
+    color: var(--color-primary);
     border-color: color-mix(in srgb, var(--color-foreground) 12%, transparent);
   }
 
