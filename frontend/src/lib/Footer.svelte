@@ -22,7 +22,6 @@
       <div class="link-group">
         <h4>Product</h4>
         <button onclick={() => goTo('/docs')}>Documentation</button>
-        <button onclick={() => goTo('/pricing')}>Pricing</button>
       </div>
 
       <div class="link-group">

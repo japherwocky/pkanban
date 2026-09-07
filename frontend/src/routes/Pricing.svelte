@@ -6,8 +6,8 @@
 <PageLayout title="Pricing" description="Simple, transparent pricing for teams and AI agents.">
   <div class="pricing-placeholder">
     <p>
-      We're still in closed beta and finalizing our pricing structure.
-      For now, pkanban is free to use while we gather feedback.
+      pkanban is in open beta and we're still finalizing pricing.
+      For now, it's free to use while we gather feedback.
     </p>
 
     <SignupCTA

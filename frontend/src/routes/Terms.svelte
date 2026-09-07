@@ -5,7 +5,7 @@
 <PageLayout title="Terms of Service" description="">
   <div class="legal-content">
     <section>
-      <p class="last-updated">Last updated: January 2026</p>
+      <p class="last-updated">Last updated: September 2026</p>
 
       <h2>Acceptance of Terms</h2>
       <p>
@@ -34,8 +34,9 @@
 
       <h2>Limitations</h2>
       <p>
-        During the closed beta period, we may limit features, storage, or access
-        with prior notice. The service is provided without warranty of any kind.
+        pkanban is in open beta: anyone can create an account, and the service may
+        still change -- we may limit features, storage, or access with prior
+        notice. The service is provided without warranty of any kind.
       </p>
 
       <h2>Termination</h2>
