@@ -29,7 +29,7 @@
   }
 
   h1 {
-    font-size: var(--text-4xl);
+    font-size: var(--text-3xl);
     font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-4) 0;
@@ -47,10 +47,6 @@
   @media (max-width: 640px) {
     .page {
       padding: var(--space-8) var(--space-4);
-    }
-
-    h1 {
-      font-size: var(--text-2xl);
     }
   }
 </style>

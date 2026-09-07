@@ -3,7 +3,7 @@
   import SignupCTA from '../components/SignupCTA.svelte';
 </script>
 
-<PageLayout title="Contact" description="Get in touch with the pkanban team.">
+<PageLayout title="Contact" description="Questions, integration ideas, or an enterprise deployment -- here's how to reach us.">
   <div class="contact-content">
     <section class="contact-info">
       <div class="contact-item">

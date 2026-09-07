@@ -177,7 +177,7 @@
   }
 
   .features-header h2 {
-    font-size: var(--text-4xl);
+    font-size: var(--text-3xl);
     font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-4) 0;
