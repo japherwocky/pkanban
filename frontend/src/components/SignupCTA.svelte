@@ -69,7 +69,7 @@
 <style>
   .signup-cta {
     position: relative;
-    margin-top: var(--margin-top, 4rem);
+    margin: var(--margin-top, 4rem) auto 0 auto;
     width: 100%;
     max-width: var(--max-width, none);
     overflow: hidden;
