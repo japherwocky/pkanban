@@ -46,8 +46,22 @@ check_user() {
 git_pull() {
     echo -e "${YELLOW}📥 Pulling latest changes...${NC}"
 
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-    echo "Current branch: $CURRENT_BRANCH"
+    # Hardcoded, not resolved from HEAD. This used to be
+    # `git rev-parse --abbrev-ref HEAD`, and production was actually
+    # checked out on `feat/pkanban-rename` -- a branch left over from
+    # testing that work around 2026-08-25, never switched back to main.
+    # Every deploy since then reset to `origin/feat/pkanban-rename`
+    # (frozen wherever that branch last was) immediately after
+    # deploy-production.yml's own `git reset --hard origin/main` had
+    # already landed on the true latest commit -- and reported success
+    # throughout, since nothing in this script's `set -e` path actually
+    # failed. Resolving "the current branch" from a checkout is exactly
+    # this fragile whether it's the wrong named branch or a detached HEAD
+    # (which prints the literal string "HEAD", making the reset below
+    # target the equally non-moving `origin/HEAD`). This repo only ever
+    # deploys from main, so name it directly rather than asking the
+    # checkout what it thinks it is.
+    TARGET_BRANCH="main"
 
     # Captured before the reset, so change detection can see the whole push.
     #
@@ -61,7 +75,16 @@ git_pull() {
     PREVIOUS_SHA="${DEPLOY_PREVIOUS_SHA:-$(git rev-parse HEAD)}"
 
     git fetch origin
-    git reset --hard origin/$CURRENT_BRANCH
+    # `checkout` before `reset`, not just `reset` alone: reset never changes
+    # what ref HEAD points to, so a checkout already detached before this
+    # script ran would stay detached forever no matter how many times this
+    # runs. Explicitly checking out the branch re-attaches HEAD to it (and,
+    # per normal git behavior, creates the local branch tracking
+    # origin/main if it doesn't exist yet) -- self-healing a detached
+    # checkout on the very next deploy instead of requiring someone to
+    # notice and fix it by hand on the box.
+    git checkout "$TARGET_BRANCH"
+    git reset --hard "origin/$TARGET_BRANCH"
 
     echo "Code updated ($PREVIOUS_SHA -> $(git rev-parse HEAD))"
 }
