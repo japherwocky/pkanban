@@ -1,6 +1,7 @@
 <script>
   import PageLayout from '../lib/PageLayout.svelte';
   import SignupCTA from '../components/SignupCTA.svelte';
+  import Logo from '../lib/Logo.svelte';
 </script>
 
 <PageLayout
@@ -9,7 +10,8 @@
 >
   <div class="about-content">
     <p class="mascot-note">
-      🦖 Meet our mascot: a pteranodon. She's been reviewing pull requests since the Cretaceous and hasn't found a reason to stop.
+      <span class="mascot-icon"><Logo size={18} showWordmark={false} /></span>
+      Meet our mascot: a pteranodon. She's been reviewing pull requests since the Cretaceous and hasn't found a reason to stop.
     </p>
 
     <section>
@@ -42,19 +44,48 @@
       <h2>Built For</h2>
       <div class="built-for-grid">
         <div class="built-for-card">
-          <h3>🤖 AI-Powered Teams</h3>
+          <h3>
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="5" y="8.5" width="14" height="10.5" rx="2"/>
+              <path d="M12 8.5V5.5M9.5 5.5h5"/>
+              <circle cx="9.5" cy="13.5" r="1" fill="currentColor" stroke="none"/>
+              <circle cx="14.5" cy="13.5" r="1" fill="currentColor" stroke="none"/>
+              <path d="M9 17h6"/>
+            </svg>
+            AI-Powered Teams
+          </h3>
           <p>Building workflows that orchestrate humans and agents together</p>
         </div>
         <div class="built-for-card">
-          <h3>⌨️ CLI Devs</h3>
+          <h3>
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="7" width="18" height="12" rx="2"/>
+              <path d="M7 10.5h.01M10.5 10.5h.01M14 10.5h.01M17 10.5h.01"/>
+              <path d="M7 14h10"/>
+            </svg>
+            CLI Devs
+          </h3>
           <p>Developers who prefer the terminal</p>
         </div>
         <div class="built-for-card">
-          <h3>⚙️ Automation Pipelines</h3>
+          <h3>
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="2.75"/>
+              <path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.5 6.5l1.5 1.5M16 16l1.5 1.5M17.5 6.5L16 8M8 16l-1.5 1.5"/>
+            </svg>
+            Automation Pipelines
+          </h3>
           <p>Task tracking for CI/CD and agent workflows without the drag</p>
         </div>
         <div class="built-for-card">
-          <h3>🚀 Simplicity Seekers</h3>
+          <h3>
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3.5c2.8 2 3.6 5.6 3.6 8.5l-3.6 3.6-3.6-3.6c0-2.9.8-6.5 3.6-8.5z"/>
+              <circle cx="12" cy="9.5" r="1.3"/>
+              <path d="M8.6 14.8l-2 3.7M15.4 14.8l2 3.7"/>
+            </svg>
+            Simplicity Seekers
+          </h3>
           <p>Fast, focused kanban boards without the enterprise bloat</p>
         </div>
       </div>
@@ -84,6 +115,14 @@
     background: var(--color-muted);
     border-radius: var(--radius-lg);
     border-left: 3px solid var(--color-primary);
+  }
+
+  .mascot-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-right: var(--space-1);
+    position: relative;
+    top: -1px;
   }
 
   .about-content {
@@ -152,6 +191,13 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+  }
+
+  .card-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--color-primary);
   }
 
   .built-for-card p {

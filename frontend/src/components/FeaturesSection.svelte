@@ -47,7 +47,13 @@
     >
       <div class="box-content">
         <div class="box-header">
-          <span class="box-icon">🔐</span>
+          <span class="box-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="11" width="14" height="9" rx="2"/>
+              <path d="M8 11V7a4 4 0 018 0v4"/>
+              <circle cx="12" cy="15" r="1.25" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
           <h3>Zero-Config Handshake</h3>
         </div>
         <p class="box-description">Generate a key once. Every agent on the machine is now authenticated.</p>
@@ -92,7 +98,14 @@
     >
       <div class="box-content">
         <div class="box-header">
-          <span class="box-icon">🧠</span>
+          <span class="box-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="5.5" r="2.25"/>
+              <circle cx="6" cy="18.5" r="2.25"/>
+              <circle cx="18" cy="18.5" r="2.25"/>
+              <path d="M12 7.75v3.5M12 11.25L6.6 16.6M12 11.25l5.4 5.35"/>
+            </svg>
+          </span>
           <h3>LLM-Optimized Structure</h3>
         </div>
         <p class="box-description">A hierarchy designed for context windows, not just human eyes.</p>
@@ -142,7 +155,13 @@
     >
       <div class="box-content">
         <div class="box-header">
-          <span class="box-icon">🔗</span>
+          <span class="box-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.5 14.5l5-5"/>
+              <path d="M10.8 6.2l1-1a3.3 3.3 0 014.7 4.7l-1 1"/>
+              <path d="M13.2 17.8l-1 1a3.3 3.3 0 01-4.7-4.7l1-1"/>
+            </svg>
+          </span>
           <h3>Works where your Agents live</h3>
         </div>
         <p class="box-description">Anything that can shell out can use pkanban -- no SDK, no partner integration required.</p>
@@ -245,7 +264,13 @@
   }
 
   .box-icon {
-    font-size: var(--text-2xl);
+    display: inline-flex;
+    color: var(--color-primary);
+  }
+
+  .box-icon svg {
+    width: 24px;
+    height: 24px;
   }
 
   .box-header h3 {
