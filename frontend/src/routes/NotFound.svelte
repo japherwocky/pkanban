@@ -7,7 +7,7 @@
   <Logo size={40} />
   <h1>404</h1>
   <p>This page is as silent as the p.</p>
-  <button onclick={() => navigate('/boards')}>Go to Boards</button>
+  <button onclick={() => navigate('/')}>Go home</button>
 </div>
 
 <style>

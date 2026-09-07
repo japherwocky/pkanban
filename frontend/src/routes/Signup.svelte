@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { navigate } from 'svelte-routing';
   import { api } from '../lib/api.js';
+  import Logo from '../lib/Logo.svelte';
 
   let username = $state('');
   let email = $state('');
@@ -59,6 +60,7 @@
 
 <div class="signup-container">
   <div class="signup">
+    <Logo size={36} />
     {#if sentTo}
       <h1>Check your email</h1>
       <p class="sent">
