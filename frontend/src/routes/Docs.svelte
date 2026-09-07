@@ -147,7 +147,7 @@
     <div class="docs-title-wrapper">
       <div class="docs-title-content">
         <h1>Documentation</h1>
-        <p class="docs-subtitle">Everything you need to build with Kanban CLI</p>
+        <p class="docs-subtitle">Everything you need to build with pkanban</p>
       </div>
     </div>
 

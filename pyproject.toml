@@ -23,7 +23,7 @@ classifiers = [
 ]
 keywords = ["kanban", "cli", "productivity", "task-management"]
 authors = [
-    {name = "Pearachute", email = "hello@pearachute.com"}
+    {name = "Pearachute", email = "pkanban@pearachute.com"}
 ]
 dependencies = [
     "requests>=2.31.0",

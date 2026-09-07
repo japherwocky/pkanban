@@ -1,6 +1,6 @@
 # CLI Command Reference Cheat Sheet
 
-Complete reference for all Kanban CLI commands. Perfect for quick lookups during agent operations.
+Complete reference for all pkanban commands. Perfect for quick lookups during agent operations.
 
 > **Detailed Pages:** Each command group has a dedicated page with examples:
 > - [All Commands Index](/docs/commands) - Navigable command list

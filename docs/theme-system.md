@@ -1,6 +1,6 @@
 # Theme System
 
-The Kanban application uses a comprehensive theming system built on Tailwind CSS v4 with CSS custom properties, supporting light/dark mode and a consistent 5-color brand palette.
+pkanban uses a comprehensive theming system built on Tailwind CSS v4 with CSS custom properties, supporting light/dark mode and a consistent 5-color brand palette.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
-# Kanban CLI Commands
+# pkanban Commands
 
-Complete reference for all Kanban CLI commands.
+Complete reference for all pkanban commands.
 
 ## Contents
 
