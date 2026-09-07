@@ -144,7 +144,7 @@
   #modal-title {
     margin: 0 0 var(--space-5) 0;
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
   }
 

@@ -345,7 +345,7 @@
 
   .team-info h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-1) 0;
   }
@@ -419,7 +419,7 @@
 
   .members-section h3 {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-3) 0;
   }

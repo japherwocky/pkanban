@@ -322,7 +322,7 @@
     background: var(--color-primary);
     color: var(--color-primary-foreground);
     border-radius: var(--radius-md);
-    font-weight: 600;
+    font-weight: 700;
     font-size: var(--text-sm);
   }
 

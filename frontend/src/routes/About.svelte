@@ -135,7 +135,7 @@
 
   h2 {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-muted-foreground);
     margin: 0 0 var(--space-6) 0;
     text-align: center;
@@ -185,7 +185,7 @@
 
   .built-for-card h3 {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-2) 0;
     display: flex;

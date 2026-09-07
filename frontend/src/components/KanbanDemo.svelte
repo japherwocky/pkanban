@@ -247,7 +247,7 @@
 
   .column-title {
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     text-transform: uppercase;
     letter-spacing: 0.05em;

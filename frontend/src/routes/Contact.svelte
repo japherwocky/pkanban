@@ -60,7 +60,7 @@
 
   .contact-item h3 {
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-muted-foreground);
     margin: 0 0 var(--space-1) 0;
     text-transform: uppercase;
@@ -85,7 +85,7 @@
 
   .use-cases h2 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-3) 0;
   }

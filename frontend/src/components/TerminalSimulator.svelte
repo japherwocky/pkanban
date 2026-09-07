@@ -224,7 +224,7 @@ function resetAnimation() {
   .prompt {
     color: var(--color-success);
     margin-right: var(--space-2);
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .command {

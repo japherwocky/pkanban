@@ -256,7 +256,7 @@
 
   :global(.markdown-body h2) {
     font-size: var(--text-2xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin-bottom: var(--space-4);
     margin-top: var(--space-10);
@@ -266,7 +266,7 @@
 
   :global(.markdown-body h3) {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin-bottom: var(--space-3);
     margin-top: var(--space-8);
@@ -315,7 +315,7 @@
 
   :global(.markdown-body strong) {
     color: var(--color-foreground);
-    font-weight: 600;
+    font-weight: 700;
   }
 
   :global(.markdown-body code) {

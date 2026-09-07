@@ -158,7 +158,7 @@
   .warning-banner strong {
     display: block;
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-warning);
     margin-bottom: var(--space-1);
   }
@@ -233,7 +233,7 @@
 
   .usage-section h3 {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-2) 0;
   }
@@ -280,7 +280,7 @@
     border: none;
     border-radius: var(--radius-xl);
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: opacity var(--transition-fast);
   }

@@ -519,7 +519,7 @@
 
   header h1 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
   }
@@ -646,7 +646,7 @@
 
   .column-header h3 {
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
     text-transform: uppercase;

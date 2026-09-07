@@ -366,7 +366,7 @@
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: background-color var(--transition-fast), border-color var(--transition-fast);
     align-self: flex-start;

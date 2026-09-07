@@ -296,7 +296,7 @@
 
   .user-info h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-1) 0;
   }
@@ -316,7 +316,7 @@
   .badge {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);
-    font-weight: 600;
+    font-weight: 700;
     border-radius: var(--radius-md);
   }
 

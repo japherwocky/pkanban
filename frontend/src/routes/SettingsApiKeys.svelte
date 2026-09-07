@@ -198,7 +198,7 @@
 
   .page-header h2 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 0.375rem 0;
   }
@@ -260,7 +260,7 @@
 
   .empty-state h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-2) 0;
   }
@@ -310,7 +310,7 @@
 
   .key-name {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
   }
