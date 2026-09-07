@@ -275,7 +275,7 @@
 
   .box-header h3 {
     font-size: var(--text-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
   }
@@ -340,7 +340,7 @@
   .code-function { color: var(--syntax-function); }
   .code-string { color: var(--color-success); }
   .code-comment { color: var(--color-muted-foreground); opacity: 0.7; }
-  .code-prompt { color: var(--color-success); font-weight: 600; margin-right: var(--space-2); }
+  .code-prompt { color: var(--color-success); font-weight: 700; margin-right: var(--space-2); }
 
   .code-line.highlight {
     background: color-mix(in srgb, var(--color-success) 10%, transparent);

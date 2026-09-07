@@ -3,7 +3,7 @@
   import { navigate } from 'svelte-routing';
   import { marked } from 'marked';
   import Prism from 'prismjs';
-  import 'prismjs/themes/prism.css';
+  import '../prism-theme.css';
   import 'prismjs/components/prism-bash';
   import 'prismjs/components/prism-javascript';
 
