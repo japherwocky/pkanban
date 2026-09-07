@@ -95,7 +95,6 @@
     font-weight: 700;
     color: var(--color-foreground);
     margin: 0 0 var(--space-3) 0;
-    font-family: var(--font-mono);
   }
 
   .cta-description {
