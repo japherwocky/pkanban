@@ -1,6 +1,6 @@
 # Common CLI Workflows & Examples
 
-Real-world examples of how agents typically use the Kanban CLI for common scenarios.
+Real-world examples of how agents typically use pkanban for common scenarios.
 
 ## 🎯 Workflow: Setting Up a New Project Board
 

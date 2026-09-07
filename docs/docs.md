@@ -1,10 +1,10 @@
-# Kanban CLI Documentation
+# pkanban Documentation
 
-Welcome to the Kanban CLI documentation. This guide covers everything you need to know to use the Kanban command-line interface.
+Welcome to the pkanban documentation. This guide covers everything you need to know to use pkanban.
 
 ## Getting Started
 
-New to the Kanban CLI? Start here:
+New to pkanban? Start here:
 
 - [Quick Start Guide](/docs/quickstart) - Get up and running in minutes
 - [Command Reference](/docs/reference) - Complete list of all commands
