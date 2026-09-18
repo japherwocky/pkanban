@@ -48,6 +48,22 @@ describe('BoardView drag-and-drop wiring', () => {
     }
   });
 
+  // The zone used to sit inside {#if cards.length > 0}. Dragging a column's
+  // last card out unmounted it mid-drag, and its stale finalize put the card
+  // back, so the UI showed it in both columns until a reload.
+  it('keeps a drop zone on an empty column', () => {
+    const { container } = render(BoardView, {
+      props: {
+        board: { ...board, columns: [...board.columns, { id: 30, name: 'Empty', cards: [] }] },
+        onBack: () => {}, availableTeams: [], onShare: () => {}, onRename: () => {},
+      },
+    });
+    const lists = container.querySelectorAll('.cards-list');
+    expect(lists.length).toBe(3);
+    expect(lists[2].getAttribute('role')).toBe('list');
+    expect(container.querySelector('.empty-column')).toBeInTheDocument();
+  });
+
   it('initialises the column container as a drop zone', () => {
     const { container } = renderBoard();
     const columns = container.querySelector('.columns-container');
