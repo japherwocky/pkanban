@@ -296,7 +296,7 @@
     <div class="loading">Loading board...</div>
   {:else}
     <div class="columns-container"
-      use:dndzone={{ items: columns, flipDurationMs: 200 }}
+      use:dndzone={{ items: columns, type: 'column', flipDurationMs: 200 }}
       onconsider={dnd.considerColumns}
       onfinalize={dnd.finalizeColumns}
     >
@@ -315,46 +315,49 @@
             </div>
           </div>
           <div class="column-content">
-            {#if column.cards.length > 0}
-              <div
-                class="cards-list"
-                use:dndzone={{ items: column.cards, flipDurationMs: 200 }}
-                onconsider={(e) => dnd.considerCards(column.id, e)}
-                onfinalize={(e) => dnd.finalizeCards(column.id, e)}
-              >
-                {#each column.cards as card (card.id)}
-                  <div
-                    class="card"
-                    draggable="true"
-                    onclick={() => openEditCard(card)}
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openEditCard(card);
-                      }
-                    }}
-                    role="button"
-                    tabindex="0"
-                    aria-label={card.description ? `Edit card: ${card.title}. ${card.description}` : `Edit card: ${card.title}`}
-                  >
-                    <div class="card-header">
-                      <span class="card-title"><span class="card-id">#{card.id}</span> {card.title}</span>
-                      <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
-                    </div>
-                    {#if card.description}
-                      <p class="card-description">{card.description}</p>
-                    {/if}
-                    <div class="card-meta">
-                      {#if card.created_at}
-                        <span>{formatDate(card.created_at)}</span>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            {:else}
+            <!-- The zone stays mounted when the column is empty. Wrapping it in an
+                 {#if} unmounted it mid-drag as its last card left, and its stale
+                 finalize then put the card back -- a visible duplicate -- and an
+                 empty column had no zone to drop into at all. -->
+            {#if column.cards.length === 0}
               <div class="empty-column">No cards</div>
             {/if}
+            <div
+              class="cards-list"
+              use:dndzone={{ items: column.cards, type: 'card', flipDurationMs: 200 }}
+              onconsider={(e) => dnd.considerCards(column.id, e)}
+              onfinalize={(e) => dnd.finalizeCards(column.id, e)}
+            >
+              {#each column.cards as card (card.id)}
+                <div
+                  class="card"
+                  draggable="true"
+                  onclick={() => openEditCard(card)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openEditCard(card);
+                    }
+                  }}
+                  role="button"
+                  tabindex="0"
+                  aria-label={card.description ? `Edit card: ${card.title}. ${card.description}` : `Edit card: ${card.title}`}
+                >
+                  <div class="card-header">
+                    <span class="card-title"><span class="card-id">#{card.id}</span> {card.title}</span>
+                    <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
+                  </div>
+                  {#if card.description}
+                    <p class="card-description">{card.description}</p>
+                  {/if}
+                  <div class="card-meta">
+                    {#if card.created_at}
+                      <span>{formatDate(card.created_at)}</span>
+                    {/if}
+                  </div>
+                </div>
+                {/each}
+            </div>
           </div>
           <button class="add-card-btn" onclick={() => openCreateCard(column.id)}>
             <span>+</span> Add card
@@ -654,15 +657,20 @@
   }
 
   .column-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     flex: 1;
     overflow-y: auto;
     padding: var(--space-3);
     min-height: 100px;
   }
 
+  /* Fills the column so a card can be dropped anywhere in it, empty or not. */
   .cards-list {
     display: flex;
     flex-direction: column;
+    flex: 1;
     gap: var(--space-2);
     min-height: 50px;
   }
@@ -742,7 +750,11 @@
     margin-top: var(--space-2);
   }
 
+  /* Laid over the drop zone rather than beside it, so it takes no space. */
   .empty-column {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     text-align: center;
     padding: var(--space-8) var(--space-4);
     color: var(--color-muted-foreground);
