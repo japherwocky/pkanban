@@ -1,6 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/svelte';
 import BoardView from './BoardView.svelte';
+
+const navigate = vi.fn();
+vi.mock('svelte-routing', () => ({ navigate: (...args) => navigate(...args) }));
 
 vi.mock('./api.js', () => ({
   api: {
@@ -74,5 +77,43 @@ describe('BoardView drag-and-drop wiring', () => {
     const { getByText } = renderBoard();
     expect(getByText('alpha')).toBeInTheDocument();
     expect(getByText('gamma')).toBeInTheDocument();
+  });
+});
+
+describe('share button with nowhere to share to', () => {
+  // The share button only renders for the board's owner, and ownership is read
+  // from the JWT in localStorage, so the test has to look like a logged-in
+  // user 1 -- the id the fixture board is owned by.
+  beforeEach(() => {
+    localStorage.setItem('token', `h.${btoa(JSON.stringify({ sub: '1' }))}.s`);
+  });
+  // Teams are the only per-board sharing mechanism, and the page that creates
+  // them is linked from the boards list alone. This button used to be inert
+  // with a tooltip saying to make an organization, naming no route to one.
+
+  it('sends the owner to the organizations page', async () => {
+    navigate.mockClear();
+    const { container } = render(BoardView, {
+      props: { board, onBack: () => {}, availableTeams: [], availableOrgs: [], onShare: () => {}, onRename: () => {} },
+    });
+    const btn = container.querySelector('.share-btn.needs-org');
+    expect(btn).toBeInTheDocument();
+    btn.click();
+    expect(navigate).toHaveBeenCalledWith('/organizations');
+  });
+
+  it('opens the share modal instead once a team exists', () => {
+    const { container } = render(BoardView, {
+      props: {
+        board,
+        onBack: () => {},
+        availableTeams: [{ id: 1, name: 'Collaborators', organization: 'Acme' }],
+        availableOrgs: [],
+        onShare: () => {},
+        onRename: () => {},
+      },
+    });
+    expect(container.querySelector('.share-btn.needs-org')).toBeNull();
+    expect(container.querySelector('.share-btn')).toBeInTheDocument();
   });
 });
