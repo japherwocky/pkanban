@@ -272,6 +272,11 @@
       {/if}
     </div>
     <div class="header-actions">
+      <!-- Teams -- the thing board sharing is built on -- are managed here,
+           and this used to be the one screen with no route to that page. -->
+      <button class="nav-btn" onclick={() => navigate('/organizations')}>
+        Organizations
+      </button>
       {#if isBoardOwner()}
         {#if availableTeams.length > 0 || availableOrgs.length > 0}
           <button class="share-btn" onclick={() => showShareModal = true}>
@@ -507,6 +512,14 @@
     flex-shrink: 0;
   }
 
+  /* Unstyled, these stack: .share-btn is display:flex, so it takes a line of
+     its own and drops the card count below it. Fine with one button, not two. */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
   .header-left {
     display: flex;
     align-items: center;
@@ -567,6 +580,19 @@
   .card-count {
     font-size: var(--text-sm);
     color: var(--color-muted-foreground);
+  }
+
+  .nav-btn {
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
+    font-size: var(--text-sm);
+  }
+
+  .nav-btn:hover {
+    background: var(--color-muted);
+    border-color: var(--color-primary);
   }
 
   .share-btn {

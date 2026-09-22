@@ -53,74 +53,65 @@
 {#if open}
   <Modal open={open} onClose={onClose} title={board?.name ? `Share Board: ${board.name}` : 'Share Board'}>
     {#snippet children()}
-      {#if availableTeams.length === 0 && availableOrgs.length === 0}
-        <div class="no-teams-message">
-          <div class="message-icon">📋</div>
-          <h3>Create an organization first</h3>
-          <p>To share this board with others, you need to create an organization and add members.</p>
-          <button class="create-org-btn" onclick={onClose}>Go to Organizations</button>
+      <div class="share-content">
+        <div class="share-option">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              bind:checked={isPublicToOrg}
+              id="public-checkbox"
+            />
+            <span>Public to organization</span>
+          </label>
+          <p class="share-help">When public, all organization members can view and edit this board.</p>
         </div>
-      {:else}
-        <div class="share-content">
-          <div class="share-option">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                bind:checked={isPublicToOrg}
-                id="public-checkbox"
-              />
-              <span>Public to organization</span>
-            </label>
-            <p class="share-help">When public, all organization members can view and edit this board.</p>
-          </div>
 
-          {#if isPublicToOrg && availableOrgs.length > 1}
-            <label class="share-label" for="org-select">Which organization:</label>
-            <select id="org-select" class="team-select" bind:value={selectedOrgId}>
-              <option value={null}>Choose an organization</option>
-              {#each availableOrgs as org (org.id)}
-                <option value={org.id}>{org.name}</option>
-              {/each}
-            </select>
+        {#if isPublicToOrg && availableOrgs.length > 1}
+          <label class="share-label" for="org-select">Which organization:</label>
+          <select id="org-select" class="team-select" bind:value={selectedOrgId}>
+            <option value={null}>Choose an organization</option>
+            {#each availableOrgs as org (org.id)}
+              <option value={org.id}>{org.name}</option>
+            {/each}
+          </select>
+        {/if}
+
+        {#if !isPublicToOrg}
+          <label class="share-label" for="team-select">Share with team:</label>
+          <select
+            id="team-select"
+            class="team-select"
+            bind:value={selectedTeamId}
+            disabled={isPublicToOrg}
+          >
+            <option value={null}>Not shared</option>
+            {#each availableTeams as team (team.id)}
+              <option value={team.id}>{team.name} ({team.organization})</option>
+            {/each}
+          </select>
+        {/if}
+
+        <div class="share-info">
+          {#if isPublicToOrg && !board?.is_public_to_org}
+            <p class="info">ℹ️ This will make the board accessible to all organization members.</p>
+          {:else if !isPublicToOrg && board?.shared_team_id && !selectedTeamId}
+            <p class="warning">⚠️ This will unshare the board from its current team.</p>
+          {:else if !isPublicToOrg && selectedTeamId && selectedTeamId !== board?.shared_team_id}
+            <p class="info">ℹ️ This will share the board with the selected team. All team members will be able to view and edit.</p>
+          {:else if !isPublicToOrg && !board?.shared_team_id && !selectedTeamId}
+            <p class="info">ℹ️ Sharing a board allows all team members to view and edit it.</p>
+          {:else}
+            <p class="info">ℹ️ This board is currently {board?.is_public_to_org ? 'public to the organization' : 'shared with ' + availableTeams.find(t => t.id === board.shared_team_id)?.name + '.'}</p>
           {/if}
-
-          {#if !isPublicToOrg}
-            <label class="share-label" for="team-select">Share with team:</label>
-            <select
-              id="team-select"
-              class="team-select"
-              bind:value={selectedTeamId}
-              disabled={isPublicToOrg}
-            >
-              <option value={null}>Not shared</option>
-              {#each availableTeams as team (team.id)}
-                <option value={team.id}>{team.name} ({team.organization})</option>
-              {/each}
-            </select>
-          {/if}
-
-          <div class="share-info">
-            {#if isPublicToOrg && !board?.is_public_to_org}
-              <p class="info">ℹ️ This will make the board accessible to all organization members.</p>
-            {:else if !isPublicToOrg && board?.shared_team_id && !selectedTeamId}
-              <p class="warning">⚠️ This will unshare the board from its current team.</p>
-            {:else if !isPublicToOrg && selectedTeamId && selectedTeamId !== board?.shared_team_id}
-              <p class="info">ℹ️ This will share the board with the selected team. All team members will be able to view and edit.</p>
-            {:else if !isPublicToOrg && !board?.shared_team_id && !selectedTeamId}
-              <p class="info">ℹ️ Sharing a board allows all team members to view and edit it.</p>
-            {:else}
-              <p class="info">ℹ️ This board is currently {board?.is_public_to_org ? 'public to the organization' : 'shared with ' + availableTeams.find(t => t.id === board.shared_team_id)?.name + '.'}</p>
-            {/if}
-          </div>
         </div>
+      </div>
 
-        <div class="modal-actions">
-          <button type="button" class="cancel-btn" onclick={onClose}>Cancel</button>
-          <button type="button" class="create-btn" onclick={handleShare} disabled={loading || (isPublicToOrg && !selectedOrgId)}>
-            {loading ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      {/if}
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" onclick={onClose}>Cancel</button>
+        <button type="button" class="create-btn" onclick={handleShare} disabled={loading || (isPublicToOrg && !selectedOrgId)}>
+          {loading ? 'Saving...' : 'Save'}
+        </button>
+      </div>
     {/snippet}
   </Modal>
 {/if}
@@ -208,47 +199,11 @@
       color: var(--color-foreground);
     }
 
-    .no-teams-message {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-6);
-      padding: var(--space-8);
-      text-align: center;
-    }
 
-    .message-icon {
-      font-size: var(--text-4xl);
-      opacity: 0.5;
-    }
 
-    .no-teams-message h3 {
-      font-size: var(--text-xl);
-      font-weight: 700;
-      color: var(--color-foreground);
-      margin: 0;
-    }
 
-    .no-teams-message p {
-      font-size: var(--text-sm);
-      color: var(--color-muted-foreground);
-      margin: 0;
-      line-height: 1.5;
-    }
 
-    .create-org-btn {
-      margin-top: var(--space-4);
-      padding: var(--space-3) var(--space-6);
-      background: var(--color-primary);
-      color: var(--color-primary-foreground);
-      border: none;
-      font-size: var(--text-sm);
-      border-radius: var(--radius-lg);
-    }
 
-    .create-org-btn:hover {
-      opacity: 0.9;
-    }
 
     .modal-actions {
      display: flex;
