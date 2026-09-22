@@ -258,6 +258,16 @@ export const api = {
         method: 'DELETE',
       }),
     },
+    invites: {
+      list: (teamId) => apiFetch(`/api/teams/${teamId}/invites`),
+      create: (teamId, email) => apiFetch(`/api/teams/${teamId}/invites`, {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+      revoke: (teamId, inviteId) => apiFetch(`/api/teams/${teamId}/invites/${inviteId}`, {
+        method: 'DELETE',
+      }),
+    },
   },
   apiKeys: {
     list: () => apiFetch('/api/api-keys'),

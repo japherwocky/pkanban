@@ -24,7 +24,10 @@
     accepting = true;
     try {
       const result = await api.invites.accept(params.token);
-      navigate(`/organizations/${result.organization_id}`);
+      // A team invite grants the team and nothing else, so its acceptor is
+      // not an organization member and the org page would 403 at them. Send
+      // them to the boards the team just gave them instead.
+      navigate(result.team_id ? '/boards' : `/organizations/${result.organization_id}`);
     } catch (e) {
       alert(e.message);
     } finally {
@@ -63,8 +66,13 @@
       <h1>You're Invited!</h1>
       <p class="invite-text">
         <strong>{invite.created_by_username}</strong> has invited you to join
-        <span class="org-name">{invite.organization_name}</span>
+        <span class="org-name">{invite.team_name || invite.organization_name}</span>
       </p>
+      {#if invite.team_name}
+        <p class="invite-scope">
+          A team in {invite.organization_name}. You'll get the boards shared with it.
+        </p>
+      {/if}
       {#if invite.email}
         <p class="invite-addressee">
           This invitation is for <strong>{invite.email}</strong>
@@ -125,6 +133,11 @@
   .org-name {
     color: var(--color-primary);
     font-weight: 700;
+  }
+
+  .invite-scope {
+    color: var(--color-muted-foreground);
+    font-size: var(--text-sm);
   }
 
   .invite-addressee {
