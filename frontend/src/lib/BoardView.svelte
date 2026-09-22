@@ -3,6 +3,7 @@
   import Modal from './Modal.svelte';
   import ShareModal from './ShareModal.svelte';
   import Comments from './Comments.svelte';
+  import { navigate } from 'svelte-routing';
   import { dndzone } from 'svelte-dnd-action';
   import { createBoardDnd } from './boardDnd.js';
 
@@ -280,7 +281,14 @@
             Share
           </button>
         {:else}
-          <button class="share-btn disabled" title="Create an organization to share boards">
+          <!-- Sharing needs a team, and teams live on a page reachable only from
+               the boards list. A dead button here told people to go somewhere
+               without saying where, so it routes there instead. -->
+          <button
+            class="share-btn needs-org"
+            title="Sharing needs a team -- set one up first"
+            onclick={() => navigate('/organizations')}
+          >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M9 3C8.44772 3 8 3.44772 8 4V8H4C3.44772 8 3 8.44772 3 9V10C3 10.6569 4.34315 12 6 12H8V14C8 14.5523 8.44772 15 9 15H9.5C10.0523 15 10.5 14.5523 10.5 14V12H12C13.6569 12 15 10.6569 15 9V8H10.5V4C10.5 3.44772 10.0523 3 9.5 3H9ZM4.5 9C4.5 8.72386 4.72386 8.5 5 8.5H6.5V9H4.5V9ZM12 9V9.5H13.5V9C13.5 8.72386 13.2761 8.5 13 8.5H12V9Z" stroke="currentColor" stroke-width="1.5"/>
             </svg>
@@ -577,14 +585,13 @@
     border-color: var(--color-primary);
   }
 
-  .share-btn.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .share-btn.needs-org {
+    color: var(--color-muted-foreground);
+    border-style: dashed;
   }
 
-  .share-btn.disabled:hover {
-    background: transparent;
-    border-color: var(--color-border);
+  .share-btn.needs-org:hover {
+    color: var(--color-foreground);
   }
 
   .loading {
