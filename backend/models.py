@@ -271,6 +271,12 @@ class OrganizationInvite(BaseModel):
     """Invite tokens for joining an organization."""
 
     organization = ForeignKeyField(Organization, backref="invites")
+    # Set when the invite is to a specific team rather than to the org at
+    # large. Accepting one of these grants the team and nothing else: teams
+    # already span organizations (see add_team_member), so a collaborator can
+    # hold a team without appearing in the org's member list. organization is
+    # still populated, as the team's owner, for display and scoping.
+    team = ForeignKeyField(Team, null=True, backref="invites")
     email = CharField(max_length=255, null=True)  # optional - can be anonymous invite
     token = CharField(max_length=64, unique=True)
     status = CharField(
@@ -281,12 +287,15 @@ class OrganizationInvite(BaseModel):
     expires_at = DateTimeField()
 
     @classmethod
-    def create_invite(cls, organization, created_by, email=None, expires_in_days=7):
+    def create_invite(
+        cls, organization, created_by, email=None, expires_in_days=7, team=None
+    ):
         """Create a new invite token."""
         token = generate_invite_token()
         expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
         return cls.create(
             organization=organization,
+            team=team,
             email=email,
             token=token,
             created_by=created_by,
@@ -304,8 +313,8 @@ class OrganizationInvite(BaseModel):
         self.save()
 
     def accept(self, user):
-        """Accept invite - add user to organization."""
-        from backend.models import OrganizationMember
+        """Accept invite - join the team if it names one, else the org."""
+        from backend.models import OrganizationMember, TeamMember
 
         if self.status != "pending":
             raise ValueError("Invite is not pending")
@@ -315,7 +324,14 @@ class OrganizationInvite(BaseModel):
             raise ValueError("Invite has expired")
         self.status = "accepted"
         self.save()
-        # Add user to organization
+
+        # A team invite is deliberately the narrower grant: the team carries
+        # the boards shared with it, and nothing hands out org membership on
+        # the side. Someone who should have both gets two invites.
+        if self.team is not None:
+            return TeamMember.create(
+                user=user, team=self.team, joined_at=datetime.now(timezone.utc)
+            )
         return OrganizationMember.create(
             user=user,
             organization=self.organization,

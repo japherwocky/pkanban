@@ -2028,6 +2028,14 @@ class InviteCreateRequest(BaseModel):
     email: Optional[str] = None
 
 
+class TeamInviteCreateRequest(BaseModel):
+    # Required, unlike an organization invite's optional email. An anonymous
+    # team invite would be a bearer link granting write access to whatever
+    # boards the team holds; the org-level anonymous link still exists for
+    # people who want that trade.
+    email: str
+
+
 class InviteResponse(BaseModel):
     id: int
     email: Optional[str]
@@ -2116,8 +2124,12 @@ async def list_organization_invites(
     if not member and not is_owner:
         raise HTTPException(status_code=403, detail="Not a member of this organization")
 
+    # Team invites live in this table too but are not org invites: accepting
+    # one grants the team alone. Listing them here would show an org invite
+    # that never arrives, on a page whose owner cannot revoke it either.
     invites = OrganizationInvite.select().where(
         (OrganizationInvite.organization == org)
+        & (OrganizationInvite.team.is_null(True))
         & (OrganizationInvite.status == "pending")
     )
     # Expiry is only ever evaluated when a token is read, so an expired invite
@@ -2190,6 +2202,7 @@ async def get_invite(token: str):
     return {
         "id": invite.id,
         "organization_name": invite.organization.name,
+        "team_name": invite.team.name if invite.team else None,
         "email": invite.email,
         "status": invite.status,
         "created_by_username": invite.created_by.username,
@@ -2213,12 +2226,20 @@ async def accept_invite(
         invite.save()
         raise HTTPException(status_code=400, detail="Invite has expired")
 
-    # Check if user is already a member
-    existing = OrganizationMember.get_or_none(
+    # Which membership already exists depends on which one this invite grants.
+    # Checking org membership for a team invite would turn "you are on this
+    # org already" into a refusal to join a team the org member is not on.
+    if invite.team is not None:
+        if TeamMember.get_or_none(
+            (TeamMember.team == invite.team) & (TeamMember.user == current_user)
+        ):
+            raise HTTPException(
+                status_code=400, detail="You are already in this team"
+            )
+    elif OrganizationMember.get_or_none(
         (OrganizationMember.organization == invite.organization)
         & (OrganizationMember.user == current_user)
-    )
-    if existing:
+    ):
         raise HTTPException(
             status_code=400, detail="You are already a member of this organization"
         )
@@ -2245,6 +2266,10 @@ async def accept_invite(
         "ok": True,
         "organization_id": invite.organization.id,
         "organization_name": invite.organization.name,
+        # Null for an org invite. The client needs this to know where to send
+        # someone: a team-only member has no access to the organization page.
+        "team_id": invite.team_id,
+        "team_name": invite.team.name if invite.team else None,
     }
 
 
@@ -2472,6 +2497,138 @@ async def remove_team_member(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     target.delete_instance()
+    return {"ok": True}
+
+
+def _team_invite_authority(team, user):
+    """Whoever may add a member by username may also invite one by email.
+
+    Team membership is the grant here, the Unix group model the rest of this
+    file follows -- being in the group is what lets you add to the group. The
+    org owner is the backstop, as in add_team_member, so a team that has lost
+    its last member can still be refilled.
+    """
+    if TeamMember.get_or_none((TeamMember.team == team) & (TeamMember.user == user)):
+        return True
+    return team.organization.owner_id == user.id
+
+
+@api.post("/teams/{team_id}/invites", response_model=InviteResponse)
+async def create_team_invite(
+    team_id: int,
+    request: TeamInviteCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Invite someone to a team by email, account or no account."""
+    team = Team.get_or_none(Team.id == team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not _team_invite_authority(team, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to invite")
+
+    email = request.email.strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="An email address is required")
+
+    already = User.get_or_none(fn.LOWER(User.email) == email.lower())
+    if already is not None and TeamMember.get_or_none(
+        (TeamMember.team == team) & (TeamMember.user == already)
+    ):
+        raise HTTPException(
+            status_code=400, detail=f"{email} is already in this team"
+        )
+
+    # One live token per address per team, for the reason the org endpoint
+    # gives: every invite carries its own token, so leaving the older ones
+    # pending makes revoking the visible one do nothing.
+    OrganizationInvite.update(status="revoked").where(
+        (OrganizationInvite.team == team)
+        & (OrganizationInvite.status == "pending")
+        & (fn.LOWER(OrganizationInvite.email) == email.lower())
+    ).execute()
+
+    invite, token = OrganizationInvite.create_invite(
+        organization=team.organization,
+        created_by=current_user,
+        email=email,
+        team=team,
+    )
+    background_tasks.add_task(
+        send_invite_email,
+        email,
+        token,
+        team.organization.name,
+        current_user.username,
+        team.name,
+    )
+
+    return {
+        "id": invite.id,
+        "email": invite.email,
+        "token": token,
+        "status": invite.status,
+        "created_at": invite.created_at.isoformat(),
+        "expires_at": invite.expires_at.isoformat(),
+        "created_by_username": current_user.username,
+    }
+
+
+@api.get("/teams/{team_id}/invites", response_model=list)
+async def list_team_invites(
+    team_id: int, current_user: User = Depends(get_current_user_or_api_key)
+):
+    """Pending invites for a team. Same audience that can create them."""
+    team = Team.get_or_none(Team.id == team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not _team_invite_authority(team, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    invites = OrganizationInvite.select().where(
+        (OrganizationInvite.team == team)
+        & (OrganizationInvite.status == "pending")
+    )
+    # Expiry is only evaluated when a token is read, so an expired invite sits
+    # in the table still marked pending -- filter rather than list it as live.
+    return [
+        {
+            "id": invite.id,
+            "email": invite.email,
+            "status": invite.status,
+            "created_at": invite.created_at.isoformat()
+            if not isinstance(invite.created_at, str)
+            else invite.created_at,
+            "expires_at": invite.expires_at.isoformat()
+            if not isinstance(invite.expires_at, str)
+            else invite.expires_at,
+            "created_by_username": invite.created_by.username,
+        }
+        for invite in invites
+        if not invite.is_expired()
+    ]
+
+
+@api.delete("/teams/{team_id}/invites/{invite_id}")
+async def revoke_team_invite(
+    team_id: int,
+    invite_id: int,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Revoke a pending team invite."""
+    team = Team.get_or_none(Team.id == team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not _team_invite_authority(team, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    invite = OrganizationInvite.get_or_none(
+        (OrganizationInvite.id == invite_id) & (OrganizationInvite.team == team)
+    )
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+
+    invite.revoke()
     return {"ok": True}
 
 

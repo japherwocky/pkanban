@@ -164,17 +164,42 @@ def send_verification_email(user, token: str) -> bool:
 
 
 def send_invite_email(
-    to_email: str, invite_token: str, org_name: str, inviter_username: str
+    to_email: str,
+    invite_token: str,
+    org_name: str,
+    inviter_username: str,
+    team_name: str = None,
 ) -> bool:
-    """Email someone the link to join an organization."""
+    """Email someone the link to join an organization, or one of its teams.
+
+    With team_name set the invite grants that team and nothing else, so the
+    mail names the team rather than the organization -- telling someone they
+    have been added to a company when they have been added to one group
+    misdescribes what they are accepting.
+    """
     url = f"{public_base_url()}/invite/{invite_token}"
+    if team_name:
+        lede = (
+            f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
+            f"</strong> added you to the <strong>{escape(team_name)}</strong> "
+            f"team on pkanban, in {escape(org_name)}.</p>"
+            f'<p style="color:{_BRAND_DARK}">Accepting gives you the boards '
+            "shared with that team.</p>"
+        )
+        subject = f"{inviter_username} invited you to {team_name} on pkanban"
+    else:
+        lede = (
+            f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
+            f"</strong> invited you to join <strong>{escape(org_name)}</strong> "
+            "on pkanban.</p>"
+        )
+        subject = f"{inviter_username} invited you to {org_name}"
+
     html = _wrap(
-        f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
-        f"</strong> invited you to join <strong>{escape(org_name)}</strong> "
-        "on pkanban.</p>"
+        f"{lede}"
         f"{_button(url, 'Accept invitation')}"
         f'<p style="color:{_BRAND_MUTED};font-size:13px">This invitation '
         "expires in 7 days.</p>"
         f"{_signoff()}"
     )
-    return send_email(to_email, f"{inviter_username} invited you to {org_name}", html)
+    return send_email(to_email, subject, html)

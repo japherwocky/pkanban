@@ -20,6 +20,9 @@
   let selectedTeam = $state(null);
   let teamMembers = $state([]);
   let teamMembersLoading = $state(false);
+  let teamInvites = $state([]);
+  let newTeamInviteEmail = $state('');
+  let teamInviteLoading = $state(false);
   let newMemberUsername = $state('');
   let newTeamName = $state('');
   let newInviteEmail = $state('');
@@ -126,10 +129,48 @@
     } finally {
       teamMembersLoading = false;
     }
+    // Separate from the members load and deliberately not fatal: an org
+    // member who is not on the team may read the roster but not the invites,
+    // and a 403 there should not blank out the members they can see.
+    try {
+      teamInvites = await api.teams.invites.list(team.id);
+    } catch (e) {
+      teamInvites = [];
+    }
   }
 
   function isTeamMember() {
     return teamMembers.find(m => m.username === currentUsername);
+  }
+
+  // What the API actually allows: anyone on the team, plus the org owner as
+  // the backstop for a team that has lost its last member.
+  function canManageTeam() {
+    return Boolean(isTeamMember()) || isOwner();
+  }
+
+  async function inviteToTeam() {
+    if (!newTeamInviteEmail.trim() || !selectedTeam) return;
+    teamInviteLoading = true;
+    try {
+      const invite = await api.teams.invites.create(selectedTeam.id, newTeamInviteEmail.trim());
+      teamInvites = [...teamInvites, invite];
+      newTeamInviteEmail = '';
+    } catch (e) {
+      alert('Failed to send invite: ' + e.message);
+    } finally {
+      teamInviteLoading = false;
+    }
+  }
+
+  async function revokeTeamInvite(inviteId, email) {
+    if (!confirm(`Revoke the invitation to ${email}?`)) return;
+    try {
+      await api.teams.invites.revoke(selectedTeam.id, inviteId);
+      teamInvites = teamInvites.filter(i => i.id !== inviteId);
+    } catch (e) {
+      alert('Failed to revoke invite: ' + e.message);
+    }
   }
 
   async function addTeamMember() {
@@ -445,10 +486,33 @@
         {/if}
       </div>
 
-      {#if isTeamMember()}
+      {#if teamInvites.length > 0}
+        <div class="team-invites-list">
+          <h3>Invited</h3>
+          {#each teamInvites as invite (invite.id)}
+            <div class="team-member-item">
+              <div class="member-info">
+                <span class="member-username">{invite.email}</span>
+                <span class="member-pending">Waiting to accept</span>
+              </div>
+              <div class="member-actions">
+                {#if canManageTeam()}
+                  <button class="remove-btn" onclick={() => revokeTeamInvite(invite.id, invite.email)}>
+                    Revoke
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      {#if canManageTeam()}
         <div class="add-member-section">
           <h3>Add Member</h3>
-          <p class="modal-help">Enter the username of an organization member to add them to this team.</p>
+          <!-- Not "an organization member": teams span organizations by
+               design, so any account on the server can be added by name. -->
+          <p class="modal-help">Add someone who already has an account, by username.</p>
           <form class="add-member-form" onsubmit={(e) => { e.preventDefault(); addTeamMember(); }}>
             <div class="input-group">
               <input
@@ -458,6 +522,27 @@
               />
               <button type="submit" class="create-btn" disabled={addTeamMemberLoading}>
                 {addTeamMemberLoading ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="add-member-section">
+          <h3>Invite by Email</h3>
+          <p class="modal-help">
+            For someone without an account yet. They get a link to sign up, and land on
+            this team -- and the boards shared with it -- without joining the organization.
+          </p>
+          <form class="add-member-form" onsubmit={(e) => { e.preventDefault(); inviteToTeam(); }}>
+            <div class="input-group">
+              <input
+                type="email"
+                bind:value={newTeamInviteEmail}
+                placeholder="name@example.com"
+                required
+              />
+              <button type="submit" class="create-btn" disabled={teamInviteLoading}>
+                {teamInviteLoading ? 'Sending...' : 'Invite'}
               </button>
             </div>
           </form>
@@ -805,6 +890,24 @@
     margin-bottom: var(--space-6);
   }
 
+  .team-invites-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+  }
+
+  .team-invites-list h3 {
+    font-size: var(--text-sm);
+    color: var(--color-muted-foreground);
+    margin: 0;
+  }
+
+  .member-pending {
+    font-size: var(--text-sm);
+    color: var(--color-muted-foreground);
+  }
+
   .team-member-item {
     display: flex;
     justify-content: space-between;
@@ -838,6 +941,14 @@
 
   .input-group input {
     flex: 1;
+    /* A flex item will not shrink below its intrinsic min-content width, and
+       an <input>'s is wide -- without this the field pushes the button past
+       the modal's edge and clips its label. */
+    min-width: 0;
+  }
+
+  .input-group button {
+    flex-shrink: 0;
   }
 
   .modal-help {
@@ -854,6 +965,7 @@
   }
 
   .cancel-btn {
+    padding: var(--space-2) var(--space-4);
     background: transparent;
     color: var(--color-foreground);
     border: 1px solid var(--color-border);
@@ -863,7 +975,11 @@
     background: var(--color-muted);
   }
 
+  /* Padding, like every other button in this file has -- .create-btn and
+     .cancel-btn set colours only, so the modal buttons rendered as squeezed
+     29px boxes with their labels clipped. */
   .create-btn {
+    padding: var(--space-2) var(--space-4);
     background: var(--color-primary);
     color: var(--color-primary-foreground);
     border: none;
