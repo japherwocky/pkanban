@@ -12,6 +12,45 @@ import sys
 
 from rich import print as rprint
 
+
+def configure_output_encoding():
+    """Let the standard streams carry any character a board name can hold.
+
+    On Windows the standard streams default to the console code page -- cp1252
+    on most installs -- so one non-ASCII character in a board or card name
+    raised UnicodeEncodeError partway through printing. The list stopped at
+    that row, which read as a short board list rather than as a failure, and
+    every board after it was simply missing.
+
+    This is PYTHONIOENCODING=utf-8, the documented workaround, applied
+    in-process so that nobody has to know to set it. It has to happen before
+    anything constructs a rich Console, which reads its encoding from the
+    stream it is given.
+
+    An explicitly set PYTHONIOENCODING is left alone. Someone piping into a
+    tool that demands a particular code page chose that on purpose, and this
+    should be a better default rather than an override. Their stream still
+    gets errors="replace", so the worst case there is a "?" in a board name
+    instead of a traceback that loses every row after it.
+    """
+    chosen = bool(os.environ.get("PYTHONIOENCODING", "").strip())
+    for stream in (sys.stdout, sys.stderr):
+        # Not a TextIOWrapper: pytest's capture objects, and anything else
+        # that has replaced the stream with its own file-like.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            if chosen:
+                reconfigure(errors="replace")
+            else:
+                reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            # Detached or closed. Nothing to fix here, and a later write will
+            # fail loudly on its own if it matters.
+            pass
+
+
 # None means "nobody chose", so fall back to the environment. Set by --json.
 _json_output = None
 
