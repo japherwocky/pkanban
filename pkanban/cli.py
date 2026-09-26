@@ -18,7 +18,12 @@ from pkanban.config import (
     get_runtime_api_key,
     set_runtime_api_key,
 )
-from pkanban.output import emit, emit_error, set_json_output
+from pkanban.output import (
+    configure_output_encoding,
+    emit,
+    emit_error,
+    set_json_output,
+)
 
 app = typer.Typer(
     help="pkanban board CLI", no_args_is_help=True, invoke_without_command=True
@@ -948,6 +953,10 @@ def _extract_json_flag(argv):
 
 def main():
     """Main entry point for the CLI."""
+    # Before anything prints, and before rich builds a Console around a
+    # stream whose encoding it would then inherit.
+    configure_output_encoding()
+
     if _extract_json_flag(sys.argv):
         set_json_output(True)
 
