@@ -17,7 +17,7 @@ Card management commands
 Create a new card.
 
 ```bash
-pkanban card create <column_id> <title> [--description DESCRIPTION] [--position POSITION]
+pkanban card create <column_id> <title> [--description DESCRIPTION] [--description-file DESCRIPTION_FILE] [--position POSITION]
 ```
 
 **Arguments**
@@ -27,7 +27,8 @@ pkanban card create <column_id> <title> [--description DESCRIPTION] [--position 
 
 **Options**
 
-- `--description`, `-d` (str) — Card description
+- `--description`, `-d` (str) — Card description. '-' reads it from stdin.
+- `--description-file`, `-D` (str) — Read the description from a file. Safer than -d for anything long or quoted: no shell ever parses it.
 - `--position`, `-p` (int) _(default: `0`)_ — Position
 
 ## `pkanban card delete`
@@ -76,7 +77,7 @@ pkanban card move <card_id> [--column COLUMN] [--position POSITION]
 Update a card. Anything you don't pass is left unchanged.
 
 ```bash
-pkanban card update <card_id> [title] [--description DESCRIPTION] [--position POSITION] [--column COLUMN]
+pkanban card update <card_id> [title] [--description DESCRIPTION] [--description-file DESCRIPTION_FILE] [--position POSITION] [--column COLUMN]
 ```
 
 **Arguments**
@@ -86,7 +87,8 @@ pkanban card update <card_id> [title] [--description DESCRIPTION] [--position PO
 
 **Options**
 
-- `--description`, `-d` (str) — Card description
+- `--description`, `-d` (str) — Card description. '-' reads it from stdin.
+- `--description-file`, `-D` (str) — Read the description from a file. Safer than -d for anything long or quoted: no shell ever parses it.
 - `--position`, `-p` (int) — Position
 - `--column`, `-c` (int) — New column ID
 

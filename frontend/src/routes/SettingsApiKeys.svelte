@@ -30,7 +30,12 @@
     createLoading = true;
     try {
       const result = await api.apiKeys.create(newKeyName.trim());
-      navigate(`/settings/api-keys/created?key=${encodeURIComponent(result.key)}&name=${encodeURIComponent(newKeyName)}`);
+      // In history state, never the URL: a pushed URL lands in browser
+      // history (and history sync) before the next page can clear it.
+      // `apiKey`, not `key` -- navigate() writes its own `key` into state.
+      navigate('/settings/api-keys/created', {
+        state: { apiKey: result.key, keyName: newKeyName.trim() },
+      });
     } catch (e) {
       alert('Failed to create API key: ' + e.message);
     } finally {

@@ -49,6 +49,35 @@ per-command use by agents and scripts:
 venv/Scripts/pkanban.exe --api-key pkanban_1-<KEY> board list --json
 ```
 
+### Pointing the CLI at another server or config
+
+`PKANBAN_CONFIG_PATH` moves the config file, which is how to aim the CLI at a
+local server without touching your real credentials:
+
+```bash
+PKANBAN_CONFIG_PATH=/tmp/scratch.yaml venv/Scripts/pkanban.exe config --url http://localhost:8080
+```
+
+`KANBAN_CONFIG_PATH`, the pre-rename name, still works but warns. A wrong
+guess at the name falls back to `~/.pkanban.yaml` and the real server.
+
+### Card bodies: use a file, not an argument
+
+Pass anything long or quoted with `--description-file` (or `-d -` to read
+stdin), never inline with `-d "..."`. PowerShell 5.1 does not re-quote an
+argument for a native executable, so a quoted phrase in a body splits it, and
+one stray fragment lands in `card update`'s optional title and renames the
+card -- exit 0, no warning (Dev #474). A file never passes through any shell's
+parser:
+
+```bash
+venv/Scripts/pkanban.exe card update 245 --description-file body.md
+```
+
+The file is read as UTF-8; a byte-order mark and the trailing newline are
+dropped. Anything after `--` is positional, so a title that looks like a flag
+can be passed as `pkanban card create 4 -- --json`.
+
 ### Project Board
 
 The **Dev** board (id=1) is the board for this project. Columns:

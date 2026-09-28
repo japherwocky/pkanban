@@ -23,6 +23,7 @@ The only remaining work is outside the repo.
 | Config file | `~/.kanban.yaml` | `~/.pkanban.yaml` | clean break |
 | API key prefix | `kanban_` | `pkanban_` | clean break (existing keys invalid) |
 | Env var | `KANBAN_OUTPUT` | `PKANBAN_OUTPUT` | clean break |
+| Env var | `KANBAN_CONFIG_PATH` | `PKANBAN_CONFIG_PATH` | missed by the rename; the old name still works, with a warning (Dev #277) |
 | Domain | `kanban.pearachute.com` | `pkanban.pearachute.com` | clean break |
 | systemd unit | `kanban.service` | `pkanban.service` | clean break |
 | Deploy path | `/opt/kanban/` | `/opt/pkanban/` | clean break |
