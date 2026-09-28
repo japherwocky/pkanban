@@ -89,44 +89,117 @@ def generate_api_key():
 
 
 def hash_api_key(key):
-    """Hash an API key for storage (like passwords)."""
-    return bcrypt.hashpw(key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    """SHA-256 of an API key, hex -- what a key is stored and looked up by.
+
+    Not bcrypt, deliberately. A password needs a slow hash because people pick
+    guessable ones; a key is 192 random bits, so there is nothing to slow an
+    attacker down on, and bcrypt only cost every authenticated request about a
+    quarter of a second of CPU. A fast, deterministic hash is also what makes
+    the key findable by an indexed equality lookup.
+    """
+    import hashlib
+
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+# The literal "pkanban_" plus the first 8 random characters: enough to tell
+# one key from another in a list, and far too little to guess the rest.
+API_KEY_DISPLAY_LENGTH = len(API_KEY_PREFIX) + 8
+
+# A key's last_used_at is written at most this often, so authenticating is not
+# a database write on every request.
+LAST_USED_RESOLUTION = timedelta(minutes=1)
 
 
 def get_api_key_prefix(key):
-    """Get the first 8 characters of an API key for identification."""
-    return key[:8]
+    """The part of a key that is safe to display, for telling keys apart."""
+    return key[:API_KEY_DISPLAY_LENGTH]
 
 
 class ApiKey(BaseModel):
-    """One-off API keys for agent authentication."""
+    """One-off API keys for agent authentication.
+
+    Keys are found by the SHA-256 of the whole key (key_sha256). They used to
+    be found by `prefix`, which was the first 8 characters -- the literal
+    "pkanban_" on every key -- so the lookup matched the first row in the table
+    and every other key failed as "Invalid API key". Keys minted before that
+    fix have only a bcrypt `key_hash`; `find()` upgrades each one the first
+    time it is used. See migration 006.
+    """
 
     user = ForeignKeyField(User, backref="api_keys")
     name = CharField(max_length=100)  # Friendly name (e.g., "CI Agent")
-    key_hash = CharField(max_length=255)  # bcrypt hash of the key
-    prefix = CharField(max_length=8)  # First 8 chars for identification
+    # bcrypt hash, for keys minted before migration 006 and not used since.
+    # Empty once a key has been upgraded, and for every key minted after.
+    key_hash = CharField(max_length=255)
+    prefix = CharField(max_length=16)  # Display only, e.g. "pkanban_Ab3xYz12"
     created_at = DateTimeField(default=datetime.now)
     last_used_at = DateTimeField(null=True)
     expires_at = DateTimeField(null=True)  # Optional expiration
     is_active = BooleanField(default=True)
+    # Declared last because migration 006 appends it, and a fresh install
+    # should build the same column order a migrated database has.
+    key_sha256 = CharField(max_length=64, null=True, unique=True)
 
     @classmethod
     def create_key(cls, user, name, expires_at=None):
         """Create a new API key for a user."""
         key = generate_api_key()
-        prefix = get_api_key_prefix(key)
-        key_hash = hash_api_key(key)
         return cls.create(
             user=user,
             name=name,
-            key_hash=key_hash,
-            prefix=prefix,
+            key_hash="",
+            key_sha256=hash_api_key(key),
+            prefix=get_api_key_prefix(key),
             expires_at=expires_at,
         ), key
 
+    @classmethod
+    def find(cls, key):
+        """The ApiKey row for a raw key, or None. Active or not.
+
+        One indexed lookup for any key minted or used since migration 006.
+        Failing that, the key is checked against the legacy rows -- active
+        ones that still have only a bcrypt hash -- and upgraded in place on a
+        match, so the slow path runs at most once per legacy key. Inactive
+        legacy keys are not scanned: a garbage key costs one bcrypt per active
+        legacy row, and that set only shrinks.
+        """
+        digest = hash_api_key(key)
+        row = cls.get_or_none(cls.key_sha256 == digest)
+        if row is not None:
+            return row
+
+        # Every legacy key has exactly this shape. Checking it also keeps
+        # anything over bcrypt's 72-byte input limit away from checkpw.
+        if not key.startswith(API_KEY_PREFIX) or len(key) != len(
+            API_KEY_PREFIX
+        ) + API_KEY_LENGTH:
+            return None
+
+        legacy = cls.select().where(
+            cls.key_sha256.is_null()
+            & (cls.key_hash != "")
+            & (cls.is_active == True)  # noqa: E712
+        )
+        for row in legacy:
+            if bcrypt.checkpw(key.encode("utf-8"), row.key_hash.encode("utf-8")):
+                row.key_sha256 = digest
+                row.key_hash = ""
+                row.prefix = get_api_key_prefix(key)
+                row.save()
+                return row
+        return None
+
     def verify(self, key):
-        """Verify an API key against the stored hash."""
-        return bcrypt.checkpw(key.encode("utf-8"), self.key_hash.encode("utf-8"))
+        """Verify a raw key against this row."""
+        import hmac
+
+        if self.key_sha256:
+            return hmac.compare_digest(self.key_sha256, hash_api_key(key))
+        if self.key_hash:
+            return bcrypt.checkpw(key.encode("utf-8"), self.key_hash.encode("utf-8"))
+        return False
 
     def deactivate(self):
         """Deactivate this API key."""
@@ -134,8 +207,12 @@ class ApiKey(BaseModel):
         self.save()
 
     def update_last_used(self):
-        """Update the last used timestamp."""
-        self.last_used_at = datetime.now(timezone.utc)
+        """Record that the key was used, at most once per LAST_USED_RESOLUTION."""
+        now = datetime.now(timezone.utc)
+        last = _as_datetime(self.last_used_at) if self.last_used_at else None
+        if last is not None and now - last < LAST_USED_RESOLUTION:
+            return
+        self.last_used_at = now
         self.save()
 
 
