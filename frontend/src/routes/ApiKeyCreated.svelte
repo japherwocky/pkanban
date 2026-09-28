@@ -8,15 +8,17 @@
   let mounted = $state(false);
 
   onMount(() => {
-    // Get key from URL
-    const params = new URLSearchParams(window.location.search);
-    apiKey = params.get('key') || '';
-    keyName = params.get('name') || 'API Key';
+    // The key arrives in history state, not the URL -- a URL is recorded in
+    // browser history the moment it is pushed. See SettingsApiKeys.svelte.
+    const state = history.state || {};
+    apiKey = state.apiKey || '';
+    keyName = state.keyName || 'API Key';
     mounted = true;
 
-    // Clear URL to prevent re-exposure on refresh
+    // Clear it at once: browsers persist history state for session restore,
+    // and the key is meant to be shown exactly once.
     if (apiKey) {
-      history.replaceState(null, '', window.location.pathname);
+      history.replaceState({ key: state.key }, '', window.location.pathname);
     }
   });
 
