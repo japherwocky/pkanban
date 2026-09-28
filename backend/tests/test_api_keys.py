@@ -259,3 +259,47 @@ class TestApiKeyAuthentication:
         """Test that requests without auth return 401"""
         response = client.get("/api/boards")
         assert response.status_code == 401
+
+
+class TestKeysCannotMintKeys:
+    """A key that can make keys makes a leak permanent: mint a second key,
+    and revoking the first cuts off nothing."""
+
+    def test_a_key_cannot_create_a_key(self, client, test_user):
+        _, raw = ApiKey.create_key(test_user, "leaked")
+        response = client.post(
+            "/api/api-keys", json={"name": "backdoor"}, headers={"X-API-Key": raw}
+        )
+        assert response.status_code == 403
+        assert ApiKey.select().where(ApiKey.name == "backdoor").count() == 0
+
+    def test_a_key_cannot_reactivate_a_key(self, client, test_user):
+        revoked, _ = ApiKey.create_key(test_user, "revoked")
+        revoked.deactivate()
+        _, raw = ApiKey.create_key(test_user, "leaked")
+        response = client.post(
+            f"/api/api-keys/{revoked.id}/activate", headers={"X-API-Key": raw}
+        )
+        assert response.status_code == 403
+        assert ApiKey.get_by_id(revoked.id).is_active is False
+
+    def test_a_key_can_still_list_and_revoke(self, client, test_user):
+        _, raw = ApiKey.create_key(test_user, "agent")
+        other, _ = ApiKey.create_key(test_user, "other")
+        headers = {"X-API-Key": raw}
+        assert client.get("/api/api-keys", headers=headers).status_code == 200
+        response = client.delete(f"/api/api-keys/{other.id}", headers=headers)
+        assert response.status_code == 200
+        assert ApiKey.get_by_id(other.id).is_active is False
+
+    def test_a_session_can_still_create_and_reactivate(self, client, auth_headers):
+        created = client.post(
+            "/api/api-keys", json={"name": "fine"}, headers=auth_headers
+        )
+        assert created.status_code == 200
+        key_id = created.json()["id"]
+        client.delete(f"/api/api-keys/{key_id}", headers=auth_headers)
+        response = client.post(
+            f"/api/api-keys/{key_id}/activate", headers=auth_headers
+        )
+        assert response.status_code == 200

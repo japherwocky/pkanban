@@ -325,3 +325,22 @@ async def get_current_user_or_api_key(
         detail="Not authenticated",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+async def get_current_user_by_session(request: Request):
+    """The logged-in user, refusing a request authenticated by API key.
+
+    For minting and reactivating keys. If a key can make keys, a leaked key
+    is permanent: whoever holds it mints a second one, and revoking the
+    first cuts off nothing. Listing and revoking stay open to keys --
+    revoking is always safe to allow.
+    """
+    if request.headers.get("X-API-Key"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "An API key cannot create or reactivate API keys. "
+                "Log in (pkanban login) to manage keys."
+            ),
+        )
+    return await get_current_user_or_api_key(request)

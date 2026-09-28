@@ -801,7 +801,11 @@ def cmd_apikey_list():
 def cmd_apikey_create(
     name: str = typer.Argument(..., help="Name for the API key (e.g., 'CI Agent')"),
 ):
-    """Create a new API key. The key is shown only once - save it securely!"""
+    """Create a new API key. The key is shown only once - save it securely!
+
+    Needs 'pkanban login': an API key cannot create keys, or a leaked key
+    could mint its own replacement.
+    """
     client = make_client()
     result = client.api_key_create(name)
 
@@ -837,7 +841,7 @@ def cmd_apikey_revoke(key_id: int = typer.Argument(..., help="API key ID to revo
 def cmd_apikey_activate(
     key_id: int = typer.Argument(..., help="API key ID to activate"),
 ):
-    """Reactivate a deactivated API key."""
+    """Reactivate a deactivated API key. Needs 'pkanban login', not a key."""
     client = make_client()
     try:
         result = client.api_key_activate(key_id)
