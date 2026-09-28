@@ -11,14 +11,14 @@ tmp_dir = tempfile.mkdtemp()
 # Use a temporary config directory for tests
 @pytest.fixture(autouse=True)
 def temp_config_dir():
-    original_env = os.environ.get("KANBAN_CONFIG_PATH")
+    original_env = os.environ.get("PKANBAN_CONFIG_PATH")
     tmp_config = os.path.join(tmp_dir, ".pkanban.yaml")
-    os.environ["KANBAN_CONFIG_PATH"] = tmp_config
+    os.environ["PKANBAN_CONFIG_PATH"] = tmp_config
     yield tmp_config
     if original_env is not None:
-        os.environ["KANBAN_CONFIG_PATH"] = original_env
+        os.environ["PKANBAN_CONFIG_PATH"] = original_env
     else:
-        del os.environ["KANBAN_CONFIG_PATH"]
+        del os.environ["PKANBAN_CONFIG_PATH"]
 
 
 import sys
@@ -297,7 +297,11 @@ def test_cli_card_create_command(client, auth_headers, test_user):
 
     with patch("pkanban.cli.PkanbanClient", return_value=mock_client):
         cmd_card_create(
-            column_id=5, title="Test Card", description="A test description", position=0
+            column_id=5,
+            title="Test Card",
+            description="A test description",
+            description_file=None,
+            position=0,
         )
 
         mock_client.card_create.assert_called_once_with(
@@ -320,6 +324,7 @@ def test_cli_card_update_command(client, auth_headers, test_user):
             card_id=99,
             title="Updated Card",
             description="Updated description",
+            description_file=None,
             position=1,
             column=3,
         )
@@ -724,7 +729,12 @@ def test_cli_card_update_leaves_the_title_alone_when_omitted():
 
     with patch("pkanban.cli.make_client", return_value=mock_client):
         cmd_card_update(
-            card_id=7, title=None, description=None, position=None, column=5
+            card_id=7,
+            title=None,
+            description=None,
+            description_file=None,
+            position=None,
+            column=5,
         )
 
     mock_client.card_update.assert_called_once_with(7, None, None, None, 5)
@@ -745,7 +755,16 @@ def test_client_card_update_omits_unset_fields():
 @pytest.mark.parametrize(
     "command,kwargs",
     [
-        ("update", {"title": None, "description": None, "position": None, "column": None}),
+        (
+            "update",
+            {
+                "title": None,
+                "description": None,
+                "description_file": None,
+                "position": None,
+                "column": None,
+            },
+        ),
         ("move", {"column": None, "position": None}),
     ],
 )

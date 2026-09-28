@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import Optional
 
@@ -7,6 +8,7 @@ import requests
 
 from pkanban.client import PkanbanClient, PkanbanError
 from pkanban.config import (
+    config_file,
     get_server_url,
     set_server_url,
     get_token,
@@ -363,16 +365,68 @@ def cmd_card_get(card_id: int = typer.Argument(..., help="Card ID")):
     emit(card, render)
 
 
+DESCRIPTION_HELP = "Card description. '-' reads it from stdin."
+DESCRIPTION_FILE_HELP = (
+    "Read the description from a file. Safer than -d for anything long or "
+    "quoted: no shell ever parses it."
+)
+
+
+def _read_text(stream_or_path):
+    """Text from a file path, or from stdin for '-', as UTF-8.
+
+    Decoded from bytes rather than read through a text stream, whose encoding
+    on Windows is the console code page. utf-8-sig drops the byte-order mark
+    PowerShell's Out-File and Set-Content -Encoding utf8 write, which would
+    otherwise become the first character of the card.
+    """
+    if stream_or_path == "-":
+        data = sys.stdin.buffer.read()
+    else:
+        # main() turns off Click's own `~` expansion, so do it for the one
+        # argument that really is a path.
+        with open(os.path.expanduser(stream_or_path), "rb") as f:
+            data = f.read()
+    return data.decode("utf-8-sig", errors="replace")
+
+
+def _resolve_description(description, description_file):
+    """The description to send, from -d, -d -, or --description-file.
+
+    Passing a long body through a shell is not safe on every platform:
+    PowerShell 5.1 does not re-quote an argument for a native executable, so
+    a quoted phrase with a space in it splits the argument, and a single
+    stray fragment lands in `card update`'s optional TITLE and renames the
+    card (Dev #474). A file or stdin never goes near the shell's parser.
+    """
+    if description is not None and description_file is not None:
+        emit_error("Pass --description or --description-file, not both.")
+        raise typer.Exit(1)
+    if description_file is not None:
+        text = _read_text(description_file)
+    elif description == "-":
+        text = _read_text("-")
+    else:
+        return description
+    # The trailing newline every file (and Get-Content -Raw) ends with is not
+    # part of the card.
+    return text.rstrip("\r\n")
+
+
 @card_app.command("create")
 def cmd_card_create(
     column_id: int = typer.Argument(..., help="Column ID"),
     title: str = typer.Argument(..., help="Card title"),
     description: Optional[str] = typer.Option(
-        None, "--description", "-d", help="Card description"
+        None, "--description", "-d", help=DESCRIPTION_HELP
+    ),
+    description_file: Optional[str] = typer.Option(
+        None, "--description-file", "-D", help=DESCRIPTION_FILE_HELP
     ),
     position: int = typer.Option(0, "--position", "-p", help="Position"),
 ):
     """Create a new card."""
+    description = _resolve_description(description, description_file)
     client = make_client()
     result = client.card_create(column_id, title, description, position)
     emit(result, lambda: rprint(f"Card created with [green]id={result['id']}[/green]"))
@@ -416,12 +470,16 @@ def cmd_card_update(
         None, help="New card title. Omit to leave the title alone."
     ),
     description: Optional[str] = typer.Option(
-        None, "--description", "-d", help="Card description"
+        None, "--description", "-d", help=DESCRIPTION_HELP
+    ),
+    description_file: Optional[str] = typer.Option(
+        None, "--description-file", "-D", help=DESCRIPTION_FILE_HELP
     ),
     position: Optional[int] = typer.Option(None, "--position", "-p", help="Position"),
     column: Optional[int] = typer.Option(None, "--column", "-c", help="New column ID"),
 ):
     """Update a card. Anything you don't pass is left unchanged."""
+    description = _resolve_description(description, description_file)
     _apply_card_update(card_id, title, description, position, column)
 
 
@@ -889,7 +947,7 @@ def cmd_apikey_save(key: str = typer.Argument(..., help="API key to save")):
     set_api_key(key)
 
     def render():
-        rprint("[green]API key saved to ~/.pkanban.yaml[/green]")
+        rprint(f"[green]API key saved to {config_file()}[/green]")
         rprint("Run commands without --api-key from now on.")
 
     emit({"ok": True}, render)
@@ -906,7 +964,7 @@ def cmd_apikey_clear():
     clear_api_key()
 
     def render():
-        rprint("[green]API key cleared from ~/.pkanban.yaml[/green]")
+        rprint(f"[green]API key cleared from {config_file()}[/green]")
 
     emit({"ok": True}, render)
 
@@ -925,30 +983,60 @@ VALUELESS_FLAGS = frozenset(
 )
 
 
+def _is_ours(argv, i):
+    """Whether argv[i] can be one of our global flags rather than a value.
+
+    A token right after a value-taking option is that option's value
+    (`--description --json`), not a flag. Following a flag that takes no
+    value it is ours, which is why `pkanban --version --json` needs
+    VALUELESS_FLAGS rather than a blanket "preceded by a dash" test.
+    """
+    previous = argv[i - 1]
+    return not (previous.startswith("-") and previous not in VALUELESS_FLAGS)
+
+
+def _options_end(argv):
+    """Index of `--`, after which every token is positional; else len(argv)."""
+    return argv.index("--") if "--" in argv else len(argv)
+
+
 def _extract_json_flag(argv):
     """Pull `--json` off the command line wherever it appears.
 
     Click only accepts an option on the command that declares it, so
     `pkanban --json board list` would work while `pkanban board list --json`
     failed -- and the second form is the one people type. Strip it here
-    instead, the same trick `--api-key` already uses.
-
-    A `--json` sitting right after a value-taking option is left alone: there
-    it is that option's value (`--description --json`), not a flag of ours.
-    Following a flag that takes no value it is ours, which is why
-    `pkanban --version --json` needs VALUELESS_FLAGS below rather than a blanket
-    "preceded by a dash" test.
+    instead, the same trick `--api-key` uses. Nothing after `--` is touched,
+    so a card really can be titled `--json`.
     """
     found = False
-    for i in range(len(argv) - 1, 0, -1):
-        if argv[i] != "--json":
-            continue
-        previous = argv[i - 1]
-        if previous.startswith("-") and previous not in VALUELESS_FLAGS:
-            continue
-        argv.pop(i)
-        found = True
+    for i in range(_options_end(argv) - 1, 0, -1):
+        if argv[i] == "--json" and _is_ours(argv, i):
+            argv.pop(i)
+            found = True
     return found
+
+
+def _extract_api_key(argv):
+    """Pull `--api-key KEY`, `-k KEY` or `--api-key=KEY` off the command line.
+
+    Returns the key, or None. The same rules as `--json`: a `-k` that is
+    another option's value is left alone, and nothing after `--` is looked
+    at. It used to take the first `-k` anywhere in argv, so a description of
+    "-k" consumed the next token as a key.
+    """
+    for i in range(1, _options_end(argv)):
+        token = argv[i]
+        if token.startswith("--api-key=") and _is_ours(argv, i):
+            argv.pop(i)
+            return token.split("=", 1)[1]
+        if token in ("--api-key", "-k") and _is_ours(argv, i):
+            if i + 1 >= len(argv):
+                emit_error(f"{token} needs a value.")
+                raise SystemExit(2)
+            argv.pop(i)
+            return argv.pop(i)
+    return None
 
 
 def main():
@@ -960,25 +1048,18 @@ def main():
     if _extract_json_flag(sys.argv):
         set_json_output(True)
 
-    # Check for --api-key option
-    if "--api-key" in sys.argv or "-k" in sys.argv:
-        idx = None
-        if "--api-key" in sys.argv:
-            idx = sys.argv.index("--api-key")
-        elif "-k" in sys.argv:
-            idx = sys.argv.index("-k")
-
-        if idx is not None and idx + 1 < len(sys.argv):
-            api_key = sys.argv[idx + 1]
-            # Remove --api-key and the key from sys.argv
-            sys.argv.pop(idx)
-            sys.argv.pop(idx)
-            # Use this key for this invocation only -- do not touch the
-            # stored token/API key in ~/.pkanban.yaml.
-            set_runtime_api_key(api_key)
+    api_key = _extract_api_key(sys.argv)
+    if api_key is not None:
+        # This invocation only -- the stored token and key are not touched.
+        set_runtime_api_key(api_key)
 
     try:
-        app()
+        # Click expands `~` and wildcards in arguments on Windows, to stand in
+        # for a shell that does not. It does it to every argument, so a card
+        # titled "~4,100" arrived as "C:\Users\4,100". No argument this CLI
+        # takes is a path pattern, and the one path it does take
+        # (--description-file) goes through open(), not a glob.
+        app(windows_expand_args=False)
     except PkanbanError as e:
         emit_error(str(e))
         raise SystemExit(1)
