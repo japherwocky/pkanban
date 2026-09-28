@@ -253,16 +253,21 @@ async def get_current_admin(
 
 
 async def get_current_user_from_api_key_header(api_key: str):
-    """Validate an API key from the header value."""
-    from backend.models import ApiKey
+    """Validate an API key from the header value.
+
+    A key that was sent is authoritative: an unknown one is a 401, rather than
+    a quiet fall-through to whatever Bearer token came with it.
+    """
+    from backend.models import ApiKey, _as_datetime
     from datetime import timezone as tz
 
-    # Look up API key by prefix (first 8 chars)
-    prefix = api_key[:8]
-    api_key_record = ApiKey.get_or_none(ApiKey.prefix == prefix)
+    api_key_record = ApiKey.find(api_key)
 
     if api_key_record is None:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+        )
 
     if not api_key_record.is_active:
         raise HTTPException(
@@ -270,23 +275,14 @@ async def get_current_user_from_api_key_header(api_key: str):
             detail="API key is inactive",
         )
 
-    # Check expiration
-    if api_key_record.expires_at and api_key_record.expires_at.replace(
-        tzinfo=tz.utc
+    if api_key_record.expires_at and _as_datetime(
+        api_key_record.expires_at
     ) < datetime.now(tz.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API key has expired",
         )
 
-    # Verify the key
-    if not api_key_record.verify(api_key):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
-
-    # Update last used timestamp
     api_key_record.update_last_used()
 
     return api_key_record.user

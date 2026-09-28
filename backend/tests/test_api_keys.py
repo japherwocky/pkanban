@@ -37,24 +37,27 @@ class TestApiKeyModel:
         assert len(key) == len(API_KEY_PREFIX) + 32  # prefix + 32 random chars
 
     def test_api_key_prefix(self):
-        """Test that API key prefix extraction works"""
+        """The displayed prefix reaches past "pkanban_" into the random part.
+
+        It used to be the first 8 characters -- "pkanban_" on every key -- so
+        a key list showed the same prefix on every row.
+        """
         from backend.models import get_api_key_prefix
 
         key = "pkanban_abc123def456"
-        prefix = get_api_key_prefix(key)
-        assert prefix == "pkanban_"  # First 8 chars (the prefix itself is 8 chars)
+        assert get_api_key_prefix(key) == "pkanban_abc123de"
 
     def test_hash_api_key(self):
-        """Test that API keys can be hashed and verified"""
+        """Keys are stored by SHA-256: deterministic, so they can be looked up."""
         from backend.models import hash_api_key
 
         key = "pkanban_testkey123"
         hashed = hash_api_key(key)
 
-        # Hash should be different from original
         assert hashed != key
-        # Hash should be a valid bcrypt hash
-        assert hashed.startswith("$2b$")
+        assert len(hashed) == 64
+        assert hashed == hash_api_key(key)
+        assert hashed != hash_api_key(key + "x")
 
     def test_create_api_key(self, test_user):
         """Test creating an API key"""
@@ -64,7 +67,7 @@ class TestApiKeyModel:
         assert raw_key is not None
         assert api_key.user == test_user
         assert api_key.name == "Test Key"
-        assert api_key.prefix == raw_key[:8]
+        assert api_key.prefix == raw_key[:16]
         assert api_key.is_active is True
         assert api_key.last_used_at is None
 
@@ -259,3 +262,118 @@ class TestApiKeyAuthentication:
         """Test that requests without auth return 401"""
         response = client.get("/api/boards")
         assert response.status_code == 401
+
+
+def _legacy_key(user, name="Legacy"):
+    """A key as it was stored before migration 006: bcrypt only, no SHA-256."""
+    import bcrypt
+    from backend.models import generate_api_key
+
+    raw = generate_api_key()
+    row = ApiKey.create(
+        user=user,
+        name=name,
+        key_hash=bcrypt.hashpw(raw.encode(), bcrypt.gensalt(4)).decode(),
+        key_sha256=None,
+        prefix="pkanban_",
+    )
+    return row, raw
+
+
+@pytest.fixture
+def second_user(db_session):
+    return User.create_user("second_key_user", "testpassword")
+
+
+class TestApiKeyLookup:
+    """More than one key in the table.
+
+    Every test above creates exactly one key into a freshly cleared database,
+    which is the only situation in which looking a key up by its first 8
+    characters -- "pkanban_", on every key -- happened to work.
+    """
+
+    def test_every_key_authenticates(self, client, test_user, second_user):
+        keys = [
+            ApiKey.create_key(test_user, "first")[1],
+            ApiKey.create_key(test_user, "second")[1],
+            ApiKey.create_key(second_user, "third")[1],
+        ]
+        for raw in keys:
+            response = client.get("/api/boards", headers={"X-API-Key": raw})
+            assert response.status_code == 200, response.text
+
+    def test_each_key_is_its_owners(self, client, test_user, second_user):
+        """The old lookup authenticated whoever owned the first row."""
+        from backend.models import Board
+
+        ApiKey.create_key(test_user, "first")
+        _, raw = ApiKey.create_key(second_user, "second")
+        response = client.post(
+            "/api/boards", json={"name": "made by key"}, headers={"X-API-Key": raw}
+        )
+        assert response.status_code == 200, response.text
+        board = Board.get(Board.name == "made by key")
+        assert board.owner_id == second_user.id
+
+    def test_revoking_one_key_leaves_the_others(self, client, test_user):
+        first, _ = ApiKey.create_key(test_user, "first")
+        _, raw = ApiKey.create_key(test_user, "second")
+        first.deactivate()
+        response = client.get("/api/boards", headers={"X-API-Key": raw})
+        assert response.status_code == 200, response.text
+
+    def test_unknown_key_is_refused_even_with_a_valid_token(
+        self, client, auth_headers
+    ):
+        """A key that was sent decides; it does not fall through to the JWT."""
+        headers = dict(auth_headers, **{"X-API-Key": "pkanban_" + "x" * 32})
+        response = client.get("/api/boards", headers=headers)
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Invalid API key"
+
+    def test_oversized_key_is_a_401_not_a_500(self, client, test_user):
+        _legacy_key(test_user)
+        response = client.get(
+            "/api/boards", headers={"X-API-Key": "pkanban_" + "x" * 200}
+        )
+        assert response.status_code == 401
+
+    def test_legacy_key_authenticates_and_upgrades(self, client, test_user):
+        from backend.models import hash_api_key
+
+        ApiKey.create_key(test_user, "new")
+        row, raw = _legacy_key(test_user)
+
+        response = client.get("/api/boards", headers={"X-API-Key": raw})
+        assert response.status_code == 200, response.text
+
+        row = ApiKey.get_by_id(row.id)
+        assert row.key_sha256 == hash_api_key(raw)
+        assert row.key_hash == ""
+        assert row.prefix == raw[:16]
+
+        # And from now on it is found by the fast path.
+        assert ApiKey.find(raw).id == row.id
+
+    def test_two_legacy_keys_both_work(self, client, test_user, second_user):
+        _, first = _legacy_key(test_user, "first")
+        _, second = _legacy_key(second_user, "second")
+        for raw in (second, first):
+            response = client.get("/api/boards", headers={"X-API-Key": raw})
+            assert response.status_code == 200, response.text
+
+    def test_inactive_legacy_key_is_refused(self, client, test_user):
+        row, raw = _legacy_key(test_user)
+        row.deactivate()
+        response = client.get("/api/boards", headers={"X-API-Key": raw})
+        assert response.status_code == 401
+
+    def test_last_used_is_not_rewritten_on_every_request(self, client, test_user):
+        row, raw = ApiKey.create_key(test_user, "busy")
+        client.get("/api/boards", headers={"X-API-Key": raw})
+        first = ApiKey.get_by_id(row.id).last_used_at
+        assert first is not None
+
+        client.get("/api/boards", headers={"X-API-Key": raw})
+        assert ApiKey.get_by_id(row.id).last_used_at == first
