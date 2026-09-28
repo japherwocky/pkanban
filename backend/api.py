@@ -13,6 +13,7 @@ from backend.auth import (
     create_access_token,
     get_current_user,
     get_current_user_or_api_key,
+    get_current_user_by_session,
     get_current_admin,
 )
 from backend.database import db
@@ -2713,7 +2714,7 @@ async def list_api_keys(current_user: User = Depends(get_current_user_or_api_key
 
 @api.post("/api-keys", response_model=ApiKeyCreateResponse)
 async def create_api_key(
-    key_data: ApiKeyCreate, current_user: User = Depends(get_current_user_or_api_key)
+    key_data: ApiKeyCreate, current_user: User = Depends(get_current_user_by_session)
 ):
     """Create a new API key. Returns the key only once - save it securely!"""
     api_key, raw_key = ApiKey.create_key(
@@ -2743,7 +2744,7 @@ async def delete_api_key(
 
 @api.post("/api-keys/{key_id}/activate")
 async def activate_api_key(
-    key_id: int, current_user: User = Depends(get_current_user_or_api_key)
+    key_id: int, current_user: User = Depends(get_current_user_by_session)
 ):
     """Reactivate a deactivated API key"""
     key = ApiKey.get_or_none((ApiKey.id == key_id) & (ApiKey.user == current_user))

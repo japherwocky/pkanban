@@ -19,7 +19,7 @@ Complete reference for all pkanban commands.
 
 API key management commands
 
-- `pkanban apikey activate` — Reactivate a deactivated API key.
+- `pkanban apikey activate` — Reactivate a deactivated API key. Needs 'pkanban login', not a key.
 - `pkanban apikey clear` — Remove the saved API key from config, without revoking it server-side.
 - `pkanban apikey create` — Create a new API key. The key is shown only once - save it securely!
 - `pkanban apikey list` — List all API keys.
