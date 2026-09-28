@@ -1,27 +1,55 @@
 import os
+import sys
 import yaml
 from pathlib import Path
 
 DEFAULT_CONFIG_FILE = Path.home() / ".pkanban.yaml"
 
 
+CONFIG_PATH_ENV = "PKANBAN_CONFIG_PATH"
+LEGACY_CONFIG_PATH_ENV = "KANBAN_CONFIG_PATH"
+
+_warned_legacy_env = False
+
+
 def config_file():
     """Where the config lives, resolved per call rather than at import.
 
-    This used to be a module-level constant, which made KANBAN_CONFIG_PATH
-    effective only if it was set before kanban.config was first imported.
+    This used to be a module-level constant, which made the override
+    effective only if it was set before pkanban.config was first imported.
     Anything importing the CLI earlier than that -- a test module doing so at
     collection time, before its fixture sets the variable -- silently bound
-    the real ~/.kanban.yaml instead, and every later write landed on the
+    the real ~/.pkanban.yaml instead, and every later write landed on the
     developer's own credentials.
+
+    The variable is PKANBAN_CONFIG_PATH. KANBAN_CONFIG_PATH survived the
+    rename by accident and is still honoured, with a warning, because
+    silently ignoring it would point someone's scratch setup at their real
+    credentials and the real server -- the one failure this override exists
+    to prevent. `~` is expanded, so a quoted `~/scratch.yaml` does not create
+    a directory literally named `~`.
     """
-    return Path(os.environ.get("KANBAN_CONFIG_PATH", DEFAULT_CONFIG_FILE))
+    global _warned_legacy_env
+
+    raw = os.environ.get(CONFIG_PATH_ENV)
+    if not raw:
+        raw = os.environ.get(LEGACY_CONFIG_PATH_ENV)
+        if raw and not _warned_legacy_env:
+            _warned_legacy_env = True
+            print(
+                f"warning: {LEGACY_CONFIG_PATH_ENV} is deprecated, "
+                f"use {CONFIG_PATH_ENV}",
+                file=sys.stderr,
+            )
+    if not raw:
+        return DEFAULT_CONFIG_FILE
+    return Path(raw).expanduser()
 
 
 # Most installs talk to the hosted service, so default there rather than to a
 # localhost nobody is running -- a fresh `pip install` should reach a real
 # server on the first command, not a connection error. Self-hosters point
-# elsewhere with `kanban config --url http://localhost:8000`.
+# elsewhere with `pkanban config --url http://localhost:8000`.
 DEFAULT_SERVER_URL = "https://pkanban.pearachute.com"
 
 
