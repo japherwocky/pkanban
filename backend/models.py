@@ -7,13 +7,17 @@ from peewee import (
     TextField,
     BooleanField,
 )
-from playhouse.sqlite_ext import Model  # type: ignore
+from playhouse.sqlite_ext import AutoIncrementField, Model  # type: ignore
 from datetime import datetime, timezone, timedelta
 
 from backend.database import db
 
 
 class BaseModel(Model):
+    # AUTOINCREMENT, not peewee's default rowid alias: the default hands a deleted
+    # row's id to the next insert. Migration 007 rebuilds existing tables to match.
+    id = AutoIncrementField()
+
     class Meta:
         database = db
 

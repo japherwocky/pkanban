@@ -140,3 +140,131 @@ def test_006_adds_key_sha256_to_a_pre_006_table():
         )
         # The legacy row survives, still bcrypt-only, for find() to upgrade.
         assert rows == [("$2b$04$legacy", None)]
+
+
+def _strip_autoincrement(db):
+    """Turn a model-built database back into the pre-007 schema."""
+    for (table,) in db.execute_sql(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND sql LIKE '%AUTOINCREMENT%'"
+    ).fetchall():
+        (sql,) = db.execute_sql(
+            "SELECT sql FROM sqlite_master WHERE name=?", (table,)
+        ).fetchone()
+        indexes = [
+            r[0]
+            for r in db.execute_sql(
+                "SELECT sql FROM sqlite_master WHERE type='index' "
+                "AND tbl_name=? AND sql IS NOT NULL",
+                (table,),
+            )
+        ]
+        db.execute_sql(f'ALTER TABLE "{table}" RENAME TO "{table}__old"')
+        db.execute_sql(sql.replace(" AUTOINCREMENT", ""))
+        db.execute_sql(f'INSERT INTO "{table}" SELECT * FROM "{table}__old"')
+        db.execute_sql(f'DROP TABLE "{table}__old"')
+        for index_sql in indexes:
+            db.execute_sql(index_sql)
+
+
+def test_007_stops_deleted_ids_being_reused_and_keeps_data():
+    """Build the pre-007 schema with real parent/child rows, migrate, and check
+    that nothing is lost, every table now autoincrements, the schema matches a
+    fresh install, and a deleted highest id is not handed out again.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        old_path = os.path.join(tmp, "old.db")
+        fresh_path = os.path.join(tmp, "fresh.db")
+
+        fresh = SqliteDatabase(fresh_path)
+        with fresh.bind_ctx(ALL_MODELS):
+            fresh.connect()
+            fresh.create_tables(ALL_MODELS)
+            fresh.close()
+
+        old = SqliteDatabase(old_path)
+        with old.bind_ctx(ALL_MODELS):
+            old.connect()
+            old.create_tables(ALL_MODELS)
+            _strip_autoincrement(old)
+            assert not old.execute_sql(
+                "SELECT 1 FROM sqlite_master WHERE sql LIKE '%AUTOINCREMENT%'"
+            ).fetchall()
+
+            old.execute_sql(
+                "INSERT INTO user (username, password_hash, email_verified, admin) "
+                "VALUES ('u', 'x', 1, 0)"
+            )
+            old.execute_sql(
+                "INSERT INTO board (owner_id, name, is_public_to_org, created_at) "
+                "VALUES (1, 'b', 0, '2026-01-01')"
+            )
+            old.execute_sql(
+                "INSERT INTO \"column\" (board_id, name, position) VALUES (1, 'c', 0)"
+            )
+            for n in (1, 2, 3):
+                old.execute_sql(
+                    "INSERT INTO card (column_id, title, position) "
+                    f"VALUES (1, 'card{n}', {n})"
+                )
+            old.execute_sql(
+                "INSERT INTO comment (card_id, user_id, content, created_at) "
+                "VALUES (3, 1, 'hi', '2026-01-01')"
+            )
+            before = {
+                t: old.execute_sql(f'SELECT * FROM "{t}" ORDER BY id').fetchall()
+                for t in ("user", "board", "column", "card", "comment")
+            }
+
+            Router(old, migrate_dir=MIGRATIONS_DIR).run()
+
+            after = {
+                t: old.execute_sql(f'SELECT * FROM "{t}" ORDER BY id').fetchall()
+                for t in before
+            }
+            assert after == before, "rows changed or were lost in the rebuild"
+
+            # Every table now autoincrements.
+            assert not old.execute_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT IN ('sqlite_sequence', 'migratehistory') "
+                "AND sql NOT LIKE '%AUTOINCREMENT%'"
+            ).fetchall()
+
+            # The core of the bug: delete the newest card, insert another.
+            old.execute_sql("DELETE FROM comment")
+            old.execute_sql("DELETE FROM card WHERE id = 3")
+            old.execute_sql(
+                "INSERT INTO card (column_id, title, position) VALUES (1, 'new', 9)"
+            )
+            assert old.execute_sql("SELECT max(id) FROM card").fetchone()[0] == 4
+
+            # Deleting parents did not cascade: foreign keys stayed off.
+            assert old.execute_sql("SELECT count(*) FROM board").fetchone()[0] == 1
+            old.close()
+
+        # Same columns and indexes as a fresh install.
+        old_schema, fresh_schema = _schema(old_path), _schema(fresh_path)
+        assert old_schema == fresh_schema
+
+        # Running again is a no-op.
+        again = SqliteDatabase(old_path)
+        again.connect()
+        Router(again, migrate_dir=MIGRATIONS_DIR).run()
+        again.close()
+
+
+def test_new_models_declare_autoincrement():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "fresh.db")
+        db = SqliteDatabase(path)
+        with db.bind_ctx(ALL_MODELS):
+            db.connect()
+            db.create_tables(ALL_MODELS)
+            missing = db.execute_sql(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name NOT IN ('sqlite_sequence') "
+                "AND sql NOT LIKE '%AUTOINCREMENT%'"
+            ).fetchall()
+            db.close()
+        assert not missing
