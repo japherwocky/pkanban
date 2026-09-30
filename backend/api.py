@@ -2,11 +2,14 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 from peewee import fn
 from pydantic import BaseModel, ConfigDict
 import os
+import stripe
 
 from backend.auth import (
     Token,
@@ -18,6 +21,7 @@ from backend.auth import (
 )
 from backend.billing import check_can_add_card, check_can_create_board, usage_for
 from backend.database import db
+from backend import stripe_billing
 from backend.mailer import send_invite_email, send_verification_email
 from backend.models import (
     User,
@@ -37,6 +41,7 @@ from backend.models import (
 )
 
 api = APIRouter()
+logger = logging.getLogger(__name__)
 
 EMAIL_PATTERN = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
@@ -1286,6 +1291,70 @@ async def create_board(
         "shared_team_id": board.shared_team_id,
         "owner_id": board.owner_id,
     }
+
+
+@api.post("/billing/checkout")
+async def billing_checkout(current_user: User = Depends(get_current_user)):
+    """Start a Pro subscription; returns the Stripe Checkout URL to send the
+    user to. Session-only (no API key): this is a payment flow."""
+    if current_user.is_pro:
+        raise HTTPException(
+            status_code=409,
+            detail="You are already on Pro. Manage your subscription from Settings > Plan.",
+        )
+    try:
+        url = stripe_billing.create_checkout_url(current_user)
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Payments are not set up on this server.")
+    except stripe.StripeError:
+        logger.exception("Stripe checkout failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=502, detail="Could not reach the payment provider. Try again shortly."
+        )
+    return {"url": url}
+
+
+@api.post("/billing/portal")
+async def billing_portal(current_user: User = Depends(get_current_user)):
+    """The Stripe Customer Portal, for changing the card or cancelling.
+    Session-only: it can end the subscription."""
+    if not current_user.stripe_customer_id:
+        raise HTTPException(status_code=409, detail="There is no billing account to manage yet.")
+    try:
+        url = stripe_billing.create_portal_url(current_user)
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Payments are not set up on this server.")
+    except stripe.StripeError:
+        logger.exception("Stripe portal failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=502, detail="Could not reach the payment provider. Try again shortly."
+        )
+    return {"url": url}
+
+
+@api.post("/billing/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe's event feed -- the only thing that changes User.plan.
+
+    Unauthenticated by design; the signature is the authentication. A request
+    without a valid one is refused, and so is every request if we have no
+    secret to check it against: failing open here would let anyone POST
+    themselves onto the Pro plan.
+    """
+    payload = await request.body()
+    try:
+        event = stripe_billing.construct_event(payload, request.headers.get("stripe-signature"))
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Webhook is not configured.")
+    except stripe_billing.BadWebhook:
+        raise HTTPException(status_code=400, detail="Invalid signature.")
+    try:
+        result = stripe_billing.handle_event(event)
+    except stripe.StripeError:
+        # Non-2xx, so Stripe redelivers once it can be reached again.
+        logger.exception("Stripe webhook %s could not be applied", event.get("id"))
+        raise HTTPException(status_code=502, detail="Could not reach Stripe.")
+    return {"received": True, "result": result}
 
 
 @api.get("/me/usage")

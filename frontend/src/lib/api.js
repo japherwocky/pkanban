@@ -292,6 +292,12 @@ export const api = {
   me: {
     usage: () => apiFetch('/api/me/usage'),
   },
+  billing: {
+    // Each resolves to {url}: Stripe's hosted page, which the caller sends the
+    // browser to. Nothing here changes the plan -- only Stripe's webhook does.
+    checkout: () => apiFetch('/api/billing/checkout', { method: 'POST' }),
+    portal: () => apiFetch('/api/billing/portal', { method: 'POST' }),
+  },
   apiKeys: {
     list: () => apiFetch('/api/api-keys'),
     create: (name, expiresAt) => apiFetch('/api/api-keys', {

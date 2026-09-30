@@ -6,19 +6,77 @@
   // A board this full is worth a warning before it becomes a 402.
   const NEAR = 0.8;
 
+  // After paying, Stripe sends the browser back here at once, but the plan only
+  // changes when Stripe's webhook reaches the server, a moment later. So the
+  // redirect is treated as "go and look", never as proof: poll the usage until
+  // the plan really is Pro, and give up politely if it takes too long.
+  const POLL_MS = 2000;
+  const POLL_TRIES = 10;
+
   let usage = $state(null);
   let loading = $state(true);
   let error = $state(null);
+  let busy = $state(false);
+  let actionError = $state(null);
+  let waitingForPlan = $state(false);
+  let gaveUpWaiting = $state(false);
+  let checkoutOutcome = $state(null);
 
-  onMount(async () => {
-    try {
-      usage = await api.me.usage();
-    } catch (e) {
-      error = e.message;
-    } finally {
-      loading = false;
+  async function load() {
+    usage = await api.me.usage();
+  }
+
+  onMount(() => {
+    const outcome = new URLSearchParams(window.location.search).get('checkout');
+    checkoutOutcome = outcome;
+    let timer = null;
+    let stopped = false;
+
+    async function waitForPro() {
+      waitingForPlan = true;
+      for (let i = 0; i < POLL_TRIES && !stopped; i++) {
+        if (usage?.plan === 'pro') break;
+        await new Promise((resolve) => { timer = setTimeout(resolve, POLL_MS); });
+        if (stopped) return;
+        try {
+          await load();
+        } catch {
+          // A failed poll is not worth interrupting the page for; try again.
+        }
+      }
+      if (stopped) return;
+      waitingForPlan = false;
+      gaveUpWaiting = usage?.plan !== 'pro';
     }
+
+    (async () => {
+      try {
+        await load();
+      } catch (e) {
+        error = e.message;
+      } finally {
+        loading = false;
+      }
+      if (outcome === 'success' && !error) await waitForPro();
+    })();
+
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   });
+
+  async function goTo(start) {
+    busy = true;
+    actionError = null;
+    try {
+      const { url } = await start();
+      window.location.assign(url);
+    } catch (e) {
+      actionError = e.message;
+      busy = false;
+    }
+  }
 
   const limited = $derived(
     usage !== null && usage.billing_enabled && usage.max_boards !== null
@@ -33,6 +91,14 @@
   function percent(used, max) {
     return Math.min(100, Math.round((used / max) * 100));
   }
+
+  function formatDate(value) {
+    return new Date(value).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
 </script>
 
 <div class="plan-page">
@@ -46,6 +112,21 @@
   {:else if error}
     <div class="notice" role="alert">Could not load your plan: {error}</div>
   {:else}
+    {#if waitingForPlan}
+      <div class="banner" role="status">
+        Payment received. Waiting for Stripe to confirm it -- this page updates by itself.
+      </div>
+    {:else if usage.plan === 'pro' && checkoutOutcome === 'success'}
+      <div class="banner" role="status">You are on Pro. Thank you.</div>
+    {:else if gaveUpWaiting}
+      <div class="banner" role="status">
+        Your payment went through, but the plan has not updated yet. Reload in a minute --
+        if it still says Free, contact us and we will sort it out.
+      </div>
+    {:else if checkoutOutcome === 'cancelled'}
+      <div class="banner" role="status">Checkout cancelled. You have not been charged.</div>
+    {/if}
+
     <section class="card">
       <div class="row">
         <span class="label">Current plan</span>
@@ -56,6 +137,35 @@
         <p class="muted">This server does not enforce plan limits.</p>
       {:else if !limited}
         <p class="muted">Unlimited boards and cards.</p>
+      {/if}
+
+      {#if usage.plan === 'pro' && usage.current_period_end}
+        <p class="muted">Current period ends {formatDate(usage.current_period_end)}.</p>
+      {/if}
+
+      {#if usage.subscription_status === 'past_due'}
+        <p class="warn-text" role="alert">
+          Your last payment failed. Update your card to keep Pro.
+        </p>
+      {/if}
+
+      {#if usage.upgrade_available || usage.manage_available}
+        <div class="actions">
+          {#if usage.upgrade_available}
+            <button class="primary" disabled={busy} onclick={() => goTo(api.billing.checkout)}>
+              {busy ? 'Redirecting...' : 'Upgrade to Pro'}
+            </button>
+          {/if}
+          {#if usage.manage_available}
+            <button class="secondary" disabled={busy} onclick={() => goTo(api.billing.portal)}>
+              {busy ? 'Redirecting...' : 'Manage subscription'}
+            </button>
+          {/if}
+        </div>
+      {/if}
+
+      {#if actionError}
+        <p class="warn-text" role="alert">{actionError}</p>
       {/if}
     </section>
 
@@ -144,6 +254,12 @@
     margin: 0;
   }
 
+  .warn-text {
+    font-size: var(--text-sm);
+    color: var(--color-destructive);
+    margin: 0;
+  }
+
   .loading {
     text-align: center;
     padding: var(--space-12);
@@ -155,6 +271,14 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     color: var(--color-destructive);
+  }
+
+  .banner {
+    padding: var(--space-4);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    color: var(--color-foreground);
   }
 
   .card {
@@ -200,6 +324,36 @@
   .badge.pro {
     border-color: var(--color-primary);
     color: var(--color-primary);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  button {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .primary {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: 1px solid var(--color-primary);
+  }
+
+  .secondary {
+    background: transparent;
+    color: var(--color-foreground);
+    border: 1px solid var(--color-border);
   }
 
   .meter {

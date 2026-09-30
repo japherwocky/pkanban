@@ -227,6 +227,32 @@ so a command's own `except HTTPError` cannot swallow it); in `--json` mode it
 lands on stderr as `{"error", "status": 402, "code": "plan_limit", "limit",
 "max", "current", "upgrade_url"}`. The web UI shows it in `PlanLimitModal`.
 
+#### Stripe (taking payment)
+
+`backend/stripe_billing.py`. Set these in the server environment (the deploy
+does not manage them -- see `sys/config/production.env`):
+
+- `STRIPE_SECRET_KEY` -- `sk_test_...` or `sk_live_...`
+- `STRIPE_PRICE_ID` -- the Pro plan's recurring Price
+- `STRIPE_WEBHOOK_SECRET` -- `whsec_...`, from the webhook endpoint
+
+`POST /api/billing/checkout` and `/api/billing/portal` return a Stripe URL to
+send the browser to; both refuse API keys (the portal can cancel). Stripe's
+webhook goes to `POST /api/billing/webhook` and is **the only thing that sets
+`User.plan`** -- the redirect back to `/settings/plan?checkout=success` proves
+nothing, so the page polls usage until the webhook lands. Subscribe to
+`checkout.session.completed`, `customer.subscription.created|updated|deleted`
+and `invoice.payment_failed`. The handler does not trust an event's payload: it
+only learns which customer to look at, then derives the plan from that
+customer's subscriptions as Stripe reports them now, so a duplicate or
+out-of-order event is harmless. `past_due` stays Pro while Stripe retries.
+Subscribing works whether or not `BILLING_ENABLED` is on, so a real payment can
+be smoke-tested before the limits are switched on. Without a webhook secret the
+endpoint answers 503 to everything; it never accepts an unchecked request.
+
+Try it locally with Stripe's test mode and `stripe listen --forward-to
+localhost:8080/api/billing/webhook` (it prints the `whsec_...` to use).
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

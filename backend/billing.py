@@ -20,6 +20,7 @@ import os
 
 from peewee import fn
 
+from backend import stripe_billing
 from backend.models import Board, Card, Column
 
 FREE_MAX_BOARDS = 5
@@ -142,6 +143,12 @@ def usage_for(user):
         "billing_enabled": billing_enabled(),
         "subscription_status": user.subscription_status,
         "current_period_end": user.current_period_end,
+        # What the Plan page may offer. Independent of billing_enabled: you can
+        # subscribe before the limits are switched on, which is how a real
+        # payment gets smoke-tested ahead of launch.
+        "upgrade_available": stripe_billing.checkout_configured() and not user.is_pro,
+        "manage_available": stripe_billing.portal_configured()
+        and bool(user.stripe_customer_id),
         "max_boards": max_boards,
         "max_cards_per_board": max_cards,
         "boards_owned": len(owned),

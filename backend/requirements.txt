@@ -11,3 +11,4 @@ httpx
 requests
 typer
 rich
+stripe>=11
