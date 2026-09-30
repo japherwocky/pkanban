@@ -61,6 +61,7 @@
     <!-- Desktop Nav -->
     <nav class="nav-desktop">
       <button onclick={() => goTo('/docs')}>Documentation</button>
+      <button onclick={() => goTo('/pricing')}>Pricing</button>
       <button onclick={() => goTo('/about')}>About</button>
     </nav>
 
@@ -139,6 +140,7 @@
   {#if isMenuOpen}
     <nav class="nav-mobile">
       <button onclick={() => goTo('/docs')}>Documentation</button>
+      <button onclick={() => goTo('/pricing')}>Pricing</button>
       <button onclick={() => goTo('/about')}>About</button>
       <button onclick={() => goTo('/contact')}>Contact</button>
       <div class="mobile-divider"></div>

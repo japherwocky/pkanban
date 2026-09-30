@@ -1,4 +1,5 @@
 <script>
+  import { link } from 'svelte-routing';
   import PageLayout from '../lib/PageLayout.svelte';
 </script>
 
@@ -25,6 +26,47 @@
         ownership of your board data, task information, or any content you upload.
       </p>
 
+      <h2>Plans and Billing</h2>
+      <p>
+        pkanban has a free plan and a paid plan, Pro. The limits of each and the
+        price of Pro are on the <a href="/pricing" use:link>pricing page</a>. Pro is billed
+        monthly in advance through Stripe and renews automatically until you
+        cancel. We never see or store your card number; Stripe does.
+      </p>
+
+      <h2>Cancellation</h2>
+      <p>
+        You can cancel at any time from Settings &rarr; Plan. Cancelling stops
+        future renewals. Pro stays active until the end of the period you have
+        already paid for, and then the account returns to the free plan.
+      </p>
+
+      <h2>When Pro Ends or a Limit Is Passed</h2>
+      <p>
+        If you are over the free plan's limits when Pro ends, or a payment fails
+        for good, nothing is deleted. You can still read, edit, reorder and delete
+        what you have; you cannot create new boards or cards until you are back
+        under the limits or subscribe again.
+      </p>
+      <p>
+        If a payment fails, Stripe retries it for a while. If it still does not go
+        through, the subscription ends.
+      </p>
+
+      <h2>Refunds</h2>
+      <p>
+        Payments are not refundable, including for part of a billing period,
+        except where the law requires it or where we charged you in error. If
+        something went wrong with a charge, write to us and we will sort it out.
+      </p>
+
+      <h2>Price Changes</h2>
+      <p>
+        We may change the price of Pro. A change applies from your first renewal
+        after we have given you at least 30 days' notice by email, and you can
+        cancel before it takes effect.
+      </p>
+
       <h2>AI Agent Integration</h2>
       <p>
         When using pkanban's CLI or API with AI agents, you are responsible for
@@ -36,7 +78,8 @@
       <p>
         pkanban is in open beta: anyone can create an account, and the service may
         still change -- we may limit features, storage, or access with prior
-        notice. The service is provided without warranty of any kind.
+        notice, and the free plan's limits are the ones on the pricing page. The
+        service is provided without warranty of any kind.
       </p>
 
       <h2>Termination</h2>
