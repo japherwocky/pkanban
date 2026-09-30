@@ -28,6 +28,14 @@ FREE_MAX_BOARDS = 5
 # deliberately not a way around the cap, so heavy use is what Pro is for.
 FREE_MAX_CARDS_PER_BOARD = 100
 
+# What the Pricing page advertises for Pro: $6.00 a month. The Stripe Price is
+# the thing that actually charges, so this is not used to charge anyone -- it is
+# what `manage.py billing-check` compares the configured Price against, and
+# what the Pricing page test compares the page against, so the page and the
+# bill cannot quietly disagree.
+PRO_PRICE_CENTS = 600
+PRO_PRICE_INTERVAL = "month"
+
 
 def billing_enabled():
     """Read per call, not at import, so the switch can be flipped in tests."""

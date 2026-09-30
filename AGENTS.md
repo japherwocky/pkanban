@@ -253,6 +253,17 @@ endpoint answers 503 to everything; it never accepts an unchecked request.
 Try it locally with Stripe's test mode and `stripe listen --forward-to
 localhost:8080/api/billing/webhook` (it prints the `whsec_...` to use).
 
+`python manage.py billing-check` is the launch preflight (read-only; exits 1 if
+anything would break payments or mislead a customer; `--no-stripe` skips the API
+calls, `--json` for a machine-readable report). It checks the settings, that
+the Price is recurring and equals `PRO_PRICE_CENTS`/`PRO_PRICE_INTERVAL` in
+`backend/billing.py` (the same numbers the Pricing page test holds the page to),
+that the dashboard webhook points at this server with all five events, that a
+Customer Portal exists, and lists the free accounts that would be blocked the
+moment limits switch on. The ordered launch runbook is "Billing (Stripe)" in
+`sys/DEPLOYMENT.md`. If you change the Pro price, change it in Stripe, in
+`billing.py`, and on the Pricing page together.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

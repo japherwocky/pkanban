@@ -29,6 +29,13 @@ function serverLimit(name) {
   return Number(match[1]);
 }
 
+function serverString(name) {
+  const source = readFileSync(join(process.cwd(), '..', 'backend', 'billing.py'), 'utf8');
+  const match = source.match(new RegExp(`^${name}\\s*=\\s*"([^"]+)"`, 'm'));
+  if (!match) throw new Error(`${name} not found in backend/billing.py`);
+  return match[1];
+}
+
 const rowOf = (name) => screen.getByRole('row', { name: new RegExp(name, 'i') });
 
 describe('Pricing - the numbers', () => {
@@ -43,12 +50,21 @@ describe('Pricing - the numbers', () => {
     );
   });
 
-  it('shows Free at $0 and Pro at $6/mo, with Pro unlimited on both limits', () => {
+  it('advertises the price `manage.py billing-check` holds the Stripe Price to', () => {
+    // billing-check fails if the configured Price differs from these, so the
+    // page, the preflight and the bill all answer to one number.
+    expect(serverString('PRO_PRICE_INTERVAL')).toBe('month');
+    render(Pricing);
+
+    const cents = serverLimit('PRO_PRICE_CENTS');
+    expect(within(rowOf('Price')).getAllByRole('cell')[1]).toHaveTextContent(`$${cents / 100}/mo`);
+  });
+
+  it('shows Free at $0 and Pro unlimited on both limits', () => {
     render(Pricing);
 
     const price = within(rowOf('Price')).getAllByRole('cell');
     expect(price[0]).toHaveTextContent('$0');
-    expect(price[1]).toHaveTextContent('$6/mo');
     expect(within(rowOf('Boards you own')).getAllByRole('cell')[1]).toHaveTextContent('Unlimited');
     expect(within(rowOf('Cards per board')).getAllByRole('cell')[1]).toHaveTextContent('Unlimited');
   });
