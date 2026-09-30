@@ -16,7 +16,7 @@ from backend.auth import (
     get_current_user_by_session,
     get_current_admin,
 )
-from backend.billing import check_can_add_card, check_can_create_board
+from backend.billing import check_can_add_card, check_can_create_board, usage_for
 from backend.database import db
 from backend.mailer import send_invite_email, send_verification_email
 from backend.models import (
@@ -1286,6 +1286,12 @@ async def create_board(
         "shared_team_id": board.shared_team_id,
         "owner_id": board.owner_id,
     }
+
+
+@api.get("/me/usage")
+async def get_my_usage(current_user: User = Depends(get_current_user_or_api_key)):
+    """The caller's plan, what it allows, and how much of it they are using."""
+    return usage_for(current_user)
 
 
 @api.get("/boards", response_model=list)

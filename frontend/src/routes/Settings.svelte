@@ -5,6 +5,7 @@
 
   const tabs = [
     { path: '/settings/api-keys', label: 'API Keys' },
+    { path: '/settings/plan', label: 'Plan' },
   ];
 
   function goTo(path) {

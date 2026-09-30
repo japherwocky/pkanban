@@ -220,6 +220,13 @@ never count toward your own 5. Past a limit the API answers **402** with
 (`POST /boards`, `POST /cards`, or `PUT /cards/{id}` moving a card to another
 board) is refused -- nothing is ever locked or deleted.
 
+`GET /api/me/usage` reports the caller's plan, limits (`null` = unlimited) and
+per-board card counts; the Settings > Plan page and `pkanban account` both read
+it. The CLI turns a plan-limit 402 into a `PlanLimitError` (not an `HTTPError`,
+so a command's own `except HTTPError` cannot swallow it); in `--json` mode it
+lands on stderr as `{"error", "status": 402, "code": "plan_limit", "limit",
+"max", "current", "upgrade_url"}`. The web UI shows it in `PlanLimitModal`.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

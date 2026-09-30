@@ -275,3 +275,66 @@ def test_a_user_over_the_limit_can_still_edit_and_delete(
     assert client.delete(f"/api/cards/{card.id}", headers=h).status_code == 200
     # Still over the cap after the delete, so still no new cards.
     assert add_card(client, user, column).status_code == 402
+
+
+# --- usage -----------------------------------------------------------------
+
+
+def get_usage(client, user):
+    r = client.get("/api/me/usage", headers=auth(user))
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_usage_for_a_free_user_reports_limits_and_busiest_boards_first(
+    client, db_session, billing_on
+):
+    user = make_user()
+    quiet, busy = fill_boards(user, 2)
+    fill_cards(busy, 7)
+    usage = get_usage(client, user)
+    assert usage["plan"] == "free"
+    assert usage["billing_enabled"] is True
+    assert usage["max_boards"] == FREE_MAX_BOARDS
+    assert usage["max_cards_per_board"] == FREE_MAX_CARDS_PER_BOARD
+    assert usage["boards_owned"] == 2
+    assert [(b["id"], b["cards"]) for b in usage["boards"]] == [
+        (busy.id, 7),
+        (quiet.id, 0),
+    ]
+
+
+def test_usage_counts_owned_boards_not_shared_ones(client, db_session, billing_on):
+    owner = make_user(plan="pro")
+    user = make_user()
+    team_board(owner, user)
+    usage = get_usage(client, user)
+    assert usage["boards_owned"] == 0
+    assert usage["boards"] == []
+
+
+def test_usage_for_a_user_with_no_boards(client, db_session, billing_on):
+    usage = get_usage(client, make_user())
+    assert usage["boards_owned"] == 0
+    assert usage["boards"] == []
+
+
+def test_usage_for_a_pro_user_has_no_maximums(client, db_session, billing_on):
+    usage = get_usage(client, make_user(plan="pro"))
+    assert usage["plan"] == "pro"
+    assert usage["max_boards"] is None
+    assert usage["max_cards_per_board"] is None
+
+
+def test_usage_has_no_maximums_while_billing_is_off(
+    client, db_session, monkeypatch
+):
+    monkeypatch.delenv("BILLING_ENABLED", raising=False)
+    usage = get_usage(client, make_user())
+    assert usage["billing_enabled"] is False
+    assert usage["max_boards"] is None
+    assert usage["max_cards_per_board"] is None
+
+
+def test_usage_requires_authentication(client, db_session):
+    assert client.get("/api/me/usage").status_code == 401

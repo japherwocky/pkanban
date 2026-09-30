@@ -41,6 +41,10 @@ Logout and clear credentials.
 
 ## Board Management
 
+### [`pkanban account`](/docs/commands/account)
+
+Show your plan and how much of it you are using.
+
 ### [`pkanban board`](/docs/commands/board)
 
 Board management commands

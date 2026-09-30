@@ -97,6 +97,43 @@ describe('apiFetch - errors', () => {
   });
 });
 
+describe('apiFetch - plan limits', () => {
+  const body = {
+    error: 'plan_limit', limit: 'boards', max: 5, current: 5,
+    detail: 'The free plan allows 5 boards and you own 5.',
+  };
+
+  it('throws a PlanLimitError carrying the structured fields', async () => {
+    fetch.mockResolvedValue(jsonResponse(body, { ok: false, status: 402 }));
+    const { apiFetch, PlanLimitError } = await freshApi();
+
+    const error = await apiFetch('/api/boards', { method: 'POST' }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(PlanLimitError);
+    expect(error.code).toBe('plan_limit');
+    expect([error.limit, error.max, error.current]).toEqual(['boards', 5, 5]);
+  });
+
+  it('keeps the server sentence as the message, for callers that just alert it', async () => {
+    fetch.mockResolvedValue(jsonResponse(body, { ok: false, status: 402 }));
+    const { apiFetch } = await freshApi();
+
+    await expect(apiFetch('/api/boards', { method: 'POST' })).rejects.toThrow(
+      'The free plan allows 5 boards and you own 5.'
+    );
+  });
+
+  it('leaves a 402 that is not a plan limit as a plain error', async () => {
+    fetch.mockResolvedValue(jsonResponse({ detail: 'Payment Required' }, { ok: false, status: 402 }));
+    const { apiFetch, PlanLimitError } = await freshApi();
+
+    const error = await apiFetch('/api/boards').catch((e) => e);
+
+    expect(error).not.toBeInstanceOf(PlanLimitError);
+    expect(error.message).toBe('Payment Required');
+  });
+});
+
 describe('apiFetch - expired session handling', () => {
   it('clears credentials and redirects on a 401 for an authenticated request', async () => {
     localStorage.setItem('token', 'expired');

@@ -4,6 +4,7 @@
   import ThemeToggle from '../lib/ThemeToggle.svelte';
   import Logo from '../lib/Logo.svelte';
   import { api } from '../lib/api.js';
+  import { showPlanLimit } from '../lib/planLimit.js';
   import Modal from '../lib/Modal.svelte';
 
   let boards = $state([]);
@@ -75,7 +76,7 @@
       newBoardName = '';
       showCreateModal = false;
     } catch (e) {
-      alert('Failed to create board: ' + e.message);
+      if (!showPlanLimit(e)) alert('Failed to create board: ' + e.message);
     } finally {
       createLoading = false;
     }
