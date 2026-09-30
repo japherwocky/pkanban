@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 import logging
 
@@ -403,6 +403,9 @@ class UserUpdate(BaseModel):
     username: str
     email: Optional[str] = None
     admin: bool = False
+    # Omitted means "leave the plan alone", so callers that predate this field
+    # keep working. Anything but free/pro is a 422.
+    plan: Optional[Literal["free", "pro"]] = None
 
 
 class UserResponse(BaseModel):
@@ -412,6 +415,7 @@ class UserResponse(BaseModel):
     username: str
     email: Optional[str]
     admin: bool
+    plan: str = "free"
 
 
 class PasswordReset(BaseModel):
@@ -677,7 +681,18 @@ async def list_admin_users(current_admin_user: User = Depends(get_current_admin)
     """List all users (admin only)"""
     users = User.select().order_by(User.id)
     return [
-        {"id": u.id, "username": u.username, "email": u.email, "admin": u.admin}
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "admin": u.admin,
+            "plan": u.plan,
+            "subscription_status": u.subscription_status,
+            # Whether Stripe knows this account. If so, Stripe stays the source
+            # of truth: its next event for the customer recomputes the plan and
+            # overwrites a manual change, so the admin UI says so.
+            "has_stripe_customer": bool(u.stripe_customer_id),
+        }
         for u in users
     ]
 
@@ -700,6 +715,7 @@ async def create_admin_user(
             "username": user.username,
             "email": user.email,
             "admin": user.admin,
+            "plan": user.plan,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -741,6 +757,8 @@ async def update_admin_user(
     user.username = user_data.username
     user.email = user_data.email
     user.admin = user_data.admin
+    if user_data.plan is not None:
+        user.plan = user_data.plan
     user.save()
 
     return {
@@ -748,6 +766,7 @@ async def update_admin_user(
         "username": user.username,
         "email": user.email,
         "admin": user.admin,
+        "plan": user.plan,
     }
 
 

@@ -186,6 +186,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* Wraps instead of overhanging: at 375px the actions were 50px wider than
+       the screen, which scrolled the page sideways and pushed every fixed
+       overlay (the plan-limit notice included) partly off the edge. */
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-4);
     margin-bottom: var(--space-8);
     border: 2px solid var(--color-border);
     padding: var(--space-4) var(--space-6);
@@ -206,6 +211,7 @@
   .header-actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 

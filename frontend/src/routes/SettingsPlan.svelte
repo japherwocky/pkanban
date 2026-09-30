@@ -78,6 +78,12 @@
     }
   }
 
+  // Back from Stripe but not Pro yet: either the webhook is still on its way or
+  // it never came. Offering "Upgrade to Pro" here would invite a second payment
+  // from someone who has just paid, and the server cannot refuse it -- the plan
+  // it checks is the very thing that has not updated.
+  const justPaid = $derived(checkoutOutcome === 'success' && usage?.plan !== 'pro');
+
   const limited = $derived(
     usage !== null && usage.billing_enabled && usage.max_boards !== null
   );
@@ -149,9 +155,9 @@
         </p>
       {/if}
 
-      {#if usage.upgrade_available || usage.manage_available}
+      {#if (usage.upgrade_available && !justPaid) || usage.manage_available}
         <div class="actions">
-          {#if usage.upgrade_available}
+          {#if usage.upgrade_available && !justPaid}
             <button class="primary" disabled={busy} onclick={() => goTo(api.billing.checkout)}>
               {busy ? 'Redirecting...' : 'Upgrade to Pro'}
             </button>

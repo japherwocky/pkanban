@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import ModalHarness from './Modal.test.svelte';
 
 const renderModal = (props = {}) =>
@@ -64,5 +64,54 @@ describe('Modal title ownership', () => {
         readFileSync(file, 'utf8').includes('id="modal-title"'),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('Modal stacking', () => {
+  // A notice can open over the form that triggered it (the plan-limit notice
+  // over "Add Card"). Both listen on the document, so these were single-modal
+  // assumptions until they were tested with two.
+
+  it('closes only the topmost modal on Escape, leaving the one beneath', async () => {
+    const underneath = vi.fn();
+    const onTop = vi.fn();
+    renderModal({ title: 'Add Card', onClose: underneath });
+    renderModal({ title: 'Card limit reached', onClose: onTop });
+
+    await fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onTop).toHaveBeenCalledTimes(1);
+    expect(underneath).not.toHaveBeenCalled();
+  });
+
+  it('hands Escape back to the modal beneath once the top one has gone', async () => {
+    const underneath = vi.fn();
+    const first = renderModal({ title: 'Add Card', onClose: underneath });
+    const top = renderModal({ title: 'Card limit reached', onClose: () => {} });
+
+    top.unmount();
+    await fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(underneath).toHaveBeenCalledTimes(1);
+    first.unmount();
+  });
+
+  it('keeps the heading styled after its id became per-instance', () => {
+    // The heading's CSS once targeted #modal-title; giving each instance its
+    // own id silently unstyled every modal heading in the app. jsdom cannot see
+    // computed styles, so assert the hook the stylesheet now uses.
+    renderModal({ title: 'Add Card' });
+    expect(screen.getByRole('heading', { name: 'Add Card' })).toHaveClass('modal-title');
+  });
+
+  it('gives each open dialog its own id, each named by its own heading', () => {
+    renderModal({ title: 'Add Card' });
+    renderModal({ title: 'Card limit reached' });
+
+    const dialogs = screen.getAllByRole('dialog');
+    const ids = dialogs.map((d) => d.getAttribute('aria-labelledby'));
+    expect(new Set(ids).size).toBe(2);
+    expect(screen.getByRole('dialog', { name: 'Add Card' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Card limit reached' })).toBeInTheDocument();
   });
 });

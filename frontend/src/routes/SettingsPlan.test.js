@@ -208,6 +208,20 @@ describe('SettingsPlan - returning from Stripe', () => {
     expect(screen.queryByText(/waiting for stripe/i)).toBeNull();
   });
 
+  it('offers no second Upgrade while the payment is still being confirmed', async () => {
+    // Someone who has just paid and sees "Upgrade to Pro" may well pay again,
+    // and the server cannot refuse: the plan it checks is the one not updated.
+    usage.mockResolvedValue({ ...FREE, upgrade_available: true, manage_available: false });
+    render(SettingsPlan);
+
+    await screen.findByText(/waiting for stripe to confirm/i);
+    expect(screen.queryByRole('button', { name: 'Upgrade to Pro' })).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(2000 * 12);
+    await screen.findByText(/has not updated yet/i);
+    expect(screen.queryByRole('button', { name: 'Upgrade to Pro' })).toBeNull();
+  });
+
   it('does not wait at all when the plan is already pro', async () => {
     usage.mockResolvedValue(PAID);
     render(SettingsPlan);
