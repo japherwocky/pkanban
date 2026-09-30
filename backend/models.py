@@ -6,6 +6,7 @@ from peewee import (
     DateTimeField,
     TextField,
     BooleanField,
+    SQL,
 )
 from playhouse.sqlite_ext import AutoIncrementField, Model  # type: ignore
 from datetime import datetime, timezone, timedelta
@@ -52,6 +53,19 @@ class User(BaseModel):
     # verified -- whoever ran that already vouched for the person.
     email_verified = BooleanField(default=False)
     admin = BooleanField(default=False)
+    # What the account pays for: "free" or "pro". Billing state, not access
+    # control -- see backend/billing.py for what a plan changes. The Stripe
+    # webhook is the only thing that should move it. The DEFAULT is spelled out
+    # in SQL so a migrated database and a fresh install have the same column
+    # (peewee's own default=... lives in Python and never reaches the schema).
+    plan = CharField(max_length=20, default="free", constraints=[SQL("DEFAULT 'free'")])
+    stripe_customer_id = CharField(max_length=255, null=True, unique=True)
+    subscription_status = CharField(max_length=40, null=True)
+    current_period_end = DateTimeField(null=True)
+
+    @property
+    def is_pro(self):
+        return self.plan == "pro"
 
     @classmethod
     def create_user(

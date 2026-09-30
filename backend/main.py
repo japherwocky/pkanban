@@ -3,10 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
+from backend.billing import PlanLimitExceeded
 from backend.database import init_db
 
 STATIC_PATH = os.environ.get(
@@ -72,6 +73,13 @@ async def renew_session_token(request, call_next):
 
 if os.path.exists(STATIC_PATH):
     app.mount("/static", StaticFiles(directory=STATIC_PATH), name="static")
+
+
+
+@app.exception_handler(PlanLimitExceeded)
+async def plan_limit_exceeded(request, exc: PlanLimitExceeded):
+    return JSONResponse(status_code=402, content=exc.body())
+
 
 app.include_router(api, prefix="/api")
 

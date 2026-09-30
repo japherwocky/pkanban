@@ -208,6 +208,18 @@ python -m pytest backend/tests/
 # Run a single test file
 pytest backend/tests/test_api.py
 
+### Plan limits (billing switch)
+
+`backend/billing.py` holds the free plan's caps: 5 owned boards, 100 cards per
+board (every column counts, Done included). They apply only when
+`BILLING_ENABLED=true` is in the environment; unset, nobody is limited -- which
+is what tests, local dev and self-hosters get. The board *owner's* plan decides:
+a free user on a Pro owner's board is unlimited, and boards shared with you
+never count toward your own 5. Past a limit the API answers **402** with
+`{"error": "plan_limit", "limit", "max", "current", "detail"}`; only creating
+(`POST /boards`, `POST /cards`, or `PUT /cards/{id}` moving a card to another
+board) is refused -- nothing is ever locked or deleted.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

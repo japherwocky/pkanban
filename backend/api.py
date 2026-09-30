@@ -16,6 +16,7 @@ from backend.auth import (
     get_current_user_by_session,
     get_current_admin,
 )
+from backend.billing import check_can_add_card, check_can_create_board
 from backend.database import db
 from backend.mailer import send_invite_email, send_verification_email
 from backend.models import (
@@ -1273,6 +1274,7 @@ async def delete_admin_board(
 async def create_board(
     board_data: BoardCreate, current_user: User = Depends(get_current_user_or_api_key)
 ):
+    check_can_create_board(current_user)
     with db.atomic():
         board = Board.create_with_columns(
             owner=current_user, name=board_data.name
@@ -1580,6 +1582,7 @@ async def create_card(
         raise HTTPException(status_code=404, detail="Column not found")
     if not can_modify_board(current_user, column.board):
         raise HTTPException(status_code=403, detail="Not authorized")
+    check_can_add_card(column.board)
     card = Card.create(
         column=column,
         title=card_data.title,
@@ -1650,6 +1653,10 @@ async def update_card(
             raise HTTPException(status_code=404, detail="New column not found")
         if not can_modify_board(current_user, new_column.board):
             raise HTTPException(status_code=403, detail="Not authorized")
+        # Moving to another board adds a card there, so it counts against that
+        # board's cap; a move within one board changes nothing.
+        if new_column.board.id != card.column.board.id:
+            check_can_add_card(new_column.board)
         card.column = new_column
     if card_data.title is not None:
         card.title = card_data.title
