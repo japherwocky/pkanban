@@ -268,3 +268,45 @@ def test_new_models_declare_autoincrement():
             ).fetchall()
             db.close()
         assert not missing
+
+
+def test_008_adds_plan_columns_to_a_pre_008_user_table():
+    """A fresh install already has the billing columns, so 008 skips there.
+    Build the user table as it stood before 008 and check the migration brings
+    it level with the model -- including the DEFAULT 'free' that lands every
+    existing account on the free plan."""
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh_path = os.path.join(tmp, "fresh.db")
+        old_path = os.path.join(tmp, "old.db")
+
+        fresh = SqliteDatabase(fresh_path)
+        with fresh.bind_ctx(ALL_MODELS):
+            fresh.connect()
+            fresh.create_tables(ALL_MODELS)
+            fresh.close()
+
+        old = SqliteDatabase(old_path)
+        with old.bind_ctx(ALL_MODELS):
+            old.connect()
+            old.create_tables(ALL_MODELS)
+            old.execute_sql('DROP INDEX "user_stripe_customer_id"')
+            for column in (
+                "plan",
+                "stripe_customer_id",
+                "subscription_status",
+                "current_period_end",
+            ):
+                old.execute_sql(f'ALTER TABLE "user" DROP COLUMN {column}')
+            old.execute_sql(
+                "INSERT INTO user (username, password_hash, email_verified, admin) "
+                "VALUES ('u', 'x', 1, 0)"
+            )
+            Router(old, migrate_dir=MIGRATIONS_DIR).run()
+            rows = old.execute_sql(
+                "SELECT username, plan, stripe_customer_id FROM user"
+            ).fetchall()
+            old.close()
+
+        assert _schema(old_path)["user"] == _schema(fresh_path)["user"]
+        # The pre-existing account is on the free plan with no Stripe customer.
+        assert rows == [("u", "free", None)]
