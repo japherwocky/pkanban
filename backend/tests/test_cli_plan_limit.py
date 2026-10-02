@@ -99,10 +99,14 @@ def test_main_reports_a_plan_limit_as_json_on_stderr(capsys):
 
 def test_main_reports_a_plan_limit_readably_for_a_human(capsys):
     assert _run_main(_error()) == 1
-    out = capsys.readouterr().out
-    assert "100 cards per board" in out
-    assert "https://h/settings/plan" in out
-    assert "{" not in out  # not a dump of the response body
+    captured = capsys.readouterr()
+    # Human-mode errors go to stderr, like the JSON form (#87), so a redirect
+    # of stdout never saves the message as though it were the result.
+    assert captured.out == ""
+    err = captured.err
+    assert "100 cards per board" in err
+    assert "https://h/settings/plan" in err
+    assert "{" not in err  # not a dump of the response body
 
 
 # === pkanban account ===
