@@ -183,6 +183,12 @@ def run_quietly(run):
     The flushes at the end matter as much as the except: a short output sits in
     the buffer until exit, so the error often arrives there, outside any
     handler, and can only be met by flushing here, deliberately.
+
+    POSIX needs less of this. rich and Click already turn EPIPE into a quiet
+    exit 1 before it reaches here. Windows reports a closed pipe as EINVAL,
+    which neither knows, so there the same event was a traceback and 120. This
+    decides the status where the libraries do not; it does not overrule them,
+    so on POSIX the status stays whatever they chose.
     """
     status = 0
     try:
