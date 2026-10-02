@@ -17,6 +17,23 @@ function handleExpiredSession() {
   }
 }
 
+// A create the server refused because the owner's plan has no room: a 402 with
+// {"error": "plan_limit", limit, max, current, detail}. Still an Error whose
+// message is the server's sentence, so a caller that just alerts e.message
+// keeps working; the fields are for one that can do better.
+export class PlanLimitError extends Error {
+  constructor(body) {
+    super(body.detail || 'Your plan has no room for that.');
+    this.name = 'PlanLimitError';
+    // Checked by showPlanLimit() instead of `instanceof`, which would not
+    // survive two copies of this module being loaded.
+    this.code = 'plan_limit';
+    this.limit = body.limit;
+    this.max = body.max;
+    this.current = body.current;
+  }
+}
+
 export async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem('token');
   const headers = {
@@ -49,6 +66,9 @@ export async function apiFetch(endpoint, options = {}) {
     // surface their error as before.
     if (response.status === 401 && token) {
       handleExpiredSession();
+    }
+    if (response.status === 402 && error.error === 'plan_limit') {
+      throw new PlanLimitError(error);
     }
     throw new Error(error.detail || 'Request failed');
   }
@@ -268,6 +288,15 @@ export const api = {
         method: 'DELETE',
       }),
     },
+  },
+  me: {
+    usage: () => apiFetch('/api/me/usage'),
+  },
+  billing: {
+    // Each resolves to {url}: Stripe's hosted page, which the caller sends the
+    // browser to. Nothing here changes the plan -- only Stripe's webhook does.
+    checkout: () => apiFetch('/api/billing/checkout', { method: 'POST' }),
+    portal: () => apiFetch('/api/billing/portal', { method: 'POST' }),
   },
   apiKeys: {
     list: () => apiFetch('/api/api-keys'),

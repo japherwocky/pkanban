@@ -61,6 +61,7 @@
     <!-- Desktop Nav -->
     <nav class="nav-desktop">
       <button onclick={() => goTo('/docs')}>Documentation</button>
+      <button onclick={() => goTo('/pricing')}>Pricing</button>
       <button onclick={() => goTo('/about')}>About</button>
     </nav>
 
@@ -98,6 +99,12 @@
                 </svg>
                 API Keys
               </button>
+              <button class="dropdown-item" onclick={() => goTo('/settings/plan')}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M2.5 13.5h11M4 13.5V8M8 13.5V3.5M12 13.5V6"/>
+                </svg>
+                Plan
+              </button>
               <div class="dropdown-divider"></div>
               <button class="dropdown-item logout" onclick={logout}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -133,6 +140,7 @@
   {#if isMenuOpen}
     <nav class="nav-mobile">
       <button onclick={() => goTo('/docs')}>Documentation</button>
+      <button onclick={() => goTo('/pricing')}>Pricing</button>
       <button onclick={() => goTo('/about')}>About</button>
       <button onclick={() => goTo('/contact')}>Contact</button>
       <div class="mobile-divider"></div>

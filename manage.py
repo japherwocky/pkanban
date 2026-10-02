@@ -9,8 +9,10 @@ Usage:
     python manage.py server                       # Run the server
     python manage.py migrate                      # Apply pending migrations
     python manage.py status                       # Show database status
+    python manage.py billing-check                # Preflight the Stripe/billing setup
 """
 import argparse
+import json
 import sys
 import os
 import subprocess
@@ -172,6 +174,27 @@ def cmd_status(args=None):
     db.close()
 
 
+def cmd_billing_check(args):
+    """Is billing set up right, and who will the limits affect?
+
+    Read-only. Exits 1 if anything that would break payments or mislead a
+    customer is wrong, so it can gate a deploy step as well as be read.
+    """
+    from backend import billing_check
+
+    db.connect(reuse_if_open=True)
+    try:
+        report = billing_check.run(stripe_api=not args.no_stripe)
+    finally:
+        db.close()
+
+    if args.json:
+        print(json.dumps(report, indent=2, default=str))
+    else:
+        print(billing_check.format_report(report))
+    sys.exit(0 if report["ok"] else 1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="python manage.py",
@@ -213,6 +236,13 @@ def main():
     sp_status = subparsers.add_parser("status", help="Show database status")
     sp_status.set_defaults(func=cmd_status)
 
+    sp_billing = subparsers.add_parser(
+        "billing-check", help="Preflight the Stripe and billing setup (read-only)"
+    )
+    sp_billing.add_argument("--no-stripe", action="store_true", help="Check the environment and database only; make no Stripe API calls")
+    sp_billing.add_argument("--json", action="store_true", help="Print the report as JSON")
+    sp_billing.set_defaults(func=cmd_billing_check)
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -224,6 +254,7 @@ def main():
         print("  server             Run the development server")
         print("  migrate            Apply pending database migrations")
         print("  status             Show database status")
+        print("  billing-check      Preflight the Stripe and billing setup")
         print("\nServer options:")
         print("  --host HOST        Host to bind to (default: 0.0.0.0)")
         print("  --port PORT        Port to bind to (default: 8080)")

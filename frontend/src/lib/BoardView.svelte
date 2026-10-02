@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js';
+  import { showPlanLimit } from './planLimit.js';
   import Modal from './Modal.svelte';
   import ShareModal from './ShareModal.svelte';
   import Comments from './Comments.svelte';
@@ -81,7 +82,7 @@
       newCardDescription = '';
       showCreateCardModal = false;
     } catch (e) {
-      alert('Failed to create card: ' + e.message);
+      if (!showPlanLimit(e)) alert('Failed to create card: ' + e.message);
     } finally {
       createLoading = false;
     }

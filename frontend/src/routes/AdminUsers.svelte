@@ -15,6 +15,7 @@
   let editUserUsername = $state('');
   let editUserEmail = $state('');
   let editUserAdmin = $state(false);
+  let editUserPlan = $state('free');
   let resetPasswordForUser = $state(null);
   let resetPasswordNewPassword = $state('');
   let showResetPasswordModal = $state(false);
@@ -61,6 +62,7 @@
     editUserUsername = user.username;
     editUserEmail = user.email || '';
     editUserAdmin = user.admin || false;
+    editUserPlan = user.plan || 'free';
     showEditUserModal = true;
   }
 
@@ -68,11 +70,18 @@
     if (!selectedUser) return;
 
     try {
-      await api.admin.users.update(selectedUser.id, {
+      const changes = {
         username: editUserUsername.trim(),
         email: editUserEmail.trim() || null,
         admin: editUserAdmin,
-      });
+      };
+      // Only when the admin changed it. The list can be minutes old, and a
+      // Stripe webhook may have moved the plan since; sending the stale value
+      // along with, say, an email fix would quietly put it back.
+      if (editUserPlan !== (selectedUser.plan || 'free')) {
+        changes.plan = editUserPlan;
+      }
+      await api.admin.users.update(selectedUser.id, changes);
       showEditUserModal = false;
       selectedUser = null;
       await loadUsers();
@@ -135,6 +144,9 @@
         <div class="user-badges">
           {#if user.admin}
             <span class="badge admin-badge">Admin</span>
+          {/if}
+          {#if user.plan === 'pro'}
+            <span class="badge plan-badge">Pro</span>
           {/if}
         </div>
         <div class="user-actions">
@@ -211,6 +223,19 @@
             placeholder="Enter email"
           />
         </label>
+        <label>
+          Plan
+          <select bind:value={editUserPlan}>
+            <option value="free">Free</option>
+            <option value="pro">Pro</option>
+          </select>
+        </label>
+        {#if selectedUser?.has_stripe_customer && editUserPlan !== selectedUser.plan}
+          <p class="hint" role="note">
+            This account has a Stripe customer. Stripe stays the source of truth: its next
+            event for this customer will set the plan again from their subscription.
+          </p>
+        {/if}
         <label class="checkbox-label">
           <input type="checkbox" bind:checked={editUserAdmin} />
           <span>Admin user</span>
@@ -325,6 +350,17 @@
     color: var(--color-destructive-foreground);
   }
 
+  .plan-badge {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  .hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-muted-foreground);
+  }
+
   .user-actions {
     display: flex;
     gap: var(--space-2);
@@ -381,7 +417,8 @@
     width: auto;
   }
 
-  input {
+  input,
+  select {
     padding: var(--space-3) var(--space-4);
     font-size: var(--text-base);
     border-radius: var(--radius-lg);
@@ -392,7 +429,8 @@
     width: 100%;
   }
 
-  input:focus {
+  input:focus,
+  select:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary);

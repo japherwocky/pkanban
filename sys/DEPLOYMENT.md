@@ -179,6 +179,133 @@ sudo systemctl restart pkanban
 sudo systemctl stop pkanban
 ```
 
+## Billing (Stripe)
+
+The code ships dormant. Deploying it runs the migration and installs the
+`stripe` package but changes nothing for users: limits apply only when
+`BILLING_ENABLED=true`, and payments only work once the three `STRIPE_*`
+settings exist. Neither is set by the deploy, so turning billing on is a
+deliberate, reversible sequence. Do it in this order.
+
+### 1. Stripe dashboard
+
+Do this first in **test mode**, then repeat it in live mode.
+
+- **Product and Price.** One product, one recurring Price: **$6.00 per month**.
+  The Pricing page advertises exactly that, and `billing-check` fails if the
+  Price differs. Copy the Price id (`price_...`).
+- **Customer portal.** Settings > Billing > Customer portal: allow customers to
+  cancel subscriptions and update payment methods. Live mode has no
+  configuration until someone saves one here, and without it "Manage
+  subscription" fails for everyone.
+- **Webhook.** Developers > Webhooks > add an endpoint for
+  `https://pkanban.pearachute.com/api/billing/webhook` with these events:
+  `checkout.session.completed`, `customer.subscription.created`,
+  `customer.subscription.updated`, `customer.subscription.deleted`,
+  `invoice.payment_failed`. Copy its signing secret (`whsec_...`).
+- **API key.** The secret key, or a restricted key that can create Checkout
+  Sessions and Customer portal sessions and read Subscriptions. Whichever you
+  pick, the smoke test below is what proves it works.
+
+### 2. Server settings
+
+Add to `/opt/pkanban/.env` (the deploy does not manage this file), leaving
+`BILLING_ENABLED` **unset** for now:
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+```bash
+sudo systemctl restart pkanban
+```
+
+### 3. Preflight
+
+`billing-check` is read-only. It never prints a secret. It exits 1 if anything
+would break payments or mislead a customer.
+
+```bash
+sudo -u pkanban bash -c 'set -a; . /opt/pkanban/.env; set +a; cd /opt/pkanban && venv/bin/python manage.py billing-check'
+```
+
+It checks the settings, that the Price is recurring and matches the Pricing
+page, that the webhook points here and is subscribed to all five events, and
+that a Customer portal exists. It also lists the free accounts that would be
+blocked from creating anything the moment limits switch on. Use `--no-stripe`
+to skip the Stripe calls and `--json` for a machine-readable report.
+
+A check the key is not permitted to make shows as `warn`, not `FAIL`; verify
+that one in the dashboard.
+
+### 4. Put the accounts it listed on Pro
+
+Anyone the preflight lists is at a limit already. **Start with the owner of the
+Dev board**: it holds about a hundred cards, so without this the project's own
+board stops accepting cards the moment limits switch on. Admin > Users > Edit >
+Plan > Pro. (An account Stripe knows about has its plan reset by Stripe's next
+event for that customer; for these, that means subscribing instead.)
+
+### 5. Smoke test, in test mode, with limits still off
+
+Subscribing works whether or not limits are on, which is what makes this safe.
+With the test keys from step 2, as a brand new account:
+
+1. Settings > Plan > **Upgrade to Pro**; pay with Stripe's test card
+   `4242 4242 4242 4242`, any future expiry, any CVC.
+2. You return to Settings > Plan. It should say it is waiting, then flip to
+   **Pro** by itself within a few seconds. If it gives up instead, the webhook
+   is not arriving: Developers > Webhooks > the endpoint shows the deliveries
+   and the error.
+3. **Manage subscription** opens the portal. Cancel there. After the webhook,
+   the account is Free again.
+
+### 6. Go live
+
+Swap in the **live** key, live Price id and the live webhook's signing secret
+in `.env`, restart, and run the preflight again. It should say `Ready.` and
+`(live mode)`. Then switch limits on:
+
+```
+BILLING_ENABLED=true
+```
+
+```bash
+sudo systemctl restart pkanban
+```
+
+Re-run the preflight to confirm it reports limits as enforced, then repeat the
+smoke test with a real card on a new account (refund yourself in the
+dashboard afterwards):
+
+1. Create boards until the sixth is refused. You should get the "Board limit
+   reached" notice, not an error.
+2. Upgrade. The limit should lift.
+3. Cancel in the portal. The account returns to Free **with every board and
+   card still there**: over a limit you can read, edit, reorder and delete, but
+   not create.
+
+### Turning it back off
+
+- **Stop enforcing limits:** unset `BILLING_ENABLED` and restart. Immediate, and
+  nothing is touched: every account keeps its data and its plan.
+- **Stop taking new payments:** unset `STRIPE_PRICE_ID` and restart; the
+  Upgrade button disappears (the API answers 503). Existing subscriptions keep
+  renewing and the webhook keeps syncing plans as long as the other two
+  settings stay.
+
+### Watching it
+
+```bash
+sudo journalctl -u pkanban | grep -i stripe
+```
+
+A webhook that answers 502 means Stripe could not be reached while applying an
+event; Stripe retries those by itself. A 400 means a bad signature (check
+`STRIPE_WEBHOOK_SECRET` matches the endpoint); a 503 means it is unset.
+
 ## Maintenance
 
 ### Updates

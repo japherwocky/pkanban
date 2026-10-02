@@ -1,3 +1,12 @@
+<script module>
+  // Every open modal, oldest first. They can stack (a notice over the form that
+  // triggered it), and each one listens on the document, so without this a
+  // single Escape closed all of them -- taking the half-typed form with it --
+  // and the Tab trap fought between them.
+  const stack = [];
+  let nextId = 0;
+</script>
+
 <script>
 
   let { open = false, onClose, title = 'Dialog', titleBadge = '', wide = false, children } = $props();
@@ -5,9 +14,18 @@
   let modalRef = $state();
   let previousActiveElement = null;
 
+  // Identifies this instance in the stack, and keeps its title id unique: two
+  // open modals sharing id="modal-title" made aria-labelledby resolve to the
+  // first one's heading, so a screen reader named the top dialog after the
+  // one underneath it.
+  const token = {};
+  const titleId = `modal-title-${++nextId}`;
+
   // Handle keyboard navigation
   function handleKeydown(e) {
     if (!open) return;
+    // Only the topmost modal answers the keyboard.
+    if (stack[stack.length - 1] !== token) return;
 
     // ESC to close
     if (e.key === 'Escape') {
@@ -64,6 +82,7 @@
       }, 0);
 
       // Add keyboard event listener
+      stack.push(token);
       document.addEventListener('keydown', handleKeydown);
 
       // Prevent body scroll
@@ -82,6 +101,8 @@
     }
 
     return () => {
+      const at = stack.indexOf(token);
+      if (at !== -1) stack.splice(at, 1);
       document.removeEventListener('keydown', handleKeydown);
       document.body.style.overflow = '';
     };
@@ -100,12 +121,12 @@
       bind:this={modalRef}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-title"
+      aria-labelledby={titleId}
     >
       <!-- The heading aria-labelledby has always pointed at. The badge's leading
            space is interpolated rather than literal because svelte trims literal
            whitespace at an {#if} boundary, which would render "Edit Card#42". -->
-      <h2 id="modal-title">
+      <h2 id={titleId} class="modal-title">
         {title}{#if titleBadge}<span class="title-badge">{` ${titleBadge}`}</span>{/if}
       </h2>
       {@render children()}
@@ -141,7 +162,8 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   }
 
-  #modal-title {
+  /* A class, not the id: the id is unique per instance now. */
+  .modal-title {
     margin: 0 0 var(--space-5) 0;
     font-size: var(--text-xl);
     font-weight: 700;

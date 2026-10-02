@@ -31,6 +31,16 @@
         or share your data with third parties for advertising purposes.
       </p>
 
+      <h2>Payments</h2>
+      <p>
+        Payments are handled by Stripe. When you subscribe, your email address is
+        shared with Stripe to create a customer record and send receipts, and you
+        enter your card details on Stripe's page, not ours. We store only a Stripe
+        customer identifier, the status of your subscription and when the current
+        period ends. We never see or keep your card number. Stripe's handling of
+        that data is covered by its own privacy policy.
+      </p>
+
       <h2>AI Agent Data</h2>
       <p>
         Any data processed through our CLI or API is treated with the same privacy

@@ -18,12 +18,23 @@ which is also what makes a downgrade safe.
 
 import os
 
+from peewee import fn
+
+from backend import stripe_billing
 from backend.models import Board, Card, Column
 
 FREE_MAX_BOARDS = 5
 # Counts every card on the board, Done included. Not an oversight: archiving is
 # deliberately not a way around the cap, so heavy use is what Pro is for.
 FREE_MAX_CARDS_PER_BOARD = 100
+
+# What the Pricing page advertises for Pro: $6.00 a month. The Stripe Price is
+# the thing that actually charges, so this is not used to charge anyone -- it is
+# what `manage.py billing-check` compares the configured Price against, and
+# what the Pricing page test compares the page against, so the page and the
+# bill cannot quietly disagree.
+PRO_PRICE_CENTS = 600
+PRO_PRICE_INTERVAL = "month"
 
 
 def billing_enabled():
@@ -103,3 +114,51 @@ def check_can_add_card(board):
             f"{FREE_MAX_CARDS_PER_BOARD} cards per board, and it has {current}. "
             "The board's owner can upgrade to Pro for unlimited cards.",
         )
+
+
+def usage_for(user):
+    """What `user` has and what their plan allows, for the web UI and the CLI.
+
+    A `max` of None means unlimited: a Pro user, or any user while billing is
+    off (the server is not enforcing limits, so there is no number to show).
+    `boards` lists only boards the user OWNS -- those are the ones whose card
+    cap follows their plan -- busiest first, so a client can warn about the
+    ones nearing the cap without a request per board.
+    """
+    limited = billing_enabled() and not user.is_pro
+    max_boards = FREE_MAX_BOARDS if limited else None
+    max_cards = FREE_MAX_CARDS_PER_BOARD if limited else None
+
+    owned = list(Board.select().where(Board.owner == user))
+    counts = {
+        board_id: n
+        for board_id, n in Card.select(Column.board, fn.COUNT(Card.id))
+        .join(Column)
+        .where(Column.board.in_([b.id for b in owned]))
+        .group_by(Column.board)
+        .tuples()
+    }
+    boards = sorted(
+        (
+            {"id": b.id, "name": b.name, "cards": counts.get(b.id, 0)}
+            for b in owned
+        ),
+        key=lambda b: (-b["cards"], b["id"]),
+    )
+
+    return {
+        "plan": user.plan,
+        "billing_enabled": billing_enabled(),
+        "subscription_status": user.subscription_status,
+        "current_period_end": user.current_period_end,
+        # What the Plan page may offer. Independent of billing_enabled: you can
+        # subscribe before the limits are switched on, which is how a real
+        # payment gets smoke-tested ahead of launch.
+        "upgrade_available": stripe_billing.checkout_configured() and not user.is_pro,
+        "manage_available": stripe_billing.portal_configured()
+        and bool(user.stripe_customer_id),
+        "max_boards": max_boards,
+        "max_cards_per_board": max_cards,
+        "boards_owned": len(owned),
+        "boards": boards,
+    }

@@ -21,6 +21,8 @@
   import Terms from './routes/Terms.svelte';
   import Settings from './routes/Settings.svelte';
   import SettingsApiKeys from './routes/SettingsApiKeys.svelte';
+  import SettingsPlan from './routes/SettingsPlan.svelte';
+  import PlanLimitModal from './lib/PlanLimitModal.svelte';
   import ApiKeyCreated from './routes/ApiKeyCreated.svelte';
   import Invite from './routes/Invite.svelte';
   import Signup from './routes/Signup.svelte';
@@ -167,6 +169,14 @@
     </ProtectedRoute>
   </Route>
 
+  <Route path="/settings/plan">
+    <ProtectedRoute>
+      <Settings>
+        <SettingsPlan />
+      </Settings>
+    </ProtectedRoute>
+  </Route>
+
   <Route path="/settings" let:params>
     <ProtectedRoute>
       <Settings>
@@ -179,6 +189,8 @@
     <NotFound />
   </Route>
 </Router>
+
+<PlanLimitModal />
 
 <style>
   :global(body) {

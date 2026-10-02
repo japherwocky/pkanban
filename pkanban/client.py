@@ -15,6 +15,52 @@ class PkanbanError(Exception):
     """A problem the user can act on, reported without a traceback."""
 
 
+class PlanLimitError(PkanbanError):
+    """The server refused to create something because the plan has no room.
+
+    Not an HTTPError, on purpose: most commands catch HTTPError themselves and
+    print `Error: <raw response text>` for anything they did not anticipate,
+    which for a 402 would be a blob of JSON. This goes straight to main(),
+    which reports it with the fields an agent can branch on.
+    """
+
+    def __init__(self, detail, limit, maximum, current, upgrade_url):
+        self.limit = limit
+        self.maximum = maximum
+        self.current = current
+        self.upgrade_url = upgrade_url
+        super().__init__(f"{detail} See {upgrade_url}")
+
+    def fields(self):
+        # `error` is the CLI's own convention (a human message), so the
+        # server's machine code travels as `code`.
+        return {
+            "status": 402,
+            "code": "plan_limit",
+            "limit": self.limit,
+            "max": self.maximum,
+            "current": self.current,
+            "upgrade_url": self.upgrade_url,
+        }
+
+
+def _plan_limit_error(response, server_url):
+    """A PlanLimitError for a 402 plan_limit response, else None."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if not isinstance(body, dict) or body.get("error") != "plan_limit":
+        return None
+    return PlanLimitError(
+        body.get("detail") or "Your plan has no room for that.",
+        body.get("limit"),
+        body.get("max"),
+        body.get("current"),
+        f"{server_url.rstrip('/')}/settings/plan",
+    )
+
+
 class PkanbanClient:
     def __init__(self, server_url=None, token=None, api_key=None):
         self.server_url = server_url or get_server_url()
@@ -66,6 +112,11 @@ class PkanbanClient:
 
         self._store_renewed_token(response)
 
+        if response.status_code == 402:
+            plan_limit = _plan_limit_error(response, self.server_url)
+            if plan_limit:
+                raise plan_limit
+
         # HTTPError is left alone: individual commands catch it to explain
         # domain-specific failures, and main() handles whatever they don't.
         response.raise_for_status()
@@ -98,6 +149,9 @@ class PkanbanClient:
 
     def boards(self):
         return self._request("GET", "/api/boards")
+
+    def usage(self):
+        return self._request("GET", "/api/me/usage")
 
     def board_create(self, name):
         return self._request("POST", "/api/boards", json={"name": name})

@@ -1,12 +1,15 @@
 import re
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 from peewee import fn
 from pydantic import BaseModel, ConfigDict
 import os
+import stripe
 
 from backend.auth import (
     Token,
@@ -16,8 +19,9 @@ from backend.auth import (
     get_current_user_by_session,
     get_current_admin,
 )
-from backend.billing import check_can_add_card, check_can_create_board
+from backend.billing import check_can_add_card, check_can_create_board, usage_for
 from backend.database import db
+from backend import stripe_billing
 from backend.mailer import send_invite_email, send_verification_email
 from backend.models import (
     User,
@@ -37,6 +41,7 @@ from backend.models import (
 )
 
 api = APIRouter()
+logger = logging.getLogger(__name__)
 
 EMAIL_PATTERN = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
@@ -398,6 +403,9 @@ class UserUpdate(BaseModel):
     username: str
     email: Optional[str] = None
     admin: bool = False
+    # Omitted means "leave the plan alone", so callers that predate this field
+    # keep working. Anything but free/pro is a 422.
+    plan: Optional[Literal["free", "pro"]] = None
 
 
 class UserResponse(BaseModel):
@@ -407,6 +415,7 @@ class UserResponse(BaseModel):
     username: str
     email: Optional[str]
     admin: bool
+    plan: str = "free"
 
 
 class PasswordReset(BaseModel):
@@ -672,7 +681,18 @@ async def list_admin_users(current_admin_user: User = Depends(get_current_admin)
     """List all users (admin only)"""
     users = User.select().order_by(User.id)
     return [
-        {"id": u.id, "username": u.username, "email": u.email, "admin": u.admin}
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "admin": u.admin,
+            "plan": u.plan,
+            "subscription_status": u.subscription_status,
+            # Whether Stripe knows this account. If so, Stripe stays the source
+            # of truth: its next event for the customer recomputes the plan and
+            # overwrites a manual change, so the admin UI says so.
+            "has_stripe_customer": bool(u.stripe_customer_id),
+        }
         for u in users
     ]
 
@@ -695,6 +715,7 @@ async def create_admin_user(
             "username": user.username,
             "email": user.email,
             "admin": user.admin,
+            "plan": user.plan,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -736,6 +757,8 @@ async def update_admin_user(
     user.username = user_data.username
     user.email = user_data.email
     user.admin = user_data.admin
+    if user_data.plan is not None:
+        user.plan = user_data.plan
     user.save()
 
     return {
@@ -743,6 +766,7 @@ async def update_admin_user(
         "username": user.username,
         "email": user.email,
         "admin": user.admin,
+        "plan": user.plan,
     }
 
 
@@ -1286,6 +1310,76 @@ async def create_board(
         "shared_team_id": board.shared_team_id,
         "owner_id": board.owner_id,
     }
+
+
+@api.post("/billing/checkout")
+async def billing_checkout(current_user: User = Depends(get_current_user)):
+    """Start a Pro subscription; returns the Stripe Checkout URL to send the
+    user to. Session-only (no API key): this is a payment flow."""
+    if current_user.is_pro:
+        raise HTTPException(
+            status_code=409,
+            detail="You are already on Pro. Manage your subscription from Settings > Plan.",
+        )
+    try:
+        url = stripe_billing.create_checkout_url(current_user)
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Payments are not set up on this server.")
+    except stripe.StripeError:
+        logger.exception("Stripe checkout failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=502, detail="Could not reach the payment provider. Try again shortly."
+        )
+    return {"url": url}
+
+
+@api.post("/billing/portal")
+async def billing_portal(current_user: User = Depends(get_current_user)):
+    """The Stripe Customer Portal, for changing the card or cancelling.
+    Session-only: it can end the subscription."""
+    if not current_user.stripe_customer_id:
+        raise HTTPException(status_code=409, detail="There is no billing account to manage yet.")
+    try:
+        url = stripe_billing.create_portal_url(current_user)
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Payments are not set up on this server.")
+    except stripe.StripeError:
+        logger.exception("Stripe portal failed for user %s", current_user.id)
+        raise HTTPException(
+            status_code=502, detail="Could not reach the payment provider. Try again shortly."
+        )
+    return {"url": url}
+
+
+@api.post("/billing/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe's event feed -- the only thing that changes User.plan.
+
+    Unauthenticated by design; the signature is the authentication. A request
+    without a valid one is refused, and so is every request if we have no
+    secret to check it against: failing open here would let anyone POST
+    themselves onto the Pro plan.
+    """
+    payload = await request.body()
+    try:
+        event = stripe_billing.construct_event(payload, request.headers.get("stripe-signature"))
+    except stripe_billing.StripeNotConfigured:
+        raise HTTPException(status_code=503, detail="Webhook is not configured.")
+    except stripe_billing.BadWebhook:
+        raise HTTPException(status_code=400, detail="Invalid signature.")
+    try:
+        result = stripe_billing.handle_event(event)
+    except stripe.StripeError:
+        # Non-2xx, so Stripe redelivers once it can be reached again.
+        logger.exception("Stripe webhook %s could not be applied", event.get("id"))
+        raise HTTPException(status_code=502, detail="Could not reach Stripe.")
+    return {"received": True, "result": result}
+
+
+@api.get("/me/usage")
+async def get_my_usage(current_user: User = Depends(get_current_user_or_api_key)):
+    """The caller's plan, what it allows, and how much of it they are using."""
+    return usage_for(current_user)
 
 
 @api.get("/boards", response_model=list)

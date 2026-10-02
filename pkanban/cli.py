@@ -6,7 +6,7 @@ import typer
 from rich import print as rprint
 import requests
 
-from pkanban.client import PkanbanClient, PkanbanError
+from pkanban.client import PkanbanClient, PkanbanError, PlanLimitError
 from pkanban.config import (
     config_file,
     get_server_url,
@@ -825,6 +825,42 @@ def cmd_board_share(
     emit(result, render)
 
 
+# === Account ===
+
+# A board this close to the card cap is worth a mention.
+NEAR_CARD_LIMIT = 0.8
+
+
+@app.command("account")
+def cmd_account():
+    """Show your plan and how much of it you are using."""
+    from rich.markup import escape
+
+    client = make_client()
+    usage = client.usage()
+
+    def render():
+        rprint(f"Plan: [bold]{usage['plan']}[/bold]")
+        if not usage["billing_enabled"]:
+            rprint("No plan limits are enforced on this server.")
+            return
+
+        max_boards = usage["max_boards"]
+        max_cards = usage["max_cards_per_board"]
+        if max_boards is None:
+            rprint(f"Boards owned: {usage['boards_owned']} (no limit)")
+            return
+
+        rprint(f"Boards owned: {usage['boards_owned']} / {max_boards}")
+        rprint(f"Cards per board: up to {max_cards}")
+        near = [b for b in usage["boards"] if b["cards"] >= max_cards * NEAR_CARD_LIMIT]
+        for b in near:
+            rprint(f"  {b['id']:4}  {escape(b['name'])}: {b['cards']} / {max_cards} cards")
+        rprint(f"Upgrade: {client.server_url.rstrip('/')}/settings/plan")
+
+    emit(usage, render)
+
+
 # === API Key Commands ===
 
 apikey_app = typer.Typer(help="API key management commands", no_args_is_help=True)
@@ -1064,6 +1100,11 @@ def main():
         # takes is a path pattern, and the one path it does take
         # (--description-file) goes through open(), not a glob.
         app(windows_expand_args=False)
+    except PlanLimitError as e:
+        # Before PkanbanError, which it subclasses: the extra fields are what
+        # let an agent tell "out of room" from any other failure.
+        emit_error(str(e), **e.fields())
+        raise SystemExit(1)
     except PkanbanError as e:
         emit_error(str(e))
         raise SystemExit(1)

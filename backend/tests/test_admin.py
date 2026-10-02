@@ -153,6 +153,84 @@ def test_update_user_admin(client, admin_token, regular_user):
     assert response.json()["admin"] is True
 
 
+def _put_user(client, admin_token, user, **fields):
+    body = {"username": user.username, "email": user.email, "admin": user.admin, **fields}
+    return client.put(
+        f"/api/admin/users/{user.id}",
+        json=body,
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+
+def test_admin_can_set_a_users_plan(client, admin_token, regular_user):
+    response = _put_user(client, admin_token, regular_user, plan="pro")
+    assert response.status_code == 200
+    assert response.json()["plan"] == "pro"
+    assert User.get_by_id(regular_user.id).plan == "pro"
+
+    response = _put_user(client, admin_token, regular_user, plan="free")
+    assert response.json()["plan"] == "free"
+
+
+def test_updating_a_user_without_a_plan_leaves_the_plan_alone(
+    client, admin_token, regular_user
+):
+    """Callers that predate the field must not quietly reset paying users."""
+    User.update(plan="pro").where(User.id == regular_user.id).execute()
+    response = _put_user(client, admin_token, regular_user)
+    assert response.status_code == 200
+    assert response.json()["plan"] == "pro"
+    assert User.get_by_id(regular_user.id).plan == "pro"
+
+
+@pytest.mark.parametrize("bad", ["enterprise", "PRO", "", "paid"])
+def test_admin_cannot_set_an_unknown_plan(client, admin_token, regular_user, bad):
+    response = _put_user(client, admin_token, regular_user, plan=bad)
+    assert response.status_code == 422
+    assert User.get_by_id(regular_user.id).plan == "free"
+
+
+def test_a_regular_user_cannot_set_a_plan_even_their_own(
+    client, regular_token, regular_user
+):
+    response = client.put(
+        f"/api/admin/users/{regular_user.id}",
+        json={"username": regular_user.username, "plan": "pro"},
+        headers={"Authorization": f"Bearer {regular_token}"},
+    )
+    assert response.status_code == 403
+    assert User.get_by_id(regular_user.id).plan == "free"
+
+
+def test_admin_user_list_shows_plan_and_whether_stripe_knows_them(
+    client, admin_token, regular_user
+):
+    User.update(plan="pro", stripe_customer_id="cus_1", subscription_status="active").where(
+        User.id == regular_user.id
+    ).execute()
+    response = client.get(
+        "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    row = next(u for u in response.json() if u["id"] == regular_user.id)
+    assert row["plan"] == "pro"
+    assert row["subscription_status"] == "active"
+    assert row["has_stripe_customer"] is True
+    other = next(u for u in response.json() if u["id"] != regular_user.id)
+    assert other["has_stripe_customer"] is False
+    # The customer id itself is not needed by the UI and is not sent.
+    assert "stripe_customer_id" not in row
+
+
+def test_creating_a_user_reports_the_free_plan(client, admin_token):
+    response = client.post(
+        "/api/admin/users",
+        json={"username": "fresh_plan_user", "password": "testpassword"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["plan"] == "free"
+
+
 def test_update_user_cannot_remove_own_admin(client, admin_token, admin_user):
     """Admin cannot remove their own admin access"""
     response = client.put(
