@@ -105,6 +105,20 @@ The flag works before or after the subcommand. In JSON mode stdout holds only
 the response; errors go to stderr as `{"error": ..., "status": ...}` alongside
 a non-zero exit code, so stdout is always safe to pipe into a parser.
 
+Human-mode errors go to stderr too, so `pkanban card get 9 > card.txt` never
+saves "Card not found" as the card. And a reader that leaves (`| head -1`) is
+not a failure: `output.run_quietly()` ends the command with its own status
+instead of a traceback and 120.
+
+**Writing a command that prints text** (`pkanban/cli.py`): anything that came
+from the server or the user -- a board or card name, a username, an email, a
+path -- goes through `esc()` on its way into an f-string passed to `rprint` or
+`console.print`. rich reads square brackets as style tags, so `[bug] login
+fails` printed as ` login fails` and a title containing `[/x]` aborted the
+command. `Text.append()` and `markup=False` are the other safe routes. The
+tests for this are in `backend/tests/test_cli_output.py`; a new listing belongs
+in its table.
+
 `pkanban card get <id>` reads one card, including its description, the comments
 and which board/column it sits on:
 
