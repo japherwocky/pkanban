@@ -11,13 +11,14 @@
     <meta name="theme-color" content="#231f20" />
 
     <!--
-      Favicon. favicon.svg carries a prefers-color-scheme swap (dark-mode
-      browser chrome gets the brand cyan, light gets the AA-safe dark teal --
-      see theme.css for why light mode needs the darker value). The PNGs are
-      the fallback for browsers that don't do SVG favicons; no .ico -- every
-      browser that still needs one is old enough to be a rounding error.
+      Favicon. The SVG is the same logo.svg the Logo component renders, so
+      there is one copy of the artwork; Vite hashes it and rewrites this href
+      for the /static/ base. It is a self-contained disc, so it needs no
+      prefers-color-scheme swap. The PNGs are the fallback for browsers that
+      don't do SVG favicons; no .ico -- every browser that still needs one is
+      old enough to be a rounding error.
     -->
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/src/assets/logo.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

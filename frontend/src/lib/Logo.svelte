@@ -1,21 +1,18 @@
 <script>
-  // The pteranodon mark -- see the "Design the pteranodon mark" card on the
-  // Dev board (Brand & Marketing column) for how the silhouette was chosen.
-  // One source of truth: this used to be a copy-pasted generic kanban glyph
-  // in both Header.svelte and Footer.svelte, which said "kanban" and had
-  // nothing to do with the brand. currentColor so it inherits the theme,
-  // same stroke-free filled-silhouette treatment as favicon.svg/og-image.png
-  // so the mark reads identically everywhere it appears.
+  // The pearachute logo: a pear under a parachute canopy, seen from above --
+  // the "p" in pkanban. Same artwork as pearachute.com, cleaned up and cropped
+  // to the disc (the original sits in the middle of a 200x200 canvas, which
+  // rendered at half size here). One source of truth: src/assets/logo.svg is
+  // also the favicon (see index.html).
+  //
+  // It's a self-contained disc with its own ink outline, so unlike the old
+  // single-color mark it needs no currentColor and reads on both themes.
   let { size = 28, showWordmark = true } = $props();
+  import logoUrl from '../assets/logo.svg';
 </script>
 
 <span class="logo-mark" style="--logo-size: {size}px">
-  <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-    <path
-      d="M 2,30 L 14,18 L 26,26 L 30,10 L 24,2 L 36,12 L 52,8 L 42,20 L 40,26 L 54,20 L 62,32 L 46,32 L 38,44 L 32,56 L 28,42 L 16,30 Z"
-      fill="currentColor"
-    />
-  </svg>
+  <img src={logoUrl} width={size} height={size} alt="" />
   {#if showWordmark}
     <span class="wordmark">pkanban</span>
   {/if}
@@ -26,10 +23,9 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--color-primary);
   }
 
-  .logo-mark svg {
+  .logo-mark img {
     flex-shrink: 0;
     width: var(--logo-size);
     height: var(--logo-size);

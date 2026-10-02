@@ -11,7 +11,7 @@
   <div class="about-content">
     <p class="mascot-note">
       <span class="mascot-icon"><Logo size={18} showWordmark={false} /></span>
-      Meet our mascot: a pteranodon. She's been reviewing pull requests since the Cretaceous and hasn't found a reason to stop.
+      Meet our mascot: a pear, descending under a parachute. It's been reviewing pull requests since it landed and hasn't found a reason to stop.
     </p>
 
     <section>
