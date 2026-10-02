@@ -24,6 +24,8 @@ from pkanban.output import (
     configure_output_encoding,
     emit,
     emit_error,
+    esc,
+    run_quietly,
     set_json_output,
 )
 
@@ -135,13 +137,13 @@ def cmd_config(
         set_server_url(url)
         emit(
             {"server_url": url},
-            lambda: rprint(f"Server URL set to: [green]{url}[/green]"),
+            lambda: rprint(f"Server URL set to: [green]{esc(url)}[/green]"),
         )
     else:
         current = get_server_url()
         emit(
             {"server_url": current},
-            lambda: rprint(f"Server URL: [cyan]{current}[/cyan]"),
+            lambda: rprint(f"Server URL: [cyan]{esc(current)}[/cyan]"),
         )
 
 
@@ -194,7 +196,7 @@ def cmd_login(
     # The access token is deliberately left out of the JSON: it is already
     # saved to the config file, and stdout is exactly what CI logs capture.
     def render():
-        rprint(f"Logged in as [green]{username}[/green]")
+        rprint(f"Logged in as [green]{esc(username)}[/green]")
         if api_key_warning:
             rprint(f"[yellow]Warning: {api_key_warning}[/yellow]")
 
@@ -238,7 +240,7 @@ def cmd_boards():
                 shared_info = f" (shared with team {b['shared_team_id']})"
             elif b.get("is_public_to_org"):
                 shared_info = " (public to organization)"
-            rprint(f"{b['id']:4}  [bold]{b['name']}[/bold]{shared_info}")
+            rprint(f"{b['id']:4}  [bold]{esc(b['name'])}[/bold]{shared_info}")
 
     emit(boards, render)
 
@@ -262,7 +264,7 @@ def cmd_board_get(board_id: int = typer.Argument(..., help="Board ID")):
 
     def render():
         console = Console()
-        console.print(f"Board: [bold]{board['name']}[/bold]")
+        console.print(f"Board: [bold]{esc(board['name'])}[/bold]")
         for col in board.get("columns", []):
             line = Text("  ")
             line.append(f"#{col['id']}", style="yellow")
@@ -345,9 +347,9 @@ def cmd_card_get(card_id: int = typer.Argument(..., help="Card ID")):
 
     def render():
         console = Console()
-        console.print(f"[yellow]#{card['id']}[/yellow] [bold]{card['title']}[/bold]")
+        console.print(f"[yellow]#{card['id']}[/yellow] [bold]{esc(card['title'])}[/bold]")
         console.print(
-            f"  on {card['board_name']} / {card['column_name']} "
+            f"  on {esc(card['board_name'])} / {esc(card['column_name'])} "
             f"(column {card['column_id']})"
         )
         # The description is user-written text, so hand it to rich as plain
@@ -359,7 +361,7 @@ def cmd_card_get(card_id: int = typer.Argument(..., help="Card ID")):
             console.print("  [dim](no description)[/dim]")
         for comment in card.get("comments", []):
             console.print("")
-            console.print(f"  [cyan]{comment['username']}[/cyan]:")
+            console.print(f"  [cyan]{esc(comment['username'])}[/cyan]:")
             console.print(comment["content"], markup=False, highlight=False)
 
     emit(card, render)
@@ -537,7 +539,7 @@ def cmd_organizations():
             return
         for org in orgs:
             rprint(
-                f"{org['id']:4}  [bold]{org['name']}[/bold] (owner: {org.get('owner_username', 'Unknown')})"
+                f"{org['id']:4}  [bold]{esc(org['name'])}[/bold] (owner: {esc(org.get('owner_username', 'Unknown'))})"
             )
 
     emit(orgs, render)
@@ -561,13 +563,13 @@ def cmd_organization_get(org_id: int = typer.Argument(..., help="Organization ID
     org = client.organization_get(org_id)
 
     def render():
-        rprint(f"Organization: [bold]{org['name']}[/bold]")
-        rprint(f"Owner: {org.get('owner_username', 'Unknown')}")
+        rprint(f"Organization: [bold]{esc(org['name'])}[/bold]")
+        rprint(f"Owner: {esc(org.get('owner_username', 'Unknown'))}")
         rprint("Members:")
         for member in org.get("members", []):
             role = member.get("role")
             role_info = f" ({role or 'member'})" if role else ""
-            rprint(f"  - {member['username']}{role_info}")
+            rprint(f"  - {esc(member['username'])}{esc(role_info)}")
 
     emit(org, render)
 
@@ -582,7 +584,7 @@ def cmd_organization_members(org_id: int = typer.Argument(..., help="Organizatio
         for member in members:
             role = member.get("role")
             role_info = f" ({role or 'member'})" if role else ""
-            rprint(f"{member['id']:4}  {member['username']}{role_info}")
+            rprint(f"{member['id']:4}  {esc(member['username'])}{esc(role_info)}")
 
     emit(members, render)
 
@@ -595,7 +597,7 @@ def cmd_organization_member_add(
     """Add member to organization."""
     client = make_client()
     result = client.organization_member_add(org_id, username)
-    emit(result, lambda: rprint(f"Added [green]{username}[/green] to organization"))
+    emit(result, lambda: rprint(f"Added [green]{esc(username)}[/green] to organization"))
 
 
 @org_app.command("member-remove")
@@ -629,8 +631,8 @@ def cmd_organization_invite_create(
     def render():
         rprint("[bold]Invite created![/bold]")
         rprint(f"  ID:       {result['id']}")
-        rprint(f"  Email:    {email or '(anonymous)'}")
-        rprint(f"  Link:    [cyan]{invite_link}[/cyan]")
+        rprint(f"  Email:    {esc(email or '(anonymous)')}")
+        rprint(f"  Link:    [cyan]{esc(invite_link)}[/cyan]")
         rprint("")
         rprint("Share this link with the person you want to invite.")
 
@@ -658,10 +660,10 @@ def cmd_organization_invites(org_id: int = typer.Argument(..., help="Organizatio
             return
         rprint("[bold]Pending Invites:[/bold]")
         for invite in invites:
-            rprint(f"  {invite['id']:4}  {invite['email'] or '(anonymous)'}")
+            rprint(f"  {invite['id']:4}  {esc(invite['email'] or '(anonymous)')}")
             url = invite_url(invite)
             if url:
-                rprint(f"       Link: {url}")
+                rprint(f"       Link: {esc(url)}")
 
     emit([{**i, "invite_url": invite_url(i)} for i in invites], render)
 
@@ -701,7 +703,7 @@ def cmd_teams(
             return
         for team in teams:
             rprint(
-                f"{team['id']:4}  [bold]{team['name']}[/bold] (org: {team.get('organization_name', 'Unknown')})"
+                f"{team['id']:4}  [bold]{esc(team['name'])}[/bold] (org: {esc(team.get('organization_name', 'Unknown'))})"
             )
 
     emit(teams, render)
@@ -725,11 +727,11 @@ def cmd_team_get(team_id: int = typer.Argument(..., help="Team ID")):
     team = client.team_get(team_id)
 
     def render():
-        rprint(f"Team: [bold]{team['name']}[/bold]")
-        rprint(f"Organization: {team.get('organization_name', 'Unknown')}")
+        rprint(f"Team: [bold]{esc(team['name'])}[/bold]")
+        rprint(f"Organization: {esc(team.get('organization_name', 'Unknown'))}")
         rprint("Members:")
         for member in team.get("members", []):
-            rprint(f"  - {member['username']}")
+            rprint(f"  - {esc(member['username'])}")
 
     emit(team, render)
 
@@ -742,7 +744,7 @@ def cmd_team_members(team_id: int = typer.Argument(..., help="Team ID")):
 
     def render():
         for member in members:
-            rprint(f"{member['id']:4}  {member['username']}")
+            rprint(f"{member['id']:4}  {esc(member['username'])}")
 
     emit(members, render)
 
@@ -755,7 +757,7 @@ def cmd_team_member_add(
     """Add member to team."""
     client = make_client()
     result = client.team_member_add(team_id, username)
-    emit(result, lambda: rprint(f"Added [green]{username}[/green] to team"))
+    emit(result, lambda: rprint(f"Added [green]{esc(username)}[/green] to team"))
 
 
 @team_app.command("member-remove")
@@ -818,7 +820,7 @@ def cmd_board_share(
                 f"{result.get('organization_id')}"
             )
         elif team_id_value:
-            rprint(f"Board [green]{board_id}[/green] shared with team {team_id_value}")
+            rprint(f"Board [green]{board_id}[/green] shared with team {esc(team_id_value)}")
         else:
             rprint(f"Board [green]{board_id}[/green] made private")
 
@@ -849,7 +851,7 @@ def cmd_apikey_list():
             last_used = key["last_used_at"][:10] if key["last_used_at"] else "never"
             expires = key["expires_at"][:10] if key["expires_at"] else "never"
             rprint(
-                f"  {key['prefix']}....  {key['name']}  {status}  last used: {last_used}  expires: {expires}"
+                f"  {esc(key['prefix'])}....  {esc(key['name'])}  {status}  last used: {last_used}  expires: {expires}"
             )
 
     emit(keys, render)
@@ -870,9 +872,9 @@ def cmd_apikey_create(
     def render():
         rprint("[bold]API Key created![/bold]")
         rprint("")
-        rprint(f"  Name:    {result['name']}")
-        rprint(f"  Key:     [yellow]{result['key']}[/yellow]")
-        rprint(f"  Prefix:  {result['prefix']}....")
+        rprint(f"  Name:    {esc(result['name'])}")
+        rprint(f"  Key:     [yellow]{esc(result['key'])}[/yellow]")
+        rprint(f"  Prefix:  {esc(result['prefix'])}....")
         rprint("")
         rprint(
             "[yellow]IMPORTANT: This key is shown only once! Copy it now and store it securely.[/yellow]"
@@ -951,7 +953,7 @@ def cmd_apikey_save(key: str = typer.Argument(..., help="API key to save")):
     set_api_key(key)
 
     def render():
-        rprint(f"[green]API key saved to {config_file()}[/green]")
+        rprint(f"[green]API key saved to {esc(config_file())}[/green]")
         rprint("Run commands without --api-key from now on.")
 
     emit({"ok": True}, render)
@@ -968,7 +970,7 @@ def cmd_apikey_clear():
     clear_api_key()
 
     def render():
-        rprint(f"[green]API key cleared from {config_file()}[/green]")
+        rprint(f"[green]API key cleared from {esc(config_file())}[/green]")
 
     emit({"ok": True}, render)
 
@@ -1043,20 +1045,8 @@ def _extract_api_key(argv):
     return None
 
 
-def main():
-    """Main entry point for the CLI."""
-    # Before anything prints, and before rich builds a Console around a
-    # stream whose encoding it would then inherit.
-    configure_output_encoding()
-
-    if _extract_json_flag(sys.argv):
-        set_json_output(True)
-
-    api_key = _extract_api_key(sys.argv)
-    if api_key is not None:
-        # This invocation only -- the stored token and key are not touched.
-        set_runtime_api_key(api_key)
-
+def _run():
+    """Run the command line, turning the CLI's own failures into exit status 1."""
     try:
         # Click expands `~` and wildcards in arguments on Windows, to stand in
         # for a shell that does not. It does it to every argument, so a card
@@ -1071,6 +1061,25 @@ def main():
         extra = {} if e.response is None else {"status": e.response.status_code}
         emit_error(describe_http_error(e), **extra)
         raise SystemExit(1)
+
+
+def main():
+    """Main entry point for the CLI."""
+    # Before anything prints, and before rich builds a Console around a
+    # stream whose encoding it would then inherit.
+    configure_output_encoding()
+
+    if _extract_json_flag(sys.argv):
+        set_json_output(True)
+
+    api_key = _extract_api_key(sys.argv)
+    if api_key is not None:
+        # This invocation only -- the stored token and key are not touched.
+        set_runtime_api_key(api_key)
+
+    status = run_quietly(_run)
+    if status:
+        raise SystemExit(status)
 
 
 if __name__ == "__main__":
