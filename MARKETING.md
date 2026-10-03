@@ -24,7 +24,7 @@ doing a bit.
 
 *(Revised 2026-09-06: the previous version of this section called for "Hard
 Sci-Fi," "the interface of a spaceship," and "slightly robotic." The shipped
-product never sounded like that -- see `routes/About.svelte`'s pteranodon --
+product never sounded like that -- see `routes/About.svelte`'s mascot note --
 and forcing "robotic" onto a brand with a mascot was actively fighting itself.
 This section now describes the voice the product actually uses.)*
 
@@ -67,6 +67,11 @@ the reasoning behind them (contrast ratios, why the black is warm instead of
 blue-violet); this section is the summary. When the two disagree, theme.css
 wins.
 
+* **Logo:** The pearachute logo -- a pear under a parachute, so it's the "p"
+  -- unmodified apart from cropping, in `frontend/src/assets/logo.svg`. That
+  one file is the `Logo` component, the favicon and the source for the PNG
+  icons and OG image in `frontend/public/`. It's a self-contained disc with
+  its own outline, so it's never recolored per theme.
 * **Color Palette:**
     * **Backgrounds:** Warm black (`#231f20`), keyed to the pearachute logo
       rather than a blue-violet near-black -- it's meant to read as a
