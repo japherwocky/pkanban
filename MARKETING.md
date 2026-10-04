@@ -2,20 +2,38 @@
 
 ## 1. The Core Philosophy
 **pkanban is not "just another Kanban board."**
-It is the **Shared Memory Layer** for hybrid teams of Humans and AI Agents.
+It is the **Shared Memory Layer** between a person and the AI that works for them.
 
 ### The "Why"
-* **The Problem:** AI Agents (like AutoGPT, CrewAI, custom scripts) are becoming autonomous workers. But they currently work in "black boxes" (terminals). You can't see their plan, and you can't easily intervene without stopping them. Existing tools (Jira, Trello) are too heavy, require complex OAuth, and have messy DOMs that agents struggle to read.
-* **The Solution:** A Kanban board that treats the **Command Line Interface (CLI)** as a first-class citizen.
-    * **For Humans:** It’s a fast, beautiful web dashboard to track progress.
-    * **For Agents:** It’s a simple CLI command (`pkanban card move`) that lets them report status instantly using standard IO.
+* **The Problem:** People now hand real work to AI agents -- Claude Code, Codex, opencode and the like. The agent works in a scrolling chat or a terminal: you can't see its plan at a glance, you lose track of what it finished, and it forgets all of it when the session ends. Existing tools (Jira, Trello) are too heavy, require complex OAuth, and have messy DOMs that agents struggle to read.
+* **The Solution:** A Kanban board the agent can read and update on its own.
+    * **For Humans:** A fast, readable web board -- what's planned, what's in progress, what's done.
+    * **For Agents:** A command (`pkanban card move`) it can run with no SDK, no plugin, and nobody writing integration code.
 
 ## 2. Positioning & Audience
-We are pivoting from "A Dev Tool" to **"The Agent-Native Orchestration Layer."**
 
-* **Primary Audience:** AI Engineers, LLM researchers, and developers building autonomous workflows.
-* **Secondary Audience:** Power-user developers who hate leaving the terminal.
-* **The Hook:** "Stop parsing logs to see what your agent is doing. Give it a board."
+*(Revised 2026-10-04: the primary audience used to be "AI Engineers, LLM
+researchers, and developers building autonomous workflows," and the hero said
+"If your agent can print to stdout, it can use pkanban." A good line for
+engineers -- and the person we're actually for has no idea what stdout is.)*
+
+* **Primary Audience:** People who get work done through an AI agent app --
+  Claude Code, Codex, opencode, Cursor -- and are not necessarily engineers.
+  They're comfortable telling an AI what to do; they may never have opened a
+  terminal outside of one. Smart, not technical.
+* **Secondary Audience:** Developers and AI engineers. They'll get it either
+  way, and the docs and the CLI's own `--help` are written for them.
+* **The Hook:** "Give your AI a to-do list you can both see."
+* **Setup is one sentence.** The visitor doesn't install anything. They paste
+  *"Install pkanban and use it to track your work."* into their AI, which
+  installs pkanban and asks them to sign in. Lead with that sentence, not with
+  `pip install pkanban`.
+* **Only promise where it works.** pkanban works in any AI that can run
+  commands. The ChatGPT and Claude *chat windows* can't, so never name
+  "ChatGPT" or "Claude" bare -- name the agent apps (Claude Code, Codex). The
+  less technical the reader, the likelier they are to try it in the chat
+  window first, and that's a bad first five minutes. This changes only if
+  pkanban ships an MCP connector.
 
 ## 3. Brand Voice & Tone
 Our voice is **dry, concrete, and technically load-bearing.** We sound like a
@@ -35,16 +53,23 @@ This section now describes the voice the product actually uses.)*
   so "dark mode" isn't the aesthetic, "terminal" is.
 * **Personality:** Precise, a little dry, occasionally funny. Humor is
   allowed -- encouraged, even -- but it never announces itself. A joke that
-  has to explain itself has already failed. The model line is in section 6:
-  *"If your agent can print to stdout, it can use pkanban. No SDKs, no
-  wrappers, no dependency hell."* "No dependency hell" is a joke. It doesn't
-  pause to point at itself.
+  has to explain itself has already failed. The old hero line is still the
+  best example: *"If your agent can print to stdout, it can use pkanban. No
+  SDKs, no wrappers, no dependency hell."* "No dependency hell" is a joke. It
+  doesn't pause to point at itself. (It left the hero for its audience, not
+  its tone -- see section 2.)
 
 ### Voice Rules
 1.  **No Fluff:** Avoid words like "Empower," "Unleash," "Revolutionize," or "Synergy."
-2.  **Use Engineering Terms:** Use words like "Orchestrate," "Deploy," "Sync," "StdOut," "Pipe," "Context Window."
-3.  **Show, Don't Tell:** Don't say "It's easy to use." Show the command: `pip install pkanban`.
-4.  **Respect the User:** Assume the user is smart. Don't dumb down the concepts.
+2.  **Use the Reader's Words, Not Ours:** "Your AI," "run a command," "board,"
+    "card," "sign in." Not "stdout," "pipe," "SDK," "CLI," or "orchestrate" --
+    not in a headline, anyway. Engineering terms belong in the docs and in
+    `--help`, where the reader came looking for them.
+3.  **Show, Don't Tell:** Don't say "It's easy to set up." Show the sentence
+    they paste into their AI.
+4.  **Respect the User:** Assume the user is smart. Don't dumb down the
+    concepts. Smart isn't the same as technical: explain what it does for
+    them, not how it's wired.
 5.  **State the joke once.** If a bit needs a second sentence to land, or a
     third callback later on the same page, cut it down to the one telling
     that actually works.
@@ -53,11 +78,16 @@ This section now describes the voice the product actually uses.)*
 
 | **Do NOT Say** | **DO Say** | **Why?** |
 | :--- | :--- | :--- |
-| "Manage your projects easily." | "Orchestrate agents via CLI." | Specificity wins. |
-| "We have a great API." | "Standard Input/Output Interface." | Appeals to the universal nature of CLI. |
-| "Collaborate with your team." | "Hybrid Human-Agent Workflows." | Highlights the unique value prop. |
-| "Sign up now!" | "Initialize Workspace." | Keeps the "Terminal" immersion. |
-| "Seamless integration." | "Zero-config handshake." | "Seamless" is a marketing buzzword. |
+| "Manage your projects easily." | "Give your AI a to-do list you can both see." | Specificity wins. |
+| "Orchestrate agents via CLI." | "Your AI moves the cards as it works." | Say what happens, not how it's plumbed. |
+| "Standard Input/Output Interface." | "Works with any AI that can run commands." | The reader knows what their AI can do. They don't know what stdout is. |
+| "Works with ChatGPT." | "Works with Claude Code, Codex, opencode." | Only name places it actually works -- see section 2. |
+| "Initialize Workspace." | "Create your account." | Terminal role-play reads as a barrier to someone who has never used one. |
+| "Seamless integration." | "Paste one sentence into your AI." | "Seamless" is a buzzword. The sentence is the proof. |
+
+*(Revised 2026-10-04: "Orchestrate agents via CLI," "Standard Input/Output
+Interface" and "Initialize Workspace" used to be in the right-hand column.
+Some pages still say them -- that's drift to fix, not precedent to follow.)*
 
 ## 5. Visual Identity Guidelines
 This section describes what actually shipped in `frontend/src/theme.css`, not
@@ -106,15 +136,18 @@ wins.
 
 ## 6. Key Value Propositions (The "Elevator Pitch")
 
-If you need to generate text for a new section, pick one of these three angles:
+If you need to generate text for a new section, pick one of these four angles:
 
-1.  **Universal Compatibility:**
-    * "If your agent can print to stdout, it can use pkanban. No SDKs, no wrappers, no dependency hell."
-2.  **Observability:**
-    * "Turn the black box of agent execution into a visual board. Watch your agents think and act in real-time."
-3.  **Human-in-the-Loop:**
+1.  **Works With Your AI:**
+    * "Give your AI a to-do list you can both see. Works with Claude Code, Codex, opencode, or any AI that can run commands."
+    * "If your AI can run a command, it can use pkanban."
+2.  **Visibility:**
+    * "See what your AI is working on, what it finished, and what it's stuck on -- without scrolling back through the chat."
+3.  **Memory:**
+    * "Your AI forgets between chats. The board doesn't."
+4.  **Human-in-the-Loop:**
     * "Agents get stuck. Humans get tired. pkanban lets you hand off tasks between biological and synthetic intelligence -- no status meeting required."
 
 ---
 
-*This document serves as the source of truth for all copy and design decisions. If a feature or sentence doesn't align with "Agent-Native," cut it.*
+*This document serves as the source of truth for all copy and design decisions. If a feature or sentence doesn't align with "Agent-Native," cut it. If a sentence on a public page only makes sense to someone who already uses a terminal, rewrite it.*

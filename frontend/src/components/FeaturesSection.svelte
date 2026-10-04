@@ -4,19 +4,25 @@
   let mouseX = $state(0);
   let mouseY = $state(0);
 
-  // Capability, not partnership -- pkanban has no integration code for, and
-  // makes no claim about, any named company. These are the generic things
-  // that can shell out to a CLI, not brand logos with their own trademarks
-  // and legal teams.
-  const capabilities = [
-    'Bash script',
-    'Cron job',
-    'CI pipeline',
-    'Python script',
-    'GitHub Action',
-    'Makefile target',
-    'systemd timer',
-    'Node script'
+  // Compatibility, not partnership. These are AI tools the reader already
+  // uses, named in plain text so they recognize one -- pkanban has no
+  // integration code for any of them, and no logos go here: those carry
+  // trademark terms a name doesn't. (This list used to be "Bash script",
+  // "Cron job" and the like; true, but invisible to the people the page is
+  // now for. See MARKETING.md section 2.)
+  //
+  // Every entry has to be an agent that runs shell commands, because that is
+  // the whole integration. The ChatGPT and Claude chat windows can't, so they
+  // don't belong here until pkanban ships an MCP connector.
+  const agents = [
+    'Claude Code',
+    'Codex',
+    'opencode',
+    'Cursor',
+    'Gemini CLI',
+    'GitHub Copilot',
+    'Cline',
+    'Goose'
   ];
 
   function handleMouseMove(event, boxId) {
@@ -151,7 +157,7 @@
       onmouseleave={() => hoveredBox = null}
       onmousemove={(e) => handleMouseMove(e, 3)}
       role="group"
-      aria-label="Works with anything that can run a command"
+      aria-label="Works with the AI you already use"
     >
       <div class="box-content">
         <div class="box-header">
@@ -162,15 +168,15 @@
               <path d="M13.2 17.8l-1 1a3.3 3.3 0 01-4.7-4.7l1-1"/>
             </svg>
           </span>
-          <h3>Works where your Agents live</h3>
+          <h3>Works with the AI you already use</h3>
         </div>
-        <p class="box-description">Anything that can shell out can use pkanban -- no SDK, no partner integration required.</p>
+        <p class="box-description">If your AI can run a command, it can use pkanban. No plugin to install, no integration to set up.</p>
 
         <div class="logo-marquee">
           <div class="logo-track" class:paused={hoveredBox !== 3}>
-            {#each [...capabilities, ...capabilities, ...capabilities] as capability}
+            {#each [...agents, ...agents, ...agents] as agent}
               <div class="logo-item" class:colored={hoveredBox === 3}>
-                <span class="logo-text">{capability}</span>
+                <span class="logo-text">{agent}</span>
               </div>
             {/each}
           </div>

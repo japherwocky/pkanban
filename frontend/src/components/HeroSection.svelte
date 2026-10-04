@@ -3,11 +3,16 @@
   import TerminalSimulator from './TerminalSimulator.svelte';
   import KanbanDemo from './KanbanDemo.svelte';
 
+  // What the visitor pastes into their AI. Not `pip install pkanban`: the
+  // reader this page is for may never have opened a terminal, and doesn't
+  // need to -- the agent installs pkanban itself, then asks them to sign in.
+  const AGENT_PROMPT = 'Install pkanban and use it to track your work.';
+
   let copied = $state(false);
   let copyResetTimer;
 
-  function copyInstallCommand() {
-    navigator.clipboard.writeText('pip install pkanban');
+  function copyAgentPrompt() {
+    navigator.clipboard.writeText(AGENT_PROMPT);
     copied = true;
     clearTimeout(copyResetTimer);
     copyResetTimer = setTimeout(() => (copied = false), 2000);
@@ -17,14 +22,22 @@
 <section class="hero-section">
   <div class="hero-content">
     <div class="text-content">
-      <h1 class="headline">If your agent can print to stdout, it can use pkanban.</h1>
-      <p class="subhead">No SDKs, no wrappers, no dependency hell.</p>
+      <h1 class="headline">Give your AI a to-do list you can both see.</h1>
+      <p class="subhead">
+        Works with Claude Code, Codex, opencode, or any AI that can run commands.
+        Setup is one sentence: paste the one below into your AI, and it'll install
+        pkanban and ask you to sign in.
+      </p>
 
       <div class="hero-actions">
         <a href="/signup" use:link class="signup-button">Create your account</a>
 
-        <button class="install-button" onclick={copyInstallCommand}>
-          <code class="button-command">pip install pkanban</code>
+        <button
+          class="prompt-button"
+          onclick={copyAgentPrompt}
+          aria-label="Copy a message to paste into your AI: {AGENT_PROMPT}"
+        >
+          <span class="prompt-text">“{AGENT_PROMPT}”</span>
           <span class="button-copy">{copied ? 'Copied' : 'Copy'}</span>
         </button>
       </div>
@@ -142,7 +155,7 @@
     box-shadow: var(--ring);
   }
 
-  .install-button {
+  .prompt-button {
     display: inline-flex;
     align-items: center;
     gap: var(--space-3);
@@ -152,20 +165,25 @@
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: border-color var(--transition-fast), background-color var(--transition-fast);
-    font-family: var(--font-mono);
   }
 
-  .install-button:hover {
+  .prompt-button:hover {
     border-color: var(--color-primary);
     background-color: var(--color-muted);
   }
 
-  .button-command {
+  .prompt-button:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  /* Body face, not mono: this is a sentence you say to your AI, not a
+     command you type, and mono would read as "code" to the people it's for. */
+  .prompt-text {
     font-size: var(--text-sm);
     color: var(--color-foreground);
     font-weight: 500;
-    background: transparent;
-    padding: 0;
+    text-align: left;
   }
 
   .button-copy {
@@ -179,7 +197,7 @@
     transition: color var(--transition-fast), background-color var(--transition-fast);
   }
 
-  .install-button:hover .button-copy {
+  .prompt-button:hover .button-copy {
     color: var(--color-foreground);
     background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
   }
@@ -225,14 +243,10 @@
       padding: 13px 20px;
     }
 
-    .install-button {
+    .prompt-button {
       width: 100%;
-      justify-content: center;
+      justify-content: space-between;
       padding: var(--space-3) var(--space-5);
-    }
-
-    .button-command {
-      font-size: var(--text-sm);
     }
 
     .demo-grid {
