@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from peewee import fn
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +23,7 @@ from backend.billing import check_can_add_card, check_can_create_board, usage_fo
 from backend.database import db
 from backend import stripe_billing
 from backend.mailer import send_invite_email, send_verification_email
+from backend.search import search_cards
 from backend.models import (
     User,
     Board,
@@ -57,43 +58,46 @@ def slugify(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
+def accessible_boards(user):
+    """Every board `user` can open, as a query.
+
+    The one definition of board access. can_access_board, the board list and
+    search all read it, so none of them can drift from the others: a board
+    that lists but answers 403, or one search finds but the list hides. The
+    list and the access check used to be separate code, and an org-public
+    board was reachable by URL for a while before it ever appeared in the list.
+
+    A board is open to its owner, to members of the team it is shared with,
+    and -- when is_public_to_org is set -- to the members and owner of its
+    organization. The three are OR'd: a board can carry a shared team and the
+    org flag at once (share_board does not clear the team when the flag goes
+    on), and either one is enough.
+
+    Nothing here dereferences a foreign key, so dangling ones are harmless. A
+    shared_team_id whose team was deleted matches no membership. An
+    organization_id whose org is gone matches nothing either, because
+    member_orgs joins through Organization. organization_id is null for a
+    personal board, and the flag means nothing without it.
+    """
+    teams = TeamMember.select(TeamMember.team).where(TeamMember.user == user)
+    member_orgs = (
+        Organization.select(Organization.id)
+        .join(OrganizationMember)
+        .where(OrganizationMember.user == user)
+    )
+    owned_orgs = Organization.select(Organization.id).where(Organization.owner == user)
+    return Board.select().where(
+        (Board.owner == user)
+        | Board.shared_team.in_(teams)
+        | (
+            (Board.is_public_to_org == True)  # noqa: E712 -- peewee needs ==
+            & (Board.organization.in_(member_orgs) | Board.organization.in_(owned_orgs))
+        )
+    )
+
+
 def can_access_board(user, board):
-    # Owner can always access
-    if board.owner == user:
-        return True
-
-    # Neither branch may return early on a miss. A board can carry both a
-    # shared_team and is_public_to_org -- share_board does not clear the team
-    # when the org flag goes on -- and an early return meant whichever was
-    # checked first silently decided the answer for both.
-    #
-    # Board shared with team - check if user is team member.
-    #
-    # Read shared_team_id, not shared_team: the FK may point at a team that no
-    # longer exists, and resolving it would raise Team.DoesNotExist out of a
-    # call path with no handler -- a 500 on every non-owner request for the
-    # board, with no way to repair it from the UI. Deleting a team used to
-    # leave exactly that behind, because the query meant to clear the column
-    # was never executed. Treat a dangling reference as "not shared".
-    if board.shared_team_id:
-        if (
-            TeamMember.get_or_none(
-                (TeamMember.user == user)
-                & (TeamMember.team == board.shared_team_id)
-            )
-            is not None
-        ):
-            return True
-
-    # Board public to org - check if user is org member. organization_id is
-    # null for a personal board and for any board whose org could not be
-    # derived when the column was added, and the flag means nothing without it.
-    if board.is_public_to_org and board.organization_id:
-        org = Organization.get_or_none(Organization.id == board.organization_id)
-        if org is not None:
-            return is_org_member(user, org) or org.owner_id == user.id
-
-    return False
+    return accessible_boards(user).where(Board.id == board.id).exists()
 
 
 def can_modify_board(user, board):
@@ -284,6 +288,23 @@ class CardDetailResponse(CardResponse):
     usually comes right after "what does it say?".
     """
 
+    column_id: int
+    column_name: str
+    board_id: int
+    board_name: str
+
+
+class SearchResult(BaseModel):
+    """One card a search found, with where it lives.
+
+    snippet is the part of the description around the match, with matched
+    words wrapped in  ...  (see backend/search.py). It is plain text:
+    escape it before rendering, then turn the markers into highlights.
+    """
+
+    id: int
+    title: str
+    snippet: Optional[str]
     column_id: int
     column_name: str
     board_id: int
@@ -1384,25 +1405,7 @@ async def get_my_usage(current_user: User = Depends(get_current_user_or_api_key)
 
 @api.get("/boards", response_model=list)
 async def list_boards(current_user: User = Depends(get_current_user_or_api_key)):
-    board_ids = []
-    for board in current_user.boards:
-        board_ids.append(board.id)
-    for tm in current_user.team_memberships:
-        for board in tm.team.boards:
-            if board.id not in board_ids:
-                board_ids.append(board.id)
-    # Boards shared with an org this user belongs to. Without this an
-    # org-public board is reachable by direct URL -- can_access_board allows
-    # it -- but invisible in the list, which is a worse failure than the
-    # honest 403 the flag used to produce.
-    for org in get_user_organizations(current_user):
-        for board in Board.select().where(
-            (Board.organization == org) & (Board.is_public_to_org == True)  # noqa: E712
-        ):
-            if board.id not in board_ids:
-                board_ids.append(board.id)
-
-    boards = Board.select().where(Board.id.in_(board_ids))
+    boards = accessible_boards(current_user).order_by(Board.id)
     return [
         {
             "id": board.id,
@@ -1800,6 +1803,30 @@ async def reorder_cards(
             Card.update(position=item.position).where(Card.id == item.id).execute()
 
     return {"ok": True}
+
+
+@api.get("/search", response_model=list[SearchResult])
+async def search(
+    q: str = Query(..., max_length=500, description="What to look for"),
+    board_id: Optional[int] = Query(None, description="Search only this board"),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Cards whose title or description matches `q`, best first, across every
+    board the caller can open.
+
+    Words are stemmed and ANDed, and the last one also matches as a prefix.
+    A query that is just a card id ("474" or "#474") puts that card first.
+    """
+    boards = accessible_boards(current_user)
+    if board_id is not None:
+        board = Board.get_or_none(Board.id == board_id)
+        if not board:
+            raise HTTPException(status_code=404, detail="Board not found")
+        if not can_access_board(current_user, board):
+            raise HTTPException(status_code=403, detail="Not authorized")
+        boards = boards.where(Board.id == board_id)
+    return search_cards(q, boards, limit)
 
 
 # Comment endpoints

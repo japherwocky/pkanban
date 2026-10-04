@@ -521,6 +521,83 @@ def cmd_card_delete(card_id: int = typer.Argument(..., help="Card ID")):
         raise typer.Exit(1)
 
 
+# The server marks matched words in a snippet with STX ... ETX. Mirrors
+# HIGHLIGHT_START/END in backend/search.py; the CLI cannot import the backend.
+HIGHLIGHT_START = ""
+HIGHLIGHT_END = ""
+
+
+def _highlighted(snippet):
+    """A search snippet as rich Text, matched words in bold.
+
+    Built from segments rather than markup: the snippet is card text, and
+    turning the markers into "[bold]" would hand rich everything else in it
+    to interpret as well.
+    """
+    from rich.text import Text
+
+    text = Text()
+    for i, part in enumerate(snippet.split(HIGHLIGHT_START)):
+        if i == 0:
+            text.append(part)
+            continue
+        matched, _, rest = part.partition(HIGHLIGHT_END)
+        text.append(matched, style="bold yellow")
+        text.append(rest)
+    return text
+
+
+@app.command("search")
+def cmd_search(
+    query: list[str] = typer.Argument(
+        ..., help="Words to look for. No quotes needed: every word is used."
+    ),
+    board: Optional[int] = typer.Option(
+        None, "--board", "-b", help="Search only this board"
+    ),
+    limit: int = typer.Option(
+        20, "--limit", "-n", min=1, max=100, help="Most results to show"
+    ),
+):
+    """Search card titles and descriptions on every board you can open.
+
+    Words are stemmed and all must match; the last also matches as a prefix.
+    A card id on its own (474 or #474) puts that card first.
+    """
+    from rich.console import Console
+    from rich.text import Text
+
+    client = make_client()
+    try:
+        results = client.search(" ".join(query), board, limit)
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code
+        if status == 404:
+            message = f"Board {board} not found."
+        elif status == 403:
+            message = f"You don't have access to board {board}."
+        else:
+            message = f"Error: {e.response.text}"
+        emit_error(message, status=status)
+        raise typer.Exit(1)
+
+    def render():
+        console = Console()
+        if not results:
+            console.print("No matching cards")
+            return
+        for result in results:
+            line = Text()
+            line.append(f"#{result['id']}", style="yellow")
+            line.append(f" {result['title']}", style="bold")
+            line.append(f"  {result['board_name']} / {result['column_name']}", style="dim")
+            console.print(line)
+            if result.get("snippet"):
+                console.print(Text("    ").append_text(_highlighted(result["snippet"])))
+
+    emit(results, render)
+
+
 # === Organization Commands ===
 
 org_app = typer.Typer(help="Organization management commands", no_args_is_help=True)

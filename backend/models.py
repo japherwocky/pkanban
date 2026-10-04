@@ -8,7 +8,12 @@ from peewee import (
     BooleanField,
     SQL,
 )
-from playhouse.sqlite_ext import AutoIncrementField, Model  # type: ignore
+from playhouse.sqlite_ext import (  # type: ignore
+    AutoIncrementField,
+    FTS5Model,
+    Model,
+    SearchField,
+)
 from datetime import datetime, timezone, timedelta
 
 from backend.database import db
@@ -329,6 +334,96 @@ class Card(BaseModel):
     position = IntegerField()
 
 
+# Keep CardSearch in step with card. They live in the database rather than in
+# the API, so every write is indexed whichever path made it: the endpoints, a
+# board delete, manage.py, a shell. The update trigger watches only title and
+# description, and only fires when one actually changed -- card.save() writes
+# every column, and a drag that reorders a column saves a dozen cards whose
+# text is untouched.
+#
+# The 'delete' rows must carry the values the index currently holds, which is
+# why they read old.*. Handing FTS5 anything else corrupts an external-content
+# index without raising.
+CARD_SEARCH_TRIGGERS = {
+    "card_search_insert": """
+        CREATE TRIGGER IF NOT EXISTS card_search_insert AFTER INSERT ON card
+        BEGIN
+            INSERT INTO cardsearch (rowid, title, description)
+            VALUES (new.id, new.title, new.description);
+        END
+    """,
+    "card_search_delete": """
+        CREATE TRIGGER IF NOT EXISTS card_search_delete AFTER DELETE ON card
+        BEGIN
+            INSERT INTO cardsearch (cardsearch, rowid, title, description)
+            VALUES ('delete', old.id, old.title, old.description);
+        END
+    """,
+    "card_search_update": """
+        CREATE TRIGGER IF NOT EXISTS card_search_update
+        AFTER UPDATE OF title, description ON card
+        WHEN old.title IS NOT new.title OR old.description IS NOT new.description
+        BEGIN
+            INSERT INTO cardsearch (cardsearch, rowid, title, description)
+            VALUES ('delete', old.id, old.title, old.description);
+            INSERT INTO cardsearch (rowid, title, description)
+            VALUES (new.id, new.title, new.description);
+        END
+    """,
+}
+
+
+class CardSearch(FTS5Model):
+    """Full-text index over card titles and descriptions.
+
+    External content: the text stays in card, and this holds only the index,
+    read back through `content=card`. rowid is the card id.
+
+    porter over unicode61 stems ("archived" finds "archiving") and splits on
+    every punctuation character, so "Python/Django" and a sentence-final
+    "Postgres." both index as plain words. SQLite does the stemming at index
+    and query time alike, so there is no second stemmer that has to agree
+    with it.
+
+    create_table() also installs the triggers and rebuilds the index whenever
+    it had to create anything. That makes it self-healing: a migration that
+    rebuilds the card table drops its triggers with it, and the next startup
+    puts them back and reindexes whatever was written in between.
+    """
+
+    title = SearchField()
+    description = SearchField()
+
+    class Meta:
+        database = db
+        table_name = "cardsearch"
+        options = {
+            "content": "card",
+            "content_rowid": "id",
+            "tokenize": "porter unicode61",
+        }
+        # The triggers are created on card, so it has to exist first.
+        depends_on = [Card]
+
+    @classmethod
+    def create_table(cls, safe=True, **options):
+        database = cls._meta.database
+        existing = {
+            row[0]
+            for row in database.execute_sql(
+                "SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'card'"
+            )
+        }
+        stale = not cls.table_exists() or not set(CARD_SEARCH_TRIGGERS) <= existing
+
+        super().create_table(safe=safe, **options)
+        for sql in CARD_SEARCH_TRIGGERS.values():
+            database.execute_sql(sql)
+
+        if stale:
+            cls.rebuild()
+
+
 class Comment(BaseModel):
     card = ForeignKeyField(Card, backref="comments")
     user = ForeignKeyField(User, backref="comments")
@@ -482,6 +577,7 @@ ALL_MODELS = [
     Board,
     Column,
     Card,
+    CardSearch,
     Comment,
     Organization,
     OrganizationMember,

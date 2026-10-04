@@ -6,6 +6,7 @@
   import { api } from '../lib/api.js';
   import { showPlanLimit } from '../lib/planLimit.js';
   import Modal from '../lib/Modal.svelte';
+  import CardSearch from '../lib/CardSearch.svelte';
 
   let boards = $state([]);
   let boardsLoading = $state(false);
@@ -14,6 +15,8 @@
   let createLoading = $state(false);
   let teamsMap = $state({}); // Map team_id -> team object
   let isAdmin = $state(false);
+  // While there is a query the results take the boards grid's place.
+  let searchQuery = $state('');
 
   onMount(async () => {
     await Promise.all([loadBoards(), loadTeams(), loadAdminStatus()]);
@@ -117,7 +120,13 @@
     </div>
   </header>
 
-  {#if boardsLoading}
+  {#if boards.length > 0}
+    <CardSearch bind:query={searchQuery} />
+  {/if}
+
+  {#if searchQuery.trim()}
+    <!-- CardSearch is showing results in place of the grid. -->
+  {:else if boardsLoading}
     <div class="loading">Loading boards...</div>
   {:else if boards.length === 0}
     <div class="empty-state">

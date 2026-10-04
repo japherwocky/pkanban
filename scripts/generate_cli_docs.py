@@ -34,6 +34,7 @@ GROUP_TITLES = {
     "share": "Board Management",
     "column": "Column Management",
     "card": "Card Management",
+    "search": "Card Management",
     "org": "Organization Management",
     "team": "Team Management",
 }

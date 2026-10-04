@@ -302,6 +302,12 @@ class PkanbanClient:
     def team_member_remove(self, team_id, user_id):
         return self._request("DELETE", f"/api/teams/{team_id}/members/{user_id}")
 
+    def search(self, query, board_id=None, limit=20):
+        params = {"q": query, "limit": limit}
+        if board_id is not None:
+            params["board_id"] = board_id
+        return self._request("GET", "/api/search", params=params)
+
     # Board sharing
     def board_share(
         self, board_id, team_id=None, is_public_to_org=False, organization_id=None

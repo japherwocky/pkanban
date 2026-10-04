@@ -278,6 +278,26 @@ moment limits switch on. The ordered launch runbook is "Billing (Stripe)" in
 `sys/DEPLOYMENT.md`. If you change the Pro price, change it in Stripe, in
 `billing.py`, and on the Pricing page together.
 
+### Card search
+
+`GET /api/search` (and `pkanban search`) runs SQLite FTS5 over card titles and
+descriptions. The index is `CardSearch` in `backend/models.py`, an
+external-content table that holds only the index; the text stays in `card`.
+Three triggers on `card` keep it current, so nothing in the API has to.
+
+- **Triggers live with the table.** `CardSearch.create_table()` installs them
+  and rebuilds the index if anything was missing, and `init_db()` calls it on
+  every startup. A migration that rebuilds `card` (as 007 did) drops its
+  triggers; the next startup puts them back and reindexes.
+- **Never `DELETE FROM cardsearch`.** Deleting cards removes their index rows
+  through the trigger. Emptying the index first and then deleting cards hands
+  FTS5 'delete' commands for text it no longer holds, which corrupts the index
+  without raising an error. `conftest.py` skips it for this reason, and
+  `CardSearch.rebuild()` is the safe reset.
+- **Board access is `accessible_boards(user)`** in `backend/api.py`. Search,
+  the board list and `can_access_board` all use it, so a card search can never
+  reach a board the list would hide.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships
