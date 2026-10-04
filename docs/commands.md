@@ -80,6 +80,10 @@ Card management commands
 - `pkanban card move` — Move a card to another column or position, leaving its text alone.
 - `pkanban card update` — Update a card. Anything you don't pass is left unchanged.
 
+### [`pkanban search`](/docs/commands/search)
+
+Search card titles and descriptions on every board you can open.
+
 ## Organization Management
 
 ### [`pkanban org`](/docs/commands/org)

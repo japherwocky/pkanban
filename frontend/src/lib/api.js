@@ -210,6 +210,13 @@ export const api = {
       body: JSON.stringify({ cards }),
     }),
     delete: (id) => apiFetch(`/api/cards/${id}`, { method: 'DELETE' }),
+    // Cards matching `q` on every board the user can open, best first.
+    search: (q, { boardId = null, limit = null, signal } = {}) => {
+      const params = new URLSearchParams({ q });
+      if (boardId != null) params.set('board_id', boardId);
+      if (limit != null) params.set('limit', limit);
+      return apiFetch(`/api/search?${params}`, { signal });
+    },
   },
   comments: {
     create: (cardId, content) => apiFetch('/api/comments', {

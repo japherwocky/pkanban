@@ -25,6 +25,14 @@ MIGRATIONS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "migrations"
 )
 
+# Tables that cannot carry AUTOINCREMENT and are not meant to: the FTS5 index
+# (CardSearch) and the shadow tables SQLite keeps behind it. Its ids are card
+# ids, and it is rebuilt from card rather than inserted into directly.
+NOT_VIRTUAL = (
+    "AND name NOT IN "
+    "(SELECT name FROM pragma_table_list WHERE type IN ('virtual', 'shadow')) "
+)
+
 
 def _schema(path):
     """{table: {"columns": [...], "indexes": [...]}} for every real table.
@@ -228,7 +236,8 @@ def test_007_stops_deleted_ids_being_reused_and_keeps_data():
             assert not old.execute_sql(
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT IN ('sqlite_sequence', 'migratehistory') "
-                "AND sql NOT LIKE '%AUTOINCREMENT%'"
+                + NOT_VIRTUAL
+                + "AND sql NOT LIKE '%AUTOINCREMENT%'"
             ).fetchall()
 
             # The core of the bug: delete the newest card, insert another.
@@ -264,7 +273,8 @@ def test_new_models_declare_autoincrement():
             missing = db.execute_sql(
                 "SELECT name FROM sqlite_master WHERE type='table' "
                 "AND name NOT IN ('sqlite_sequence') "
-                "AND sql NOT LIKE '%AUTOINCREMENT%'"
+                + NOT_VIRTUAL
+                + "AND sql NOT LIKE '%AUTOINCREMENT%'"
             ).fetchall()
             db.close()
         assert not missing

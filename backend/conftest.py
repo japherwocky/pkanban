@@ -65,13 +65,27 @@ def _setup_test_db():
 @pytest.fixture
 def db_session(_setup_test_db):
     """Per-test database fixture that clears all data between tests."""
+    from playhouse.sqlite_ext import VirtualModel
+
     # Reversed, so children go before the parents they reference. ALL_MODELS is
     # ordered parents-first for create_tables; deletion wants the opposite.
+    #
+    # The search index is skipped, not deleted from: the triggers on card
+    # already remove its rows as the cards go. A DELETE here would empty the
+    # index first, and every card delete after it would then tell FTS5 to
+    # remove words it no longer holds -- which corrupts the index rather than
+    # erroring. It is rebuilt afterwards so no test inherits another's state.
+    virtual = []
     for table in reversed(_models()):
+        if issubclass(table, VirtualModel):
+            virtual.append(table)
+            continue
         try:
             table.delete().execute()
         except Exception:
             pass
+    for table in virtual:
+        table.rebuild()
     yield _db
 
 

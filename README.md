@@ -214,5 +214,6 @@ The backend exposes a REST API at `/api/`:
 - `POST /api/cards` - Create card
 - `PUT /api/cards/{id}` - Update card
 - `DELETE /api/cards/{id}` - Delete card
+- `GET /api/search?q=...` - Search card titles and descriptions on every board you can open (`board_id`, `limit` optional)
 
 For multi-tenant organization details, see [docs/multi-tenant.md](docs/multi-tenant.md).
