@@ -147,6 +147,36 @@ class PkanbanClient:
         )
         return data["access_token"]
 
+    def device_login_start(self, client_name):
+        return self._request(
+            "POST", "/api/auth/device", json={"client_name": client_name}
+        )
+
+    def device_login_poll(self, device_code):
+        """One poll of a device login: (True, result) or (False, error body).
+
+        The server answers 400 with an `error` code while the login is still
+        pending, which is a normal state here and not a failure, so this does
+        not go through _request's raise_for_status.
+        """
+        url = f"{self.server_url.rstrip('/')}/api/auth/device/token"
+        try:
+            response = requests.post(
+                url, json={"device_code": device_code}, timeout=DEFAULT_TIMEOUT
+            )
+        except requests.exceptions.RequestException:
+            # A blip while waiting is not the end of the login; poll again.
+            return False, {"error": "authorization_pending"}
+        try:
+            body = response.json()
+        except ValueError:
+            body = {}
+        if response.status_code == 200:
+            return True, body
+        if response.status_code >= 500:
+            return False, {"error": "authorization_pending"}
+        return False, body if isinstance(body, dict) else {}
+
     def boards(self):
         return self._request("GET", "/api/boards")
 

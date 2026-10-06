@@ -27,6 +27,7 @@
   import Invite from './routes/Invite.svelte';
   import Signup from './routes/Signup.svelte';
   import VerifyEmail from './routes/VerifyEmail.svelte';
+  import Device from './routes/Device.svelte';
 
   onMount(() => {
     theme.init();
@@ -75,6 +76,14 @@
   <Route path="/verify" let:params>
     <PublicLayout>
       <VerifyEmail {params} />
+    </PublicLayout>
+  </Route>
+
+  <!-- Approving a `pkanban login`. Handles signed-out visitors itself, like
+       /invite, so a new user can sign up on the way rather than bounce. -->
+  <Route path="/device">
+    <PublicLayout>
+      <Device />
     </PublicLayout>
   </Route>
 

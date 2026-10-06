@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from typing import Optional
@@ -19,12 +20,19 @@ from pkanban.config import (
     clear_api_key,
     get_runtime_api_key,
     set_runtime_api_key,
+    get_api_key_id,
+    set_api_key_id,
+    clear_api_key_id,
+    get_pending_login,
+    set_pending_login,
+    clear_pending_login,
 )
 from pkanban.output import (
     configure_output_encoding,
     emit,
     emit_error,
     esc,
+    json_output,
     run_quietly,
     set_json_output,
 )
@@ -149,14 +157,18 @@ def cmd_config(
 
 @app.command("login")
 def cmd_login(
-    username: str = typer.Argument(..., help="Username"),
-    password: str = typer.Option(
-        ...,
+    username: Optional[str] = typer.Argument(
+        None,
+        help="Username, to sign in with a password. Leave it out to approve "
+        "this login in your browser instead -- nothing secret passes through "
+        "the terminal, which is the way to sign in an AI agent.",
+    ),
+    password: Optional[str] = typer.Option(
+        None,
         "--password",
         "-p",
         help="Password. Omit to be prompted (input hidden, stays out of shell history).",
         hide_input=True,
-        prompt=True,
     ),
     server: Optional[str] = typer.Option(
         None,
@@ -165,12 +177,29 @@ def cmd_login(
         help="Server URL. Defaults to the configured URL (see 'pkanban config'). "
         "Passing it also saves it as the configured URL.",
     ),
+    wait: bool = typer.Option(
+        True,
+        "--wait/--no-wait",
+        help="Browser login only. --no-wait prints the link and returns at "
+        "once; run 'pkanban login' again after approving to finish.",
+    ),
+    browser: bool = typer.Option(
+        True,
+        "--browser/--no-browser",
+        help="Browser login only. Try to open the approval page.",
+    ),
 ):
-    """Login to the pkanban server."""
+    """Sign in: in your browser (no username), or with a password."""
     # Default to the configured URL so `pkanban config --url ...` then `pkanban
     # login` works. Before this fell back to a hardcoded localhost, so login
     # ignored config and quietly hit the wrong server.
     server_url = server or get_server_url()
+    if username is None:
+        _device_login(server_url, server is not None, wait, browser)
+        return
+
+    if password is None:
+        password = typer.prompt("Password", hide_input=True)
     client = PkanbanClient(server_url=server_url)
     try:
         token = client.login(username, password)
@@ -183,6 +212,9 @@ def cmd_login(
     set_token(token)
     if server is not None:
         set_server_url(server_url)
+    # A key from an earlier browser login is that login, and this one replaces
+    # it. One saved by hand (`apikey save`) is the user's to clear.
+    _forget_device_key()
     # PkanbanClient prefers api_key over token (see config.get_api_key), so a
     # saved API key silently outranks the login that just happened -- the new
     # token is on disk but every command keeps acting as the API key's
@@ -211,10 +243,167 @@ def cmd_login(
     )
 
 
+def _forget_device_key():
+    """Revoke and forget the API key a browser login minted, if there is one.
+
+    Best effort on the server side: logging out offline still forgets the key
+    locally, and it stays listed (and revocable) under Settings > API keys.
+    """
+    key_id = get_api_key_id()
+    if key_id is None:
+        return
+    key = get_api_key()
+    if key:
+        try:
+            PkanbanClient(server_url=get_server_url(), api_key=key).api_key_revoke(
+                key_id
+            )
+        except Exception:
+            pass
+        clear_api_key()
+    clear_api_key_id()
+
+
+def _device_login(server_url, save_server, wait, open_browser):
+    """`pkanban login` with no username: approve this login in a browser.
+
+    Reuses a login still pending against the same server, so `login --no-wait`
+    followed by `login` is one login, not two codes. That pair is how an agent
+    signs in: its tool calls only show output once a command exits, so it
+    can't relay a link from a command that is still waiting.
+    """
+    import socket
+    import time
+    import webbrowser
+
+    client = PkanbanClient(server_url=server_url)
+    pending = get_pending_login()
+    if (
+        not pending
+        or pending.get("server_url") != server_url
+        or pending.get("expires_at", 0) <= time.time()
+    ):
+        try:
+            started = client.device_login_start(
+                client_name=socket.gethostname() or "pkanban CLI"
+            )
+        except requests.HTTPError as e:
+            emit_error(f"Login failed: {describe_http_error(e)}")
+            raise typer.Exit(1)
+        pending = {
+            "server_url": server_url,
+            "device_code": started["device_code"],
+            "user_code": started["user_code"],
+            "verification_uri": started["verification_uri"],
+            "verification_uri_complete": started["verification_uri_complete"],
+            "expires_at": time.time() + started["expires_in"],
+            "interval": started.get("interval", 3),
+        }
+        set_pending_login(pending)
+
+    link = pending["verification_uri_complete"]
+    announcement = {
+        "ok": True,
+        "status": "pending",
+        "verification_uri_complete": link,
+        "verification_uri": pending["verification_uri"],
+        "user_code": pending["user_code"],
+        "expires_in": max(0, int(pending["expires_at"] - time.time())),
+    }
+
+    def render_announcement():
+        rprint("To sign in, open this link and approve the login:")
+        rprint(f"  [cyan]{esc(link)}[/cyan]")
+        rprint(f"The page will show the code [bold]{esc(pending['user_code'])}[/bold].")
+
+    if open_browser:
+        try:
+            webbrowser.open(link)
+        except Exception:
+            pass
+
+    if not wait:
+        def render_no_wait():
+            render_announcement()
+            rprint("Then run [cyan]pkanban login[/cyan] again to finish.")
+
+        emit(announcement, render_no_wait)
+        return
+
+    # While waiting, stdout in JSON mode is reserved for the final result, so
+    # the link goes to stderr there. Flushed: a pipe would otherwise hold it
+    # until the command ends, which is after the person needed to see it.
+    if json_output():
+        print(json.dumps(announcement), file=sys.stderr, flush=True)
+    else:
+        render_announcement()
+        rprint("[dim]Waiting for approval...[/dim]")
+        sys.stdout.flush()
+
+    interval = max(1, int(pending.get("interval", 3)))
+    try:
+        while True:
+            ok, body = client.device_login_poll(pending["device_code"])
+            if ok:
+                break
+            error = body.get("error")
+            if error == "authorization_pending" and time.time() < pending["expires_at"]:
+                time.sleep(interval)
+                continue
+            clear_pending_login()
+            if error == "authorization_pending":
+                message = "The login expired before it was approved."
+            else:
+                message = body.get("detail") or f"Login failed ({error})."
+            emit_error(f"{message} Run 'pkanban login' to start again.")
+            raise typer.Exit(1)
+    except KeyboardInterrupt:
+        emit_error(
+            "Stopped waiting. The login is still open for a few minutes: run "
+            "'pkanban login' again to pick it back up."
+        )
+        raise typer.Exit(130)
+
+    clear_pending_login()
+    _forget_device_key()
+    set_api_key(body["api_key"])
+    set_api_key_id(body["api_key_id"])
+    # The key now decides who you are; a token left behind would only confuse
+    # `pkanban login`'s precedence warning later.
+    clear_token()
+    if save_server:
+        set_server_url(server_url)
+
+    def render_done():
+        rprint(f"Logged in as [green]{esc(body['username'])}[/green]")
+        rprint(
+            f"[dim]As the API key '{esc(body['api_key_name'])}'. Revoke it any "
+            f"time with 'pkanban logout' or under Settings > API keys.[/dim]"
+        )
+
+    emit(
+        {
+            "ok": True,
+            "username": body["username"],
+            "server_url": server_url,
+            "api_key_name": body["api_key_name"],
+        },
+        render_done,
+    )
+
+
 @app.command("logout")
 def cmd_logout():
-    """Logout and clear credentials."""
+    """Log out: forget the saved session and API key.
+
+    A key made by a browser login is revoked on the server too. A key saved by
+    hand with 'apikey save' is only forgotten here; revoke it with 'apikey
+    revoke' if you mean to.
+    """
+    _forget_device_key()
     clear_token()
+    clear_api_key()
+    clear_pending_login()
     emit({"ok": True}, lambda: rprint("Logged out"))
 
 

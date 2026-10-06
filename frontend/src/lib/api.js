@@ -12,7 +12,7 @@ function handleExpiredSession() {
   if (window.location.pathname !== '/login') {
     // Mirror ProtectedRoute so the user lands back where they were after
     // logging in again.
-    localStorage.setItem('redirectPath', window.location.pathname);
+    localStorage.setItem('redirectPath', window.location.pathname + window.location.search);
     window.location.href = '/login';
   }
 }
@@ -313,6 +313,11 @@ export const api = {
     }),
     revoke: (id) => apiFetch(`/api/api-keys/${id}`, { method: 'DELETE' }),
     activate: (id) => apiFetch(`/api/api-keys/${id}/activate`, { method: 'POST' }),
+  },
+  deviceLogin: {
+    get: (code) => apiFetch(`/api/auth/device/${encodeURIComponent(code)}`),
+    approve: (code) => apiFetch(`/api/auth/device/${encodeURIComponent(code)}/approve`, { method: 'POST' }),
+    deny: (code) => apiFetch(`/api/auth/device/${encodeURIComponent(code)}/deny`, { method: 'POST' }),
   },
   invites: {
     get: (token) => apiFetch(`/api/invites/${token}`),

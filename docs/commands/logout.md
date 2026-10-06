@@ -1,6 +1,6 @@
 # pkanban logout
 
-Logout and clear credentials.
+Log out: forget the saved session and API key.
 
 ```bash
 pkanban logout

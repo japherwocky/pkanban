@@ -33,11 +33,11 @@ Configure the CLI or show current settings.
 
 ### [`pkanban login`](/docs/commands/login)
 
-Login to the pkanban server.
+Sign in: in your browser (no username), or with a password.
 
 ### [`pkanban logout`](/docs/commands/logout)
 
-Logout and clear credentials.
+Log out: forget the saved session and API key.
 
 ## Board Management
 

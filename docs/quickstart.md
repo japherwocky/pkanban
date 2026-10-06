@@ -42,33 +42,47 @@ This gives you the `pkanban` command. Check it:
 pkanban --version
 ```
 
-## 2. Connect and log in
-
-Point the CLI at a server, then log in. The hosted service is the usual choice:
+## 2. Sign in
 
 ```bash
-pkanban config --url https://pkanban.pearachute.com
-pkanban login <your-username> --password <your-password>
+pkanban login
 ```
 
 ```
-Server URL set to: https://pkanban.pearachute.com
+To sign in, open this link and approve the login:
+  https://pkanban.pearachute.com/device?code=BCDF-GHJK
+The page will show the code BCDF-GHJK.
+Waiting for approval...
 Logged in as <your-username>
 ```
 
-`login` uses whatever URL you configured, so you only set the URL once. Your
-token is saved to `~/.pkanban.yaml` and reused by every later command — you stay
-logged in until you run `pkanban logout`.
+Your browser opens on that link. Check the code matches, click **Approve**,
+and the terminal carries on by itself. Nothing secret is typed into the
+terminal, which is what makes this the way to sign in an AI agent: the agent
+runs the command, you approve it in your own browser.
 
-Self-hosting instead? Point at your own server:
+The login is an API key named after your computer (`pkanban login:
+<hostname>`). It's saved to `~/.pkanban.yaml` and listed under **Settings > API
+keys**, where you can revoke it. `pkanban logout` revokes it too.
+
+**Signing in an agent.** Most agents only see a command's output once it
+exits, so they can't pass along a link from a command that's still waiting.
+Split it in two:
+
+```bash
+pkanban login --no-wait   # prints the link and returns
+# ... the person approves in their browser ...
+pkanban login             # picks the same login back up and finishes
+```
+
+Prefer a password? `pkanban login <username>` prompts for one.
+
+The installer already pointed the CLI at the server it came from. To use a
+different server (self-hosting, say):
 
 ```bash
 pkanban config --url http://localhost:8000
 ```
-
-> **Heads up:** the password is passed on the command line, so it lands in your
-> shell history. For anything unattended (CI, agents, scripts), use an
-> [API key](#4-automating-with-api-keys) instead of a password.
 
 Check your connection and identity any time:
 
@@ -243,8 +257,8 @@ User ── owns ──► Board ─► Column ─► Card
 
 - **New boards have no columns.** Create them yourself (step 3); there's no
   default set.
-- **You need to be authenticated first.** Run `pkanban login` (or save an API
-  key) before any board command, or you'll get an auth error.
+- **You need to be authenticated first.** Run `pkanban login` before any
+  board command, or you'll get an auth error.
 - **Positions are 0-based** for both columns and cards, ordered left-to-right
   and top-to-bottom.
 - **Sharing replaces, it doesn't stack.** Sharing a board with a new team

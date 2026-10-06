@@ -140,3 +140,43 @@ def set_runtime_api_key(api_key):
 
 def get_runtime_api_key():
     return _runtime_api_key
+
+
+# The id of the API key a device login (`pkanban login` with no username)
+# minted, so `pkanban logout` can revoke that key on the server rather than
+# leave it live. Absent for a key saved by hand with `apikey save`: that one
+# belongs to whoever made it, and logout only forgets it.
+def get_api_key_id():
+    return load_config().get("auth", {}).get("api_key_id")
+
+
+def set_api_key_id(key_id):
+    config = load_config()
+    config.setdefault("auth", {})["api_key_id"] = key_id
+    save_config(config)
+
+
+def clear_api_key_id():
+    config = load_config()
+    if "auth" in config:
+        config["auth"].pop("api_key_id", None)
+        save_config(config)
+
+
+# A device login waiting for approval. Kept on disk so that `pkanban login
+# --no-wait` can hand an agent the link and return, and the next `pkanban
+# login` picks the same login back up instead of issuing a new code.
+def get_pending_login():
+    return load_config().get("pending_login")
+
+
+def set_pending_login(pending):
+    config = load_config()
+    config["pending_login"] = pending
+    save_config(config)
+
+
+def clear_pending_login():
+    config = load_config()
+    if config.pop("pending_login", None) is not None:
+        save_config(config)

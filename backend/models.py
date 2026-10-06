@@ -565,6 +565,80 @@ class EmailVerificationToken(BaseModel):
         self.save()
 
 
+DEVICE_LOGIN_EXPIRY_MINUTES = 10
+DEVICE_LOGIN_POLL_SECONDS = 3
+# No vowels and no 0/1, so a code can't spell a word or be misread as O/I/L.
+USER_CODE_ALPHABET = "BCDFGHJKLMNPQRSTVWXZ"
+USER_CODE_LENGTH = 8
+
+
+def normalize_user_code(code):
+    """'wdjb-mjht' and 'WDJBMJHT' are the same code."""
+    return "".join(ch for ch in (code or "").upper() if ch.isalnum())
+
+
+def format_user_code(code):
+    return f"{code[:4]}-{code[4:]}"
+
+
+class DeviceLogin(BaseModel):
+    """One `pkanban login` waiting for its person to approve it in a browser.
+
+    The device code is the CLI's secret and is kept only as a SHA-256, like an
+    API key. The user code is the short thing a person types or follows a link
+    with. Approval mints nothing: the API key is made when the CLI next polls,
+    so the raw key is never stored and is handed out exactly once.
+    """
+
+    device_code_sha256 = CharField(max_length=64, unique=True)
+    user_code = CharField(max_length=16, unique=True)
+    client_name = CharField(max_length=100)
+    requester_ip = CharField(max_length=64, null=True)
+    # pending -> approved -> claimed, or pending -> denied.
+    status = CharField(max_length=16, default="pending")
+    user = ForeignKeyField(User, null=True, backref="device_logins")
+    api_key = ForeignKeyField(ApiKey, null=True, backref="device_logins")
+    created_at = DateTimeField()
+    expires_at = DateTimeField()
+
+    @classmethod
+    def start(cls, client_name, requester_ip=None):
+        """A new pending login. Returns (record, raw device code)."""
+        import secrets
+
+        now = datetime.now(timezone.utc)
+        # Anything long past its expiry is only clutter; clearing it here keeps
+        # the table bounded without a scheduled job.
+        cls.delete().where(cls.expires_at < now - timedelta(days=1)).execute()
+
+        device_code = secrets.token_urlsafe(32)
+        while True:
+            user_code = "".join(
+                secrets.choice(USER_CODE_ALPHABET) for _ in range(USER_CODE_LENGTH)
+            )
+            if not cls.select().where(cls.user_code == user_code).exists():
+                break
+        return cls.create(
+            device_code_sha256=hash_api_key(device_code),
+            user_code=user_code,
+            client_name=client_name,
+            requester_ip=requester_ip,
+            created_at=now,
+            expires_at=now + timedelta(minutes=DEVICE_LOGIN_EXPIRY_MINUTES),
+        ), device_code
+
+    @classmethod
+    def by_device_code(cls, device_code):
+        return cls.get_or_none(cls.device_code_sha256 == hash_api_key(device_code))
+
+    @classmethod
+    def by_user_code(cls, user_code):
+        return cls.get_or_none(cls.user_code == normalize_user_code(user_code))
+
+    def is_expired(self):
+        return datetime.now(timezone.utc) > _as_datetime(self.expires_at)
+
+
 # Every model, parents before children.
 #
 # Single source of truth: database.py, manage.py and the test fixtures all read
@@ -587,4 +661,5 @@ ALL_MODELS = [
     ApiKey,
     OrganizationInvite,
     EmailVerificationToken,
+    DeviceLogin,
 ]

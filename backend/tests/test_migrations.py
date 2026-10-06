@@ -150,12 +150,31 @@ def test_006_adds_key_sha256_to_a_pre_006_table():
         assert rows == [("$2b$04$legacy", None)]
 
 
+def _tables_007_rebuilds():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "m007", os.path.join(MIGRATIONS_DIR, "007_autoincrement_ids.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return set(module.TABLES)
+
+
 def _strip_autoincrement(db):
-    """Turn a model-built database back into the pre-007 schema."""
+    """Turn a model-built database back into the pre-007 schema.
+
+    Only the tables 007 knows existed then. A model added since was created
+    with AUTOINCREMENT from the start (init_db makes new tables), so stripping
+    it would invent a schema no real database ever had.
+    """
+    known = _tables_007_rebuilds()
     for (table,) in db.execute_sql(
         "SELECT name FROM sqlite_master WHERE type='table' "
         "AND sql LIKE '%AUTOINCREMENT%'"
     ).fetchall():
+        if table not in known:
+            continue
         (sql,) = db.execute_sql(
             "SELECT sql FROM sqlite_master WHERE name=?", (table,)
         ).fetchone()
@@ -195,9 +214,13 @@ def test_007_stops_deleted_ids_being_reused_and_keeps_data():
             old.connect()
             old.create_tables(ALL_MODELS)
             _strip_autoincrement(old)
-            assert not old.execute_sql(
-                "SELECT 1 FROM sqlite_master WHERE sql LIKE '%AUTOINCREMENT%'"
-            ).fetchall()
+            stripped = {
+                name
+                for (name,) in old.execute_sql(
+                    "SELECT name FROM sqlite_master WHERE sql LIKE '%AUTOINCREMENT%'"
+                ).fetchall()
+            }
+            assert not stripped & _tables_007_rebuilds()
 
             old.execute_sql(
                 "INSERT INTO user (username, password_hash, email_verified, admin) "
