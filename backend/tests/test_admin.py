@@ -885,3 +885,41 @@ def test_remove_team_member_admin(client, admin_token, admin_user, regular_user)
     # Verify they're removed
     remaining = TeamMember.select().where(TeamMember.team == team)
     assert remaining.count() == 1
+
+
+# Self-service password change
+def test_change_own_password(client, regular_user, regular_token):
+    response = client.post(
+        "/api/me/password",
+        json={"current_password": "user123", "new_password": "brandnew123"},
+        headers={"Authorization": f"Bearer {regular_token}"},
+    )
+    assert response.status_code == 200
+    assert User.get_by_id(regular_user.id).verify_password("brandnew123")
+
+
+def test_change_own_password_wrong_current(client, regular_user, regular_token):
+    response = client.post(
+        "/api/me/password",
+        json={"current_password": "nope", "new_password": "brandnew123"},
+        headers={"Authorization": f"Bearer {regular_token}"},
+    )
+    assert response.status_code == 400
+    assert not User.get_by_id(regular_user.id).verify_password("brandnew123")
+
+
+def test_change_own_password_too_long(client, regular_user, regular_token):
+    response = client.post(
+        "/api/me/password",
+        json={"current_password": "user123", "new_password": "x" * 100},
+        headers={"Authorization": f"Bearer {regular_token}"},
+    )
+    assert response.status_code == 400
+
+
+def test_change_own_password_requires_login(client):
+    response = client.post(
+        "/api/me/password",
+        json={"current_password": "a", "new_password": "b"},
+    )
+    assert response.status_code in (401, 403)

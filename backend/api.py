@@ -447,6 +447,11 @@ class PasswordReset(BaseModel):
     password: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class OrganizationCreateAdmin(BaseModel):
     name: str
     owner_id: int
@@ -1399,6 +1404,31 @@ async def stripe_webhook(request: Request):
         logger.exception("Stripe webhook %s could not be applied", event.get("id"))
         raise HTTPException(status_code=502, detail="Could not reach Stripe.")
     return {"received": True, "result": result}
+
+
+@api.post("/me/password")
+async def change_my_password(
+    change: PasswordChange, current_user: User = Depends(get_current_user)
+):
+    """Change your own password. Session-only: an API key must not be able to
+    take over the account it belongs to, so the current password is required."""
+    from bcrypt import hashpw, gensalt
+    from backend.models import PASSWORD_MAX_LENGTH
+
+    if not current_user.verify_password(change.current_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if not change.new_password:
+        raise HTTPException(status_code=400, detail="New password cannot be empty")
+    if len(change.new_password) > PASSWORD_MAX_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must be {PASSWORD_MAX_LENGTH} characters or fewer",
+        )
+    current_user.password_hash = hashpw(
+        change.new_password.encode("utf-8"), gensalt()
+    ).decode("utf-8")
+    current_user.save()
+    return {"ok": True}
 
 
 @api.get("/me/usage")
