@@ -6,7 +6,13 @@
   // What the visitor pastes into their AI. Not `pip install pkanban`: the
   // reader this page is for may never have opened a terminal, and doesn't
   // need to -- the agent installs pkanban itself, then asks them to sign in.
-  const AGENT_PROMPT = 'Install pkanban and use it to track your work.';
+  // It points at /agents.md, setup written for the agent, so every agent
+  // follows the same steps instead of guessing at them. https is implied for
+  // the hosted site; anything else (a local or self-hosted server on plain
+  // http) spells its scheme out.
+  const SERVER =
+    window.location.protocol === 'https:' ? window.location.host : window.location.origin;
+  const AGENT_PROMPT = `Read ${SERVER}/agents.md and set up pkanban for me.`;
 
   let copied = $state(false);
   let copyResetTimer;

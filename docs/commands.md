@@ -55,6 +55,10 @@ Board management commands
 - `pkanban board list` — List all boards.
 - `pkanban board update` — Update board name.
 
+### [`pkanban init`](/docs/commands/init)
+
+Tell this project's AI agents which board to use.
+
 ### [`pkanban share`](/docs/commands/share)
 
 Share board with a team or a whole organization, or make it private.

@@ -736,6 +736,97 @@ def _highlighted(snippet):
     return text
 
 
+# === Project Setup ===
+
+INIT_START = "<!-- pkanban:start -->"
+INIT_END = "<!-- pkanban:end -->"
+
+
+def _init_section(board, server_url):
+    base = server_url.rstrip("/")
+    # One line and no HTML comments, whatever the board is called: a newline
+    # or a stray end marker in a name would let it break out of the section.
+    name = " ".join(str(board["name"]).replace("<!--", "").replace("-->", "").split())
+    board_id = board["id"]
+    return f"""{INIT_START}
+## Task board (pkanban)
+
+Work on this project is tracked on the pkanban board **{name}** (id {board_id}),
+which the people here watch at {base}/boards/{board_id}.
+
+- Read it: `pkanban board get {board_id} --json`
+- Read a card in full: `pkanban card get <card-id> --json`
+- Move cards as you work: `pkanban card move <card-id> --column <column-id> --json`
+- Card bodies go in a file (`--description-file body.md`), never inline `-d "..."`.
+- Not signed in, or `pkanban` missing? Follow {base}/agents.md
+{INIT_END}"""
+
+
+def _init_target(file):
+    """The instructions file to write: as given, else AGENTS.md, else CLAUDE.md."""
+    from pathlib import Path
+
+    if file:
+        return Path(file)
+    agents, claude = Path("AGENTS.md"), Path("CLAUDE.md")
+    if not agents.exists() and claude.exists():
+        return claude
+    return agents
+
+
+@app.command("init")
+def cmd_init(
+    board_id: int = typer.Option(
+        ..., "--board", "-b", help="The board this project's work is tracked on."
+    ),
+    file: Optional[str] = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Instructions file to write. Default: AGENTS.md, or CLAUDE.md "
+        "when only that exists.",
+    ),
+):
+    """Tell this project's AI agents which board to use.
+
+    Writes a short pkanban section into AGENTS.md (or CLAUDE.md), which agents
+    read at the start of every session. Running it again replaces the section
+    instead of adding another.
+    """
+    client = make_client()
+    try:
+        board = client.board_get(board_id)
+    except requests.HTTPError as e:
+        emit_error(describe_http_error(e))
+        raise typer.Exit(1)
+
+    path = _init_target(file)
+    section = _init_section(board, client.server_url)
+    existing = path.read_text(encoding="utf-8") if path.exists() else None
+
+    if existing is None:
+        content, action = section + "\n", "created"
+    elif INIT_START in existing and INIT_END in existing:
+        before, rest = existing.split(INIT_START, 1)
+        _, after = rest.split(INIT_END, 1)
+        content, action = before + section + after, "updated"
+    else:
+        content = existing.rstrip("\n") + "\n\n" + section + "\n"
+        action = "added"
+    path.write_text(content, encoding="utf-8")
+
+    def render():
+        verb = {"created": "Created", "updated": "Updated the pkanban section in",
+                "added": "Added a pkanban section to"}[action]
+        rprint(f"{verb} [cyan]{esc(str(path))}[/cyan] for board "
+               f"[green]{esc(board['name'])}[/green] (id {board_id})")
+
+    emit(
+        {"ok": True, "file": str(path), "action": action, "board_id": board_id},
+        render,
+    )
+
+
 @app.command("search")
 def cmd_search(
     query: list[str] = typer.Argument(

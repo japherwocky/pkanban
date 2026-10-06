@@ -25,9 +25,11 @@ engineers -- and the person we're actually for has no idea what stdout is.)*
   way, and the docs and the CLI's own `--help` are written for them.
 * **The Hook:** "Give your AI a to-do list you can both see."
 * **Setup is one sentence.** The visitor doesn't install anything. They paste
-  *"Install pkanban and use it to track your work."* into their AI, which
-  installs pkanban and asks them to sign in. Lead with that sentence, not with
-  `pip install pkanban`.
+  *"Read pkanban.pearachute.com/agents.md and set up pkanban for me."* into
+  their AI, which installs pkanban and hands them a link to approve the
+  sign-in. Lead with that sentence, not with `pip install pkanban`. The link
+  matters: /agents.md is the setup written for the agent, so it doesn't have
+  to guess.
 * **Only promise where it works.** pkanban works in any AI that can run
   commands. The ChatGPT and Claude *chat windows* can't, so never name
   "ChatGPT" or "Claude" bare -- name the agent apps (Claude Code, Codex). The
