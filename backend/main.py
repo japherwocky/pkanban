@@ -111,14 +111,26 @@ async def docs_handler(path: str):
 INSTALL_PATH = os.path.join(os.path.dirname(__file__), "install")
 
 
-def _installer(request: Request, name: str) -> PlainTextResponse:
+def _installer(
+    request: Request, name: str, media_type: str = "text/plain"
+) -> PlainTextResponse:
     with open(os.path.join(INSTALL_PATH, name), encoding="utf-8") as f:
         script = f.read()
     server = str(request.base_url).rstrip("/")
     # A Windows checkout may hand us CRLF, and `sh` reads the \r as part of
     # each command.
     script = script.replace("\r\n", "\n").replace("__PKANBAN_SERVER__", server)
-    return PlainTextResponse(script, headers={"Cache-Control": "no-cache"})
+    return PlainTextResponse(
+        script, media_type=media_type, headers={"Cache-Control": "no-cache"}
+    )
+
+
+# Setup written for the agent itself: "Read <server>/agents.md and set up
+# pkanban for me" works the same in any agent that can fetch a URL and run
+# commands. Filled in with this server's URL like the installers.
+@app.get("/agents.md")
+async def agents_md(request: Request):
+    return _installer(request, "agents.md", media_type="text/markdown")
 
 
 @app.get("/install.sh")

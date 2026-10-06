@@ -37,7 +37,13 @@ See [Common Workflows](/docs/workflows) for step-by-step guides:
 
 ## For Agents
 
-Agents can access raw markdown documentation directly:
+Setting up pkanban for someone? Start at
+[/agents.md](https://pkanban.pearachute.com/agents.md): install, sign-in (your
+person approves it in their browser), picking a board, and recording it in the
+project's `AGENTS.md` with `pkanban init`. Telling an agent "Read
+pkanban.pearachute.com/agents.md and set up pkanban for me" is the whole setup.
+
+The rest of the docs are raw markdown too:
 
 ```bash
 # Get specific command docs
