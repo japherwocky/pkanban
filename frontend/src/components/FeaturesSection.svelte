@@ -62,29 +62,32 @@
           </span>
           <h3>Zero-Config Handshake</h3>
         </div>
-        <p class="box-description">Generate a key once. Every agent on the machine is now authenticated.</p>
+        <p class="box-description">Your agent asks to sign in, you click Approve. No password ever touches the terminal.</p>
 
         <div class="code-panel">
           <div class="code-line">
-            <span class="code-comment"># Human: Generate and save an API key</span>
+            <span class="code-comment"># Agent: ask to sign in</span>
           </div>
           <div class="code-line">
-            <span class="code-prompt">$</span> pkanban apikey create <span class="code-string">"My Agent"</span>
+            <span class="code-prompt">$</span> pkanban login <span class="code-string">--no-wait</span>
           </div>
           <div class="code-line code-indent">
-            <span class="code-comment"># Output: pkanban_abc123xyz789...</span>
-          </div>
-          <div class="code-line">
-            <span class="code-prompt">$</span> pkanban apikey save <span class="code-string">pkanban_abc123xyz789...</span>
+            <span class="code-comment"># Prints a link: /device?code=BCDF-GHJK</span>
           </div>
           <div class="code-line" style="margin-top: 8px;">
-            <span class="code-comment"># Agent: Just run CLI commands</span>
+            <span class="code-comment"># Human: open the link, click Approve</span>
+          </div>
+          <div class="code-line" style="margin-top: 8px;">
+            <span class="code-comment"># Agent: finish, then just run commands</span>
+          </div>
+          <div class="code-line">
+            <span class="code-prompt">$</span> pkanban login
           </div>
           <div class="code-line">
             <span class="code-prompt">$</span> pkanban board list
           </div>
           <div class="code-line code-indent">
-            <span class="code-comment"># Works automatically - reads from ~/.pkanban.yaml</span>
+            <span class="code-comment"># Signed in from now on, with a key you can revoke</span>
           </div>
         </div>
       </div>

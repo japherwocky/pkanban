@@ -120,6 +120,10 @@ def _installer(
     # A Windows checkout may hand us CRLF, and `sh` reads the \r as part of
     # each command.
     script = script.replace("\r\n", "\n").replace("__PKANBAN_SERVER__", server)
+    if name.endswith(".cmd"):
+        # And the reverse for cmd.exe, which misreads labels and long lines in
+        # a batch file with bare \n endings.
+        script = script.replace("\n", "\r\n")
     return PlainTextResponse(
         script, media_type=media_type, headers={"Cache-Control": "no-cache"}
     )
@@ -141,6 +145,11 @@ async def install_sh(request: Request):
 @app.get("/install.ps1")
 async def install_ps1(request: Request):
     return _installer(request, "install.ps1")
+
+
+@app.get("/install.cmd")
+async def install_cmd(request: Request):
+    return _installer(request, "install.cmd")
 
 
 @app.get("/")

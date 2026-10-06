@@ -11,7 +11,7 @@ def client():
     return TestClient(app)
 
 
-@pytest.mark.parametrize("path", ["/install.sh", "/install.ps1"])
+@pytest.mark.parametrize("path", ["/install.sh", "/install.ps1", "/install.cmd"])
 def test_installer_is_served_as_text(client, path):
     response = client.get(path)
     assert response.status_code == 200
@@ -20,7 +20,7 @@ def test_installer_is_served_as_text(client, path):
     assert "<html" not in response.text.lower()
 
 
-@pytest.mark.parametrize("path", ["/install.sh", "/install.ps1"])
+@pytest.mark.parametrize("path", ["/install.sh", "/install.ps1", "/install.cmd"])
 def test_installer_points_at_the_server_that_served_it(client, path):
     response = client.get(path, headers={"Host": "kanban.example.test"})
     assert "__PKANBAN_SERVER__" not in response.text
@@ -29,6 +29,17 @@ def test_installer_points_at_the_server_that_served_it(client, path):
 
 def test_shell_installer_has_unix_line_endings(client):
     assert "\r" not in client.get("/install.sh").text
+
+
+def test_cmd_installer_has_windows_line_endings(client):
+    text = client.get("/install.cmd").text
+    assert "\r\n" in text
+    assert "\n" not in text.replace("\r\n", "")
+
+
+def test_cmd_installer_hands_over_to_the_powershell_one_on_this_server(client):
+    text = client.get("/install.cmd", headers={"Host": "kanban.example.test"}).text
+    assert "irm 'http://kanban.example.test/install.ps1' | iex" in text
 
 
 def test_powershell_installer_never_exits(client):

@@ -5,7 +5,10 @@
 #
 # Installs the pkanban CLI as an isolated tool -- with uv if you have it, else
 # pipx, else it installs uv first (uv brings its own Python, so none is needed
-# beforehand) -- then points the CLI at the server this script came from.
+# beforehand) -- then points the CLI at the server this script came from, and
+# puts it on your PATH for new terminals.
+#
+# Set PKANBAN_NO_MODIFY_PATH=1 to leave shell profiles alone.
 #
 # Everything lives inside main(), called on the last line, so a download cut
 # off halfway runs nothing rather than half an install.
@@ -13,17 +16,28 @@
 set -eu
 
 PKANBAN_SERVER="${PKANBAN_SERVER:-__PKANBAN_SERVER__}"
+# What PATH was before this script touched it: whether `pkanban` will be found
+# in the user's next terminal depends on this, not on our own adjustments.
+ORIGINAL_PATH="$PATH"
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'pkanban install: %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
+on_original_path() {
+    case ":$ORIGINAL_PATH:" in *":$1:"*) return 0 ;; esac
+    return 1
+}
 
 install_uv() {
     say "Installing uv (a Python tool installer, from astral.sh)..."
+    if [ -n "${PKANBAN_NO_MODIFY_PATH:-}" ]; then
+        UV_NO_MODIFY_PATH=1
+        export UV_NO_MODIFY_PATH
+    fi
     if have curl; then
-        curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+        curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
     elif have wget; then
-        wget -qO- https://astral.sh/uv/install.sh | sh >/dev/null
+        wget -qO- https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
     else
         die "need curl or wget to download uv"
     fi
@@ -47,38 +61,56 @@ find_pkanban() {
     command -v pkanban 2>/dev/null || true
 }
 
+# Have the tool that installed pkanban add its bin directory to the shell
+# profiles; each knows its own directory and which profiles to touch.
+add_to_path() {
+    [ -z "${PKANBAN_NO_MODIFY_PATH:-}" ] || return 1
+    case "$1" in
+        uv) uv tool update-shell >/dev/null 2>&1 ;;
+        pipx) pipx ensurepath >/dev/null 2>&1 ;;
+        *) return 1 ;;
+    esac
+}
+
 main() {
     if have uv; then
-        say "Installing pkanban with uv..."
-        uv tool install --quiet --upgrade pkanban
+        via=uv
     elif have pipx; then
-        say "Installing pkanban with pipx..."
-        pipx install --quiet --force pkanban
+        via=pipx
     else
         install_uv
-        say "Installing pkanban with uv..."
+        via=uv
+    fi
+    say "Installing pkanban with $via..."
+    if [ "$via" = uv ]; then
         uv tool install --quiet --upgrade pkanban
+    else
+        pipx install --quiet --force pkanban >/dev/null
     fi
 
     bin="$(find_pkanban)"
     [ -n "$bin" ] || die "pkanban installed but cannot be found; open a new terminal and run 'pkanban --version'"
+    dir="$(dirname "$bin")"
 
     "$bin" config --url "$PKANBAN_SERVER" >/dev/null
 
     say ""
     say "Installed $("$bin" --version 2>/dev/null | head -n 1), using $PKANBAN_SERVER"
-    if ! have pkanban; then
+    if ! on_original_path "$dir"; then
         say ""
-        say "$(dirname "$bin") is not on your PATH yet. Open a new terminal, or run:"
-        say "  export PATH=\"$(dirname "$bin"):\$PATH\""
+        if add_to_path "$via"; then
+            say "Added $dir to your PATH. Open a new terminal to use 'pkanban',"
+            say "or use it in this one now with:"
+        else
+            say "$dir is not on your PATH. Add it, or for this terminal run:"
+        fi
+        say "  export PATH=\"$dir:\$PATH\""
     fi
     say ""
-    say "Next, sign in:"
-    say "  pkanban login <username>"
+    say "Next, sign in (your browser opens to approve it):"
+    say "  pkanban login"
     say ""
-    say "No account yet? Create one at $PKANBAN_SERVER/signup"
-    say "Agents and scripts: make an API key at $PKANBAN_SERVER/settings/api-keys and run"
-    say "  pkanban apikey save <key>"
+    say "Setting this up for an AI agent? Point it at $PKANBAN_SERVER/agents.md"
 }
 
 main "$@"

@@ -1,3 +1,3 @@
 """pkanban CLI client for managing boards from the command line."""
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
