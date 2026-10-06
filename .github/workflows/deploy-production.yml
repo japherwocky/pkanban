@@ -198,6 +198,17 @@ jobs:
             exit 1
           fi
 
+      # Health proves the backend answers; this proves the frontend does. It
+      # loads the live site in a real browser (see scripts/smoke_check.cjs) and
+      # fails the deploy -- a warning is how the old '200|404' check became
+      # unfalsifiable. Covers what unit tests cannot: bundle mounts, fonts load,
+      # docs routes survive nginx, no console errors.
+      - name: Smoke check frontend
+        run: |
+          npm install --prefix "$RUNNER_TEMP/smoke" playwright
+          npx --prefix "$RUNNER_TEMP/smoke" playwright install --with-deps chromium
+          NODE_PATH="$RUNNER_TEMP/smoke/node_modules" node scripts/smoke_check.cjs https://pkanban.pearachute.com
+
   # Post-deployment notifications
   notify:
     name: Send Notification
