@@ -22,11 +22,20 @@ On Windows, in PowerShell:
 irm https://pkanban.pearachute.com/install.ps1 | iex
 ```
 
+Or in the Command Prompt (CMD can't run a script from a pipe, hence the
+download-run-delete):
+
+```bat
+curl -fsSL https://pkanban.pearachute.com/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
 The installer puts pkanban in its own environment with
 [uv](https://docs.astral.sh/uv/) or pipx -- whichever you have, installing uv
 if you have neither (uv brings its own Python, so you don't need one first) --
-and points the CLI at the server it came from. A self-hosted server serves the
-same installer at its own `/install.sh`, already pointed at itself.
+points the CLI at the server it came from, and adds the CLI's directory to
+your PATH for new terminals (set `PKANBAN_NO_MODIFY_PATH=1` to skip that). A
+self-hosted server serves the same installers at its own `/install.sh`,
+`/install.ps1` and `/install.cmd`, already pointed at itself.
 
 Already manage Python tools yourself? Any of these work too:
 

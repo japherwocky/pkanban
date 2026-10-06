@@ -18,6 +18,12 @@ Windows PowerShell:
 irm https://pkanban.pearachute.com/install.ps1 | iex
 ```
 
+Windows CMD:
+
+```bat
+curl -fsSL https://pkanban.pearachute.com/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
 The installer uses uv or pipx if you have one, and installs uv (which brings
 its own Python) if you don't. Already have Python? `pip install pkanban` works
 too.

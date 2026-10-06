@@ -1,6 +1,7 @@
 <script>
   import HeroSection from '../components/HeroSection.svelte';
   import FeaturesSection from '../components/FeaturesSection.svelte';
+  import InstallSection from '../components/InstallSection.svelte';
   import SignupCTA from '../components/SignupCTA.svelte';
 </script>
 
@@ -8,6 +9,8 @@
   <HeroSection />
 
   <FeaturesSection />
+
+  <InstallSection />
 
   <SignupCTA />
 </div>
