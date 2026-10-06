@@ -1,6 +1,6 @@
 # Quick Start
 
-Get from `pip install` to a working board in a couple of minutes. Every command
+Get from nothing installed to a working board in a couple of minutes. Every command
 below is copy-pasteable; the ones that print something show the output you
 should expect.
 
@@ -10,7 +10,29 @@ commands and flags, see the [Command Reference](reference) and
 
 ## 1. Install
 
+One line. On macOS, Linux or WSL:
+
 ```bash
+curl -fsSL https://pkanban.pearachute.com/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://pkanban.pearachute.com/install.ps1 | iex
+```
+
+The installer puts pkanban in its own environment with
+[uv](https://docs.astral.sh/uv/) or pipx -- whichever you have, installing uv
+if you have neither (uv brings its own Python, so you don't need one first) --
+and points the CLI at the server it came from. A self-hosted server serves the
+same installer at its own `/install.sh`, already pointed at itself.
+
+Already manage Python tools yourself? Any of these work too:
+
+```bash
+uv tool install pkanban
+pipx install pkanban
 pip install pkanban
 ```
 
