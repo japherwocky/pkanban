@@ -55,6 +55,53 @@ def test_nothing_after_double_dash_is_an_option():
     assert argv == ["pkanban", "card", "create", "4", "--", "-k", "--json"]
 
 
+def _boolean_flags():
+    """Every value-less flag any command declares, read off the command tree."""
+    from typer.main import get_command
+
+    found, pending = set(), [get_command(cli.app)]
+    while pending:
+        command = pending.pop()
+        for param in command.params:
+            if getattr(param, "is_flag", False):
+                found.update(param.opts)
+                found.update(param.secondary_opts)
+        pending.extend(getattr(command, "commands", {}).values())
+    return found - {"--help", "--json"}
+
+
+@pytest.mark.parametrize("flag", sorted(_boolean_flags()))
+def test_json_after_any_boolean_flag_is_still_ours(flag):
+    """`pkanban login --no-wait --json` -- the line /agents.md gives agents --
+    failed with "No such option: --json": the flag list was kept by hand, and
+    --no-wait wasn't on it, so --json was taken for --no-wait's value."""
+    argv = ["pkanban", "login", flag, "--json"]
+    assert cli._extract_json_flag(argv) is True
+    assert argv == ["pkanban", "login", flag]
+
+
+def test_login_no_wait_json_reaches_the_command(monkeypatch, capsys):
+    from pkanban.client import PkanbanClient
+
+    started = {
+        "device_code": "d",
+        "user_code": "BCDF-GHJK",
+        "verification_uri": "http://x/device",
+        "verification_uri_complete": "http://x/device?code=BCDF-GHJK",
+        "expires_in": 600,
+        "interval": 3,
+    }
+    monkeypatch.setattr(sys, "argv", ["pkanban", "login", "--no-wait", "--no-browser", "--json"])
+    with patch.object(PkanbanClient, "device_login_start", return_value=started):
+        try:
+            cli.main()
+        except SystemExit as e:
+            assert e.code in (0, None)
+        finally:
+            cli.set_json_output(None)
+    assert '"user_code": "BCDF-GHJK"' in capsys.readouterr().out
+
+
 def test_api_key_without_a_value_is_an_error():
     with pytest.raises(SystemExit):
         cli._extract_api_key(["pkanban", "board", "list", "--api-key"])
