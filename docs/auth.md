@@ -6,7 +6,7 @@ The API accepts two independent credential types. [`get_current_user_or_api_key`
 
 ### JWT (session login)
 
-Used by `pkanban login` and the web UI.
+Used by the web UI and `pkanban login <username>` (password login).
 
 - `POST /token` (username + password) returns a signed JWT (`create_access_token` in [`backend/auth.py`](../backend/auth.py)), sent back as `Authorization: Bearer <token>`.
 - Signed with HS256 using a server-side secret (`JWT_SECRET_KEY`, or an auto-generated key persisted next to the database — see [`_load_secret_key`](../backend/auth.py)).
@@ -14,6 +14,36 @@ Used by `pkanban login` and the web UI.
 - **Renewal is capped.** Every token carries `auth_time`, the moment the user actually authenticated, and renewal carries it forward unchanged rather than resetting it. Past `SESSION_ABSOLUTE_MAX_DAYS` (30 days) the server stops renewing and a real login is required. These JWTs are stateless and cannot be revoked, so without the cap a stolen token could be kept alive indefinitely.
 - Renewal happens in a single middleware (`renew_session_token` in [`backend/main.py`](../backend/main.py)) rather than in the auth dependencies, so it applies to every authenticated request whichever dependency guarded it. API keys arrive on `X-API-Key`, never as a Bearer token, so they never reach it.
 - The CLI persists the token in its config file (see `pkanban config`); there's no refresh-token flow and no server-side session — expiry past the cap just means re-authenticating.
+
+### Browser login (`pkanban login` with no username)
+
+How agents, and anyone else at a terminal, should sign in: nothing secret is
+typed into the terminal. Shaped after RFC 8628 (OAuth device authorization),
+without the OAuth. Endpoints are in [`backend/api.py`](../backend/api.py), the
+model is `DeviceLogin` in [`backend/models.py`](../backend/models.py).
+
+1. `POST /api/auth/device` (unauthenticated) returns a secret `device_code`, a
+   short `user_code` (`BCDF-GHJK`: no vowels, no 0/1), and a link to `/device`.
+   Valid for 10 minutes. Only the SHA-256 of the device code is stored.
+2. The person opens `/device?code=...`, signed in to the web app, sees which
+   computer and IP asked, and approves or denies
+   (`POST /api/auth/device/{user_code}/approve|deny`). Approving needs a
+   session: an API key cannot approve a login, for the same reason it cannot
+   create a key.
+3. The CLI polls `POST /api/auth/device/token` every few seconds. It gets
+   `400 {"error": "authorization_pending"}` until the person decides, then
+   once, an **API key** (`pkanban login: <hostname>`), minted at that moment so
+   the raw key is never stored. A second poll gets `invalid_grant`. Denied and
+   expired logins answer `access_denied` and `expired_token`.
+
+An API key rather than a JWT, because an agent can sit idle for longer than a
+session survives, and because a key can be seen and revoked under
+Settings > API keys. The CLI records the key's id, and `pkanban logout` revokes
+it on the server. A password login revokes it too, since it replaces it.
+
+`pkanban login --no-wait` saves the pending login to the config and returns
+straight away. The next `pkanban login` resumes it, so an agent can relay the
+link to its person and finish once they've approved.
 
 ### API Keys (headless / agent access)
 

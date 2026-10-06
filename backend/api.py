@@ -38,6 +38,10 @@ from backend.models import (
     ApiKey,
     OrganizationInvite,
     EmailVerificationToken,
+    DeviceLogin,
+    DEVICE_LOGIN_EXPIRY_MINUTES,
+    DEVICE_LOGIN_POLL_SECONDS,
+    format_user_code,
     _as_datetime,
 )
 
@@ -2882,3 +2886,156 @@ async def activate_api_key(
     key.is_active = True
     key.save()
     return {"ok": True, "message": "API key has been activated"}
+
+
+# Device login: `pkanban login` with no username. The CLI starts a login and
+# gets a short code; the person approves it at /device in a browser where they
+# are already signed in; the CLI's next poll receives a new API key. Nothing
+# secret passes through the terminal, which is the point when the terminal
+# belongs to an AI agent. Shaped after RFC 8628 (OAuth device authorization),
+# without the OAuth.
+
+
+class DeviceLoginStart(BaseModel):
+    client_name: Optional[str] = None
+
+
+class DeviceLoginPoll(BaseModel):
+    device_code: str
+
+
+def _device_login_view(login):
+    return {
+        "user_code": format_user_code(login.user_code),
+        "client_name": login.client_name,
+        "requester_ip": login.requester_ip,
+        "created_at": login.created_at,
+        "expires_at": login.expires_at,
+        "status": "expired"
+        if login.status == "pending" and login.is_expired()
+        else login.status,
+    }
+
+
+def _device_poll_error(code, message, status_code=400):
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=status_code, content={"error": code, "detail": message}
+    )
+
+
+@api.post("/auth/device")
+async def device_login_start(body: DeviceLoginStart, request: Request):
+    """Start a device login. Unauthenticated: this is how you get authenticated."""
+    client_name = (body.client_name or "").strip()[:60] or "pkanban CLI"
+    requester_ip = request.client.host if request.client else None
+    login, device_code = DeviceLogin.start(client_name, requester_ip)
+    base = str(request.base_url).rstrip("/")
+    user_code = format_user_code(login.user_code)
+    return {
+        "device_code": device_code,
+        "user_code": user_code,
+        "verification_uri": f"{base}/device",
+        "verification_uri_complete": f"{base}/device?code={user_code}",
+        "expires_in": DEVICE_LOGIN_EXPIRY_MINUTES * 60,
+        "interval": DEVICE_LOGIN_POLL_SECONDS,
+    }
+
+
+@api.post("/auth/device/token")
+async def device_login_poll(body: DeviceLoginPoll):
+    """The CLI's poll. 400 with an `error` code until the person decides.
+
+    Approved logins are claimed exactly once: the API key is minted here, on
+    the poll, so the raw key is never stored and a second poll gets nothing.
+    """
+    login = DeviceLogin.by_device_code(body.device_code)
+    if login is None:
+        return _device_poll_error("invalid_grant", "Unknown device code.")
+    if login.status == "denied":
+        return _device_poll_error("access_denied", "The login was denied.")
+    if login.status == "claimed":
+        return _device_poll_error("invalid_grant", "This login was already used.")
+    if login.is_expired():
+        return _device_poll_error(
+            "expired_token", "The login expired before it was approved."
+        )
+    if login.status == "pending":
+        return _device_poll_error(
+            "authorization_pending", "Waiting for approval in the browser."
+        )
+
+    with db.atomic():
+        # Claim by conditional update, so two polls racing on the same approval
+        # cannot both mint a key.
+        claimed = (
+            DeviceLogin.update(status="claimed")
+            .where((DeviceLogin.id == login.id) & (DeviceLogin.status == "approved"))
+            .execute()
+        )
+        if not claimed:
+            return _device_poll_error("invalid_grant", "This login was already used.")
+        api_key, raw_key = ApiKey.create_key(
+            user=login.user, name=f"pkanban login: {login.client_name}"[:100]
+        )
+        DeviceLogin.update(api_key=api_key).where(DeviceLogin.id == login.id).execute()
+
+    return {
+        "api_key": raw_key,
+        "api_key_id": api_key.id,
+        "api_key_name": api_key.name,
+        "username": login.user.username,
+    }
+
+
+def _pending_device_login(user_code):
+    login = DeviceLogin.by_user_code(user_code)
+    if login is None:
+        raise HTTPException(status_code=404, detail="No login with that code.")
+    return login
+
+
+@api.get("/auth/device/{user_code}")
+async def device_login_get(
+    user_code: str, current_user: User = Depends(get_current_user_by_session)
+):
+    """What the approval page shows before the person decides."""
+    return _device_login_view(_pending_device_login(user_code))
+
+
+def _decide_device_login(user_code, user, approve):
+    login = _pending_device_login(user_code)
+    if login.is_expired() and login.status == "pending":
+        raise HTTPException(
+            status_code=410,
+            detail="This code has expired. Run pkanban login again for a new one.",
+        )
+    if login.status != "pending":
+        raise HTTPException(status_code=409, detail="This code was already used.")
+    updated = (
+        DeviceLogin.update(
+            status="approved" if approve else "denied",
+            user=user if approve else None,
+        )
+        .where((DeviceLogin.id == login.id) & (DeviceLogin.status == "pending"))
+        .execute()
+    )
+    if not updated:
+        raise HTTPException(status_code=409, detail="This code was already used.")
+    return _device_login_view(DeviceLogin.get_by_id(login.id))
+
+
+@api.post("/auth/device/{user_code}/approve")
+async def device_login_approve(
+    user_code: str, current_user: User = Depends(get_current_user_by_session)
+):
+    """Approve a login. Session only: an API key must not be able to make one."""
+    return _decide_device_login(user_code, current_user, approve=True)
+
+
+@api.post("/auth/device/{user_code}/deny")
+async def device_login_deny(
+    user_code: str, current_user: User = Depends(get_current_user_by_session)
+):
+    return _decide_device_login(user_code, current_user, approve=False)

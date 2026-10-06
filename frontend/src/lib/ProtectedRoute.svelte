@@ -9,7 +9,8 @@
   onMount(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      const currentPath = window.location.pathname;
+      // With the query string: /device?code=... must come back with its code.
+      const currentPath = window.location.pathname + window.location.search;
       localStorage.setItem('redirectPath', currentPath);
       navigate('/login', { replace: true });
     } else {

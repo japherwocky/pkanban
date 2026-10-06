@@ -8,7 +8,7 @@ async function freshApi() {
 }
 
 function stubLocation(pathname) {
-  const loc = { pathname, href: pathname };
+  const loc = { pathname, search: '', href: pathname };
   Object.defineProperty(window, 'location', {
     value: loc, writable: true, configurable: true,
   });

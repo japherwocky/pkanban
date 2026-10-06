@@ -26,11 +26,13 @@ The CLI connects to the hosted service at https://pkanban.pearachute.com by
 default, so you can log in right away:
 
 ```bash
-pkanban login <username>
+pkanban login
 ```
 
-You'll be prompted for your password (it stays out of your shell history).
-That's it! You can now manage your boards from the command line.
+Your browser opens on an approval page; click **Approve** and the terminal is
+signed in. Nothing secret is typed into the terminal, so this is also how to
+sign in an AI agent (`pkanban login --no-wait`, approve, then `pkanban login`
+again). Prefer a password? `pkanban login <username>` prompts for one.
 
 > Self-hosting? Point the CLI at your own server first with
 > `pkanban config --url http://localhost:8000` — see [Self-Hosting](#self-hosting).
@@ -104,7 +106,8 @@ to `~/.pkanban.yaml`, and stdout is what CI logs capture.
 | Command | Description |
 |---------|-------------|
 | `pkanban config [--url URL]` | Show or set server URL |
-| `pkanban login <user> --password <pass>` | Login to the server |
+| `pkanban login` | Sign in by approving in your browser |
+| `pkanban login <user>` | Sign in with a password (prompted) |
 | `pkanban logout` | Logout and clear credentials |
 | `pkanban --api-key <key>` | Use API key for authentication |
 | `pkanban --json <command>` | Print the raw API response as JSON |
