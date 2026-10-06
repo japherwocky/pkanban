@@ -1,9 +1,9 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
 from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
@@ -101,6 +101,34 @@ async def docs_handler(path: str):
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "pkanban API is running"}
+
+
+# The one-line installers: `curl -fsSL <server>/install.sh | sh` and
+# `irm <server>/install.ps1 | iex`. Each is served with this server's own URL
+# filled in, so a self-hosted install points its CLI at itself rather than at
+# the hosted service. nginx forwards Host and X-Forwarded-Proto, and uvicorn
+# trusts them from localhost, so base_url is the public https URL.
+INSTALL_PATH = os.path.join(os.path.dirname(__file__), "install")
+
+
+def _installer(request: Request, name: str) -> PlainTextResponse:
+    with open(os.path.join(INSTALL_PATH, name), encoding="utf-8") as f:
+        script = f.read()
+    server = str(request.base_url).rstrip("/")
+    # A Windows checkout may hand us CRLF, and `sh` reads the \r as part of
+    # each command.
+    script = script.replace("\r\n", "\n").replace("__PKANBAN_SERVER__", server)
+    return PlainTextResponse(script, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/install.sh")
+async def install_sh(request: Request):
+    return _installer(request, "install.sh")
+
+
+@app.get("/install.ps1")
+async def install_ps1(request: Request):
+    return _installer(request, "install.ps1")
 
 
 @app.get("/")

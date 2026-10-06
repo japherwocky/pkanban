@@ -6,9 +6,21 @@ Most users will connect to our hosted service at [pkanban.pearachute.com](https:
 
 ## Quick Start
 
+macOS, Linux, WSL:
+
 ```bash
-pip install pkanban
+curl -fsSL https://pkanban.pearachute.com/install.sh | sh
 ```
+
+Windows PowerShell:
+
+```powershell
+irm https://pkanban.pearachute.com/install.ps1 | iex
+```
+
+The installer uses uv or pipx if you have one, and installs uv (which brings
+its own Python) if you don't. Already have Python? `pip install pkanban` works
+too.
 
 The CLI connects to the hosted service at https://pkanban.pearachute.com by
 default, so you can log in right away:
