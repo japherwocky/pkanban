@@ -22,6 +22,7 @@
   import Settings from './routes/Settings.svelte';
   import SettingsApiKeys from './routes/SettingsApiKeys.svelte';
   import SettingsPlan from './routes/SettingsPlan.svelte';
+  import SettingsAccount from './routes/SettingsAccount.svelte';
   import PlanLimitModal from './lib/PlanLimitModal.svelte';
   import ApiKeyCreated from './routes/ApiKeyCreated.svelte';
   import Invite from './routes/Invite.svelte';
@@ -182,6 +183,14 @@
     <ProtectedRoute>
       <Settings>
         <SettingsPlan />
+      </Settings>
+    </ProtectedRoute>
+  </Route>
+
+  <Route path="/settings/account">
+    <ProtectedRoute>
+      <Settings>
+        <SettingsAccount />
       </Settings>
     </ProtectedRoute>
   </Route>

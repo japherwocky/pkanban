@@ -298,6 +298,11 @@ export const api = {
   },
   me: {
     usage: () => apiFetch('/api/me/usage'),
+    changePassword: (current_password, new_password) =>
+      apiFetch('/api/me/password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password, new_password }),
+      }),
   },
   billing: {
     // Each resolves to {url}: Stripe's hosted page, which the caller sends the
