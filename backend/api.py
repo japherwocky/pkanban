@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import PlainTextResponse
 from peewee import fn
 from pydantic import BaseModel, ConfigDict
@@ -663,6 +663,34 @@ async def resend_verification(
     return generic
 
 
+# Pagination for list routes. Deliberately generous: most collections here are
+# small, and a caller (an agent especially) is better served by one big answer
+# than by many small ones. The body stays a plain list so existing clients keep
+# working; paging state travels in headers.
+DEFAULT_PAGE_LIMIT = 1000
+MAX_PAGE_LIMIT = 10000
+
+
+def paginate(query, id_field, response: Response, limit: int, cursor: Optional[int]):
+    """One page of `query` in id order, by keyset: ids greater than `cursor`.
+
+    Keyset rather than offset so a row inserted or deleted between two pages
+    cannot shift one into the other. Sets X-Total-Count (the whole collection,
+    ignoring the cursor, so a caller can size a pull before making it) and,
+    when more remains, X-Next-Cursor -- pass it back as ?cursor= for the next
+    page. Absent means that was the last page.
+    """
+    response.headers["X-Total-Count"] = str(query.count())
+    page = query.order_by(id_field)
+    if cursor is not None:
+        page = page.where(id_field > cursor)
+    rows = list(page.limit(limit + 1))
+    if len(rows) > limit:
+        rows = rows[:limit]
+        response.headers["X-Next-Cursor"] = str(rows[-1].id)
+    return rows
+
+
 @api.get("/health")
 async def health():
     """Liveness check for the deploy pipeline. Public, no auth.
@@ -707,9 +735,14 @@ async def admin_status(current_user: User = Depends(get_current_user_or_api_key)
 
 # Admin user management endpoints
 @api.get("/admin/users", response_model=list)
-async def list_admin_users(current_admin_user: User = Depends(get_current_admin)):
-    """List all users (admin only)"""
-    users = User.select().order_by(User.id)
+async def list_admin_users(
+    response: Response,
+    limit: int = Query(DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
+    cursor: Optional[int] = Query(None, ge=0, description="X-Next-Cursor of the previous page"),
+    current_admin_user: User = Depends(get_current_admin),
+):
+    """List users (admin only), paged -- see paginate()"""
+    users = paginate(User.select(), User.id, response, limit, cursor)
     return [
         {
             "id": u.id,
@@ -1212,9 +1245,14 @@ async def remove_admin_team_member(
 
 # Admin board management endpoints
 @api.get("/admin/boards", response_model=list)
-async def list_admin_boards(current_admin_user: User = Depends(get_current_admin)):
-    """List all boards (admin only)"""
-    boards = Board.select().order_by(Board.id)
+async def list_admin_boards(
+    response: Response,
+    limit: int = Query(DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
+    cursor: Optional[int] = Query(None, ge=0, description="X-Next-Cursor of the previous page"),
+    current_admin_user: User = Depends(get_current_admin),
+):
+    """List boards (admin only), paged -- see paginate()"""
+    boards = paginate(Board.select(), Board.id, response, limit, cursor)
     result = []
     for board in boards:
         column_count = Column.select().where(Column.board == board).count()
@@ -1438,8 +1476,13 @@ async def get_my_usage(current_user: User = Depends(get_current_user_or_api_key)
 
 
 @api.get("/boards", response_model=list)
-async def list_boards(current_user: User = Depends(get_current_user_or_api_key)):
-    boards = accessible_boards(current_user).order_by(Board.id)
+async def list_boards(
+    response: Response,
+    limit: int = Query(DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
+    cursor: Optional[int] = Query(None, ge=0, description="X-Next-Cursor of the previous page"),
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    boards = paginate(accessible_boards(current_user), Board.id, response, limit, cursor)
     return [
         {
             "id": board.id,

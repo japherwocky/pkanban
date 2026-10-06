@@ -46,7 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     # Without this the browser hides the renewal header from the app entirely,
     # and every session would still die at its 24h cliff.
-    expose_headers=[RENEWED_TOKEN_HEADER],
+    expose_headers=[RENEWED_TOKEN_HEADER, "X-Total-Count", "X-Next-Cursor"],
     allow_headers=["*"],
 )
 
