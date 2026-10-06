@@ -1369,7 +1369,10 @@ def cmd_apikey_clear():
 
 
 # Options that consume no value, so a `--json` following one belongs to us
-# rather than to them.
+# rather than to them. These are the global ones; every command's own boolean
+# flags are added by _valueless_flags(), read off the command tree, because a
+# hand-kept list drifted: `pkanban login --no-wait --json` read `--json` as
+# --no-wait's value and failed with "No such option".
 VALUELESS_FLAGS = frozenset(
     {
         "--json",
@@ -1381,6 +1384,29 @@ VALUELESS_FLAGS = frozenset(
     }
 )
 
+_valueless_cache = None
+
+
+def _valueless_flags():
+    global _valueless_cache
+    if _valueless_cache is None:
+        from typer.main import get_command
+
+        # Duck-typed, not isinstance(click.Option): newer typer builds on its
+        # own vendored copy of click, whose classes the installed click
+        # package does not recognise.
+        flags = set(VALUELESS_FLAGS)
+        pending = [get_command(app)]
+        while pending:
+            command = pending.pop()
+            for param in command.params:
+                if getattr(param, "is_flag", False) or getattr(param, "count", False):
+                    flags.update(param.opts)
+                    flags.update(param.secondary_opts)
+            pending.extend(getattr(command, "commands", {}).values())
+        _valueless_cache = frozenset(flags)
+    return _valueless_cache
+
 
 def _is_ours(argv, i):
     """Whether argv[i] can be one of our global flags rather than a value.
@@ -1391,7 +1417,7 @@ def _is_ours(argv, i):
     VALUELESS_FLAGS rather than a blanket "preceded by a dash" test.
     """
     previous = argv[i - 1]
-    return not (previous.startswith("-") and previous not in VALUELESS_FLAGS)
+    return not (previous.startswith("-") and previous not in _valueless_flags())
 
 
 def _options_end(argv):
