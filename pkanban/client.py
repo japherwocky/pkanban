@@ -269,6 +269,11 @@ class PkanbanClient:
     def card_delete(self, card_id):
         return self._request("DELETE", f"/api/cards/{card_id}")
 
+    def comment_create(self, card_id, content):
+        return self._request(
+            "POST", "/api/comments", json={"card_id": card_id, "content": content}
+        )
+
     # Organization methods
     def organizations(self):
         return self._request("GET", "/api/organizations")

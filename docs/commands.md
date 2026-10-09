@@ -78,9 +78,10 @@ Column management commands
 
 Card management commands
 
+- `pkanban card comment` — Comment on a card. `card get` shows a card's comments.
 - `pkanban card create` — Create a new card.
 - `pkanban card delete` — Delete a card.
-- `pkanban card get` — Show a card's full contents, including its description.
+- `pkanban card get` — Show a card's full contents: its description and comments.
 - `pkanban card move` — Move a card to another column or position, leaving its text alone.
 - `pkanban card update` — Update a card. Anything you don't pass is left unchanged.
 
