@@ -13,7 +13,7 @@ Check first:
 pkanban --version
 ```
 
-You need 0.7.0 or later. If `pkanban` is missing or older, install it.
+You need 0.8.0 or later. If `pkanban` is missing or older, install it.
 macOS, Linux or WSL:
 
 ```bash
