@@ -95,6 +95,11 @@ class PkanbanClient:
             cursor = response.headers.get("X-Next-Cursor")
             if not cursor:
                 return items
+            # A cursor that does not move would page forever; say so instead.
+            if cursor == params.get("cursor"):
+                raise PkanbanError(
+                    f"The server returned the same page cursor twice for {path}."
+                )
             params = {**params, "cursor": cursor}
 
     def _send(self, method, path, **kwargs):

@@ -97,3 +97,19 @@ def test_cli_client_follows_cursors_to_the_end():
     cli_client._send = send
     assert [b["id"] for b in cli_client._request_all("/api/boards")] == [1, 2, 3]
     assert calls == [{}, {"cursor": "2"}]
+
+
+def test_cli_client_refuses_a_cursor_that_does_not_move():
+    """A server that hands back the cursor it was given would page forever."""
+    from pkanban.client import PkanbanError
+
+    def send(method, path, **kwargs):
+        response = MagicMock()
+        response.json.return_value = [{"id": 1}]
+        response.headers = {"X-Next-Cursor": "1"}
+        return response
+
+    cli_client = PkanbanClient.__new__(PkanbanClient)
+    cli_client._send = send
+    with pytest.raises(PkanbanError, match="same page cursor"):
+        cli_client._request_all("/api/boards")

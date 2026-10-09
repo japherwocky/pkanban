@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The suite takes ~3 minutes; a hung test should fail fast, not idle for 6 hours.
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
