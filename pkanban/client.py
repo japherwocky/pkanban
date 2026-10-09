@@ -80,6 +80,29 @@ class PkanbanClient:
             self.session.headers.update({"Authorization": f"Bearer {self.token}"})
 
     def _request(self, method, path, **kwargs):
+        return self._send(method, path, **kwargs).json()
+
+    def _request_all(self, path, **params):
+        """GET a paged list route to the end, following X-Next-Cursor.
+
+        The server's default page is large, but a list that silently stops at
+        it would be worse than one that takes an extra request.
+        """
+        items = []
+        while True:
+            response = self._send("GET", path, params=params)
+            items.extend(response.json())
+            cursor = response.headers.get("X-Next-Cursor")
+            if not cursor:
+                return items
+            # A cursor that does not move would page forever; say so instead.
+            if cursor == params.get("cursor"):
+                raise PkanbanError(
+                    f"The server returned the same page cursor twice for {path}."
+                )
+            params = {**params, "cursor": cursor}
+
+    def _send(self, method, path, **kwargs):
         url = f"{self.server_url.rstrip('/')}{path}"
         kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
 
@@ -120,7 +143,7 @@ class PkanbanClient:
         # HTTPError is left alone: individual commands catch it to explain
         # domain-specific failures, and main() handles whatever they don't.
         response.raise_for_status()
-        return response.json()
+        return response
 
     def _store_renewed_token(self, response):
         """Save a replacement token the server offered.
@@ -178,7 +201,7 @@ class PkanbanClient:
         return False, body if isinstance(body, dict) else {}
 
     def boards(self):
-        return self._request("GET", "/api/boards")
+        return self._request_all("/api/boards")
 
     def usage(self):
         return self._request("GET", "/api/me/usage")

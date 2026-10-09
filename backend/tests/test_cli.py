@@ -424,6 +424,8 @@ def test_client_sets_a_request_timeout():
     pkanban_client = PkanbanClient(server_url="http://localhost:9999", token="t")
     pkanban_client.session = MagicMock()
     pkanban_client.session.request.return_value.json.return_value = []
+    # A bare MagicMock's headers.get() is truthy, which reads as "more pages".
+    pkanban_client.session.request.return_value.headers = {}
 
     pkanban_client.boards()
 
