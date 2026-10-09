@@ -528,7 +528,7 @@ app.add_typer(card_app, name="card")
 
 @card_app.command("get")
 def cmd_card_get(card_id: int = typer.Argument(..., help="Card ID")):
-    """Show a card's full contents, including its description."""
+    """Show a card's full contents: its description and comments."""
     from rich.console import Console
 
     client = make_client()
@@ -581,27 +581,35 @@ def _read_text(stream_or_path):
     return data.decode("utf-8-sig", errors="replace")
 
 
-def _resolve_description(description, description_file):
-    """The description to send, from -d, -d -, or --description-file.
+def _resolve_text(inline, path, names):
+    """The text to send: `inline`, stdin when it is '-', or the file at `path`.
 
     Passing a long body through a shell is not safe on every platform:
     PowerShell 5.1 does not re-quote an argument for a native executable, so
     a quoted phrase with a space in it splits the argument, and a single
     stray fragment lands in `card update`'s optional TITLE and renames the
     card (Dev #474). A file or stdin never goes near the shell's parser.
+    `names` are the two ways the command spells its inputs, for the error.
     """
-    if description is not None and description_file is not None:
-        emit_error("Pass --description or --description-file, not both.")
+    if inline is not None and path is not None:
+        emit_error(f"Pass {names[0]} or {names[1]}, not both.")
         raise typer.Exit(1)
-    if description_file is not None:
-        text = _read_text(description_file)
-    elif description == "-":
+    if path is not None:
+        text = _read_text(path)
+    elif inline == "-":
         text = _read_text("-")
     else:
-        return description
+        return inline
     # The trailing newline every file (and Get-Content -Raw) ends with is not
     # part of the card.
     return text.rstrip("\r\n")
+
+
+def _resolve_description(description, description_file):
+    """The description to send, from -d, -d -, or --description-file."""
+    return _resolve_text(
+        description, description_file, ("--description", "--description-file")
+    )
 
 
 @card_app.command("create")
@@ -710,6 +718,50 @@ def cmd_card_delete(card_id: int = typer.Argument(..., help="Card ID")):
         raise typer.Exit(1)
 
 
+@card_app.command("comment")
+def cmd_card_comment(
+    card_id: int = typer.Argument(..., help="Card ID"),
+    # One optional positional and nothing after it: a body the shell splits
+    # into pieces is an "unexpected extra argument" error, never a stray
+    # fragment quietly landing somewhere else, as it did for `card update`.
+    text: Optional[str] = typer.Argument(
+        None, help="The comment. '-' reads it from stdin."
+    ),
+    file: Optional[str] = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Read the comment from a file. Safer than passing it inline for "
+        "anything long or quoted: no shell ever parses it.",
+    ),
+):
+    """Comment on a card. `card get` shows a card's comments."""
+    text = _resolve_text(text, file, ("the comment inline", "--file"))
+    if not text or not text.strip():
+        emit_error("Nothing to say. Pass the comment inline, '-' for stdin, or --file.")
+        raise typer.Exit(1)
+
+    client = make_client()
+    try:
+        result = client.comment_create(card_id, text)
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code
+        if status == 404:
+            message = f"Card {card_id} not found. It may have been deleted."
+        elif status == 403:
+            message = "You don't have permission to comment on this card."
+        else:
+            message = f"Error: {e.response.text}"
+        emit_error(message, status=status)
+        raise typer.Exit(1)
+    emit(
+        result,
+        lambda: rprint(
+            f"Comment added to card {card_id} with [green]id={result['id']}[/green]"
+        ),
+    )
+
+
 # The server marks matched words in a snippet with STX ... ETX. Mirrors
 # HIGHLIGHT_START/END in backend/search.py; the CLI cannot import the backend.
 HIGHLIGHT_START = ""
@@ -755,7 +807,8 @@ Work on this project is tracked on the pkanban board **{name}** (id {board_id}),
 which the people here watch at {base}/boards/{board_id}.
 
 - Read it: `pkanban board get {board_id} --json`
-- Read a card in full: `pkanban card get <card-id> --json`
+- Read a card in full, comments included: `pkanban card get <card-id> --json`
+- Leave a note on a card: `pkanban card comment <card-id> --file note.md --json`
 - Move cards as you work: `pkanban card move <card-id> --column <column-id> --json`
 - Card bodies go in a file (`--description-file body.md`), never inline `-d "..."`.
 - Not signed in, or `pkanban` missing? Follow {base}/agents.md

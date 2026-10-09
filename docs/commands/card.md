@@ -4,13 +4,31 @@ Card management commands
 
 ## Commands
 
+- [`pkanban card comment`](#pkanban-card-comment) — Comment on a card. `card get` shows a card's comments.
 - [`pkanban card create`](#pkanban-card-create) — Create a new card.
 - [`pkanban card delete`](#pkanban-card-delete) — Delete a card.
-- [`pkanban card get`](#pkanban-card-get) — Show a card's full contents, including its description.
+- [`pkanban card get`](#pkanban-card-get) — Show a card's full contents: its description and comments.
 - [`pkanban card move`](#pkanban-card-move) — Move a card to another column or position, leaving its text alone.
 - [`pkanban card update`](#pkanban-card-update) — Update a card. Anything you don't pass is left unchanged.
 
 ---
+
+## `pkanban card comment`
+
+Comment on a card. `card get` shows a card's comments.
+
+```bash
+pkanban card comment <card_id> [text] [--file FILE]
+```
+
+**Arguments**
+
+- `card_id` (int) — Card ID
+- `text` (str) _(optional)_ — The comment. '-' reads it from stdin.
+
+**Options**
+
+- `--file`, `-f` (str) — Read the comment from a file. Safer than passing it inline for anything long or quoted: no shell ever parses it.
 
 ## `pkanban card create`
 
@@ -45,7 +63,7 @@ pkanban card delete <card_id>
 
 ## `pkanban card get`
 
-Show a card's full contents, including its description.
+Show a card's full contents: its description and comments.
 
 ```bash
 pkanban card get <card_id>

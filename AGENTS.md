@@ -87,7 +87,8 @@ The **Dev** board (id=1) is the board for this project. Columns:
 pkanban board list                    # List all boards
 pkanban board get 1                    # Show Dev board details
 pkanban board get <id>                 # Show board with columns & cards
-pkanban card get <id>                  # Read one card's full contents
+pkanban card get <id>                  # Read one card, comments included
+pkanban card comment <id> --file note.md  # Comment on a card
 ```
 
 ### Scripting the CLI

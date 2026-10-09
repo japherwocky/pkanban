@@ -134,6 +134,7 @@ to `~/.pkanban.yaml`, and stdout is what CI logs capture.
 | `pkanban card update <id> [title] [options]` | Update a card; omitted fields are unchanged |
 | `pkanban card move <id> --column <n> [-p <pos>]` | Move a card without touching its text |
 | `pkanban card delete <id>` | Delete a card |
+| `pkanban card comment <id> [text] [--file <path>]` | Comment on a card (`-` reads stdin) |
 | `pkanban org list` | List all organizations |
 | `pkanban org create <name>` | Create an organization |
 | `pkanban org get <org-id>` | Show organization details |
@@ -235,6 +236,12 @@ The backend exposes a REST API at `/api/`:
 - `POST /api/cards` - Create card
 - `PUT /api/cards/{id}` - Update card
 - `DELETE /api/cards/{id}` - Delete card
+
+**Comments**
+- `GET /api/cards/{id}/comments` - List a card's comments
+- `POST /api/comments` - Comment on a card (`card_id`, `content`)
+- `PUT /api/comments/{id}` - Edit a comment (author only)
+- `DELETE /api/comments/{id}` - Delete a comment (author only)
 - `GET /api/search?q=...` - Search card titles and descriptions on every board you can open (`board_id`, `limit` optional)
 
 For multi-tenant organization details, see [docs/multi-tenant.md](docs/multi-tenant.md).

@@ -13,7 +13,7 @@ Check first:
 pkanban --version
 ```
 
-You need 0.7.0 or later. If `pkanban` is missing or older, install it.
+You need 0.8.0 or later. If `pkanban` is missing or older, install it.
 macOS, Linux or WSL:
 
 ```bash
@@ -92,10 +92,11 @@ second one.
 ## Working with the board
 
 - Read the board: `pkanban board get <board-id> --json`
-- Read one card in full: `pkanban card get <card-id> --json`
+- Read one card in full, with its comments: `pkanban card get <card-id> --json`
 - Add a card: `pkanban card create <column-id> "Title" --description-file body.md --json`
 - Move a card: `pkanban card move <card-id> --column <column-id> --json`
 - Edit a card: `pkanban card update <card-id> --description-file body.md --json`
+- Comment on a card: `pkanban card comment <card-id> --file note.md --json`
 - Search: `pkanban search "text" --json`
 
 Rules that save trouble:
@@ -104,7 +105,8 @@ Rules that save trouble:
   stderr as `{"error": ..., "status": ...}` with a non-zero exit code.
 - **Put card bodies in a file** with `--description-file` (or `-d -` for
   stdin), never inline with `-d "..."`. Shells split quoted text in ways that
-  can rename a card without any error.
+  can rename a card without any error. Comments too: `--file`, or `-` for
+  stdin.
 - **Move cards as you work:** to In Progress when you start, to Done when you
   finish. The board is how your person sees what you are doing.
 - **HTTP 402 with `"code": "plan_limit"`** means the free plan is full. Tell
