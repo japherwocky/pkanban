@@ -31,6 +31,7 @@ from starlette.responses import JSONResponse
 
 from backend.auth import get_current_user_from_api_key_header
 from backend.oauth import resource_metadata_url
+from backend.search import HIGHLIGHT_END, HIGHLIGHT_START
 
 INSTRUCTIONS = """\
 pkanban is a kanban board. A board has columns, and a column holds cards. A
@@ -296,12 +297,24 @@ async def search_cards(
     """Find cards by the words in their titles and descriptions.
 
     Archived cards are included, with archived_at set. Each result names the
-    board and column the card is on.
+    board and column the card is on. The snippet is the part of the
+    description around the match, with the matched words in **bold**.
     """
     params: dict[str, Any] = {"q": query, "limit": limit}
     if board_id is not None:
         params["board_id"] = board_id
-    return (await _call(ctx, "GET", "/api/search", params=params)).json()
+    results = (await _call(ctx, "GET", "/api/search", params=params)).json()
+    for result in results:
+        if result["snippet"]:
+            result["snippet"] = _bold_highlights(result["snippet"])
+    return results
+
+
+def _bold_highlights(snippet: str) -> str:
+    """The API marks matched words with STX/ETX for the web app to turn into
+    highlights (backend/search.py). A model reads them as stray control
+    characters, so they become Markdown bold, which card text already is."""
+    return snippet.replace(HIGHLIGHT_START, "**").replace(HIGHLIGHT_END, "**")
 
 
 @tool("Create a board", WRITE)
