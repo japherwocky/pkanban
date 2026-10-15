@@ -354,10 +354,17 @@ The consent page is `frontend/src/routes/Consent.svelte` at `/oauth/consent`.
 
 The web app renders in the browser, so every URL arrives with `index.html`'s
 generic title unless the server is told otherwise. A page meant to be found
-by search or shared as a link goes in `PAGES` in `backend/pages.py`. The
-server then sends its own title, description, social-preview tags and
-canonical URL in the HTML. The page sets the same title in `<svelte:head>`
-for navigation inside the app, and its test holds the two to the same text.
+by search or shared as a link goes in `PAGES` in `backend/pages.py` (and so
+into `sitemap.xml`). The server then sends its own title, description,
+social-preview tags and canonical URL in the HTML.
+
+- Titles live only there. The server embeds them as JSON in every page, and
+  `PageTitle.svelte` sets the tab title from it on navigation, so no page
+  sets its own. Docs pages are titled by their markdown's first heading, by
+  the same rule on both sides (`doc_title()` and `docTitle()`, tested against
+  the same cases).
+- Site navigation is `<a href use:link>`, never `<button onclick={navigate}>`:
+  crawlers follow only real links.
 
 ### Database Patterns
 

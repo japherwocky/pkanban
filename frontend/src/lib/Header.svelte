@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { navigate } from 'svelte-routing';
+  import { link, navigate } from 'svelte-routing';
   import ThemeToggle from './ThemeToggle.svelte';
   import Logo from './Logo.svelte';
 
@@ -53,16 +53,17 @@
 
 <header class="header">
   <div class="header-container">
-    <!-- Logo -->
-    <button class="logo" onclick={() => goTo('/')}>
+    <!-- Logo. The site's links are <a href> so crawlers can follow them;
+         use:link keeps a plain click inside the app. -->
+    <a class="logo" href="/" use:link>
       <Logo />
-    </button>
+    </a>
 
     <!-- Desktop Nav -->
     <nav class="nav-desktop">
-      <button onclick={() => goTo('/docs')}>Documentation</button>
-      <button onclick={() => goTo('/pricing')}>Pricing</button>
-      <button onclick={() => goTo('/about')}>About</button>
+      <a href="/docs" use:link>Documentation</a>
+      <a href="/pricing" use:link>Pricing</a>
+      <a href="/about" use:link>About</a>
     </nav>
 
     <!-- Right Side -->
@@ -139,13 +140,13 @@
   <!-- Mobile Nav -->
   {#if isMenuOpen}
     <nav class="nav-mobile">
-      <button onclick={() => goTo('/docs')}>Documentation</button>
-      <button onclick={() => goTo('/pricing')}>Pricing</button>
-      <button onclick={() => goTo('/about')}>About</button>
-      <button onclick={() => goTo('/contact')}>Contact</button>
+      <a href="/docs" use:link onclick={closeMenu}>Documentation</a>
+      <a href="/pricing" use:link onclick={closeMenu}>Pricing</a>
+      <a href="/about" use:link onclick={closeMenu}>About</a>
+      <a href="/contact" use:link onclick={closeMenu}>Contact</a>
       <div class="mobile-divider"></div>
-      <button onclick={() => goTo('/login')}>Log in</button>
-      <button onclick={() => goTo('/signup')}>Sign up</button>
+      <a href="/login" use:link onclick={closeMenu}>Log in</a>
+      <a href="/signup" use:link onclick={closeMenu}>Sign up</a>
     </nav>
   {/if}
 </header>
@@ -175,6 +176,7 @@
     background: none;
     border: none;
     cursor: pointer;
+    text-decoration: none;
     padding: 0;
     transition: opacity var(--transition-fast);
   }
@@ -189,7 +191,7 @@
     gap: var(--space-2);
   }
 
-  .nav-desktop button {
+  .nav-desktop a {
     background: none;
     border: none;
     color: var(--color-muted-foreground);
@@ -198,10 +200,11 @@
     cursor: pointer;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
+    text-decoration: none;
     transition: background-color var(--transition-fast), color var(--transition-fast);
   }
 
-  .nav-desktop button:hover {
+  .nav-desktop a:hover {
     color: var(--color-foreground);
     background: var(--color-muted);
   }
@@ -276,7 +279,7 @@
     border-top: 1px solid var(--color-border);
   }
 
-  .nav-mobile button {
+  .nav-mobile a {
     background: none;
     border: none;
     color: var(--color-muted-foreground);
@@ -285,10 +288,11 @@
     cursor: pointer;
     padding: var(--space-3) 0;
     text-align: left;
+    text-decoration: none;
     transition: color var(--transition-fast);
   }
 
-  .nav-mobile button:hover {
+  .nav-mobile a:hover {
     color: var(--color-foreground);
   }
 

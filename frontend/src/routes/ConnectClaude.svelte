@@ -7,12 +7,7 @@
   // window and has never configured anything like this. The URL is this
   // server's own, so a self-hosted install shows its own address.
   //
-  // The <head> here is also set by the server for this path (backend/pages.py),
-  // so link previews and crawlers that never run this script still see it.
-  // Keep the two in step.
-  const TITLE = 'Connect pkanban to Claude — a kanban board Claude can read and update';
-  const DESCRIPTION =
-    'Add pkanban to Claude as a custom connector. Claude reads your boards, adds and moves cards as it works, and you see every change on the board.';
+  // Its <title> and description are the server's, in backend/pages.py.
 
   const ORIGIN = window.location.origin;
   const MCP_URL = `${ORIGIN}/mcp`;
@@ -38,11 +33,6 @@
     copyResetTimer = setTimeout(() => (copied = null), 2000);
   }
 </script>
-
-<svelte:head>
-  <title>{TITLE}</title>
-  <meta name="description" content={DESCRIPTION} />
-</svelte:head>
 
 <PageLayout
   title="Connect pkanban to Claude"

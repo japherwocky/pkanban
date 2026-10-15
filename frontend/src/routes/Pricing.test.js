@@ -133,32 +133,26 @@ describe('Pricing - the call to action', () => {
 });
 
 describe('Pricing is reachable', () => {
-  it('has a Pricing entry in the desktop header nav', async () => {
+  // Real links: crawlers follow <a href> and nothing else. Keeping a plain
+  // click inside the app is svelte-routing's `link` action (mocked here).
+  it('has a Pricing link in the desktop header nav', () => {
     render(Header);
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Pricing' }));
-
-    expect(navigate).toHaveBeenCalledWith('/pricing');
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute('href', '/pricing');
   });
 
-  it('has a Pricing entry in the mobile menu too', async () => {
+  it('has a Pricing link in the mobile menu too', async () => {
     render(Header);
-    expect(screen.getAllByRole('button', { name: 'Pricing' })).toHaveLength(1);
+    expect(screen.getAllByRole('link', { name: 'Pricing' })).toHaveLength(1);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }));
-    const entries = screen.getAllByRole('button', { name: 'Pricing' });
+    const entries = screen.getAllByRole('link', { name: 'Pricing' });
     expect(entries).toHaveLength(2);
-
-    await fireEvent.click(entries[1]);
-    expect(navigate).toHaveBeenCalledWith('/pricing');
+    expect(entries[1]).toHaveAttribute('href', '/pricing');
   });
 
-  it('has a Pricing entry in the footer', async () => {
+  it('has a Pricing link in the footer', () => {
     render(Footer);
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Pricing' }));
-
-    expect(navigate).toHaveBeenCalledWith('/pricing');
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute('href', '/pricing');
   });
 });
 
