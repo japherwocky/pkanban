@@ -1,10 +1,22 @@
 <script>
+  import { link } from 'svelte-routing';
+
   // For the reader who would rather install pkanban themselves than ask an
   // agent to: the same one-liners the docs give, for this server. The hero's
   // agent prompt stays the lead (MARKETING.md); this sits further down.
+  //
+  // The Claude tab is the other way in: nothing to install, one address to
+  // add as a connector (MCP). It comes first because it is the easiest path,
+  // but the visitor's own platform is still what's selected to begin with.
   const ORIGIN = window.location.origin;
 
   const TABS = [
+    {
+      id: 'claude',
+      label: 'Claude',
+      command: `${ORIGIN}/mcp`,
+      copyLabel: 'Copy the connector address',
+    },
     { id: 'unix', label: 'macOS / Linux', command: `curl -fsSL ${ORIGIN}/install.sh | sh` },
     { id: 'powershell', label: 'Windows PowerShell', command: `irm ${ORIGIN}/install.ps1 | iex` },
     {
@@ -47,8 +59,7 @@
 <section class="install-section" aria-labelledby="install-heading">
   <h2 id="install-heading">Or install it yourself</h2>
   <p class="lede">
-    One line, and no Python needed. Then run <code>pkanban login</code> and
-    approve it in your browser.
+    One line in a terminal, and no Python needed. Or, in Claude, one address.
   </p>
 
   <div class="install-box">
@@ -71,10 +82,24 @@
 
     <div id="install-panel" class="command-row" role="tabpanel" aria-labelledby="install-tab-{selected}">
       <code class="command">{current.command}</code>
-      <button class="copy" onclick={copyCommand} aria-label="Copy the install command">
+      <button
+        class="copy"
+        onclick={copyCommand}
+        aria-label={current.copyLabel ?? 'Copy the install command'}
+      >
         {copied ? 'Copied' : 'Copy'}
       </button>
     </div>
+    <p class="next-step">
+      {#if selected === 'claude'}
+        In Claude, open Settings › Connectors › Add custom connector, paste this
+        address, then Connect and approve.
+        <a href="/connect/claude" use:link>Step by step</a> ·
+        <a href="/docs/mcp" use:link>ChatGPT and other apps</a>
+      {:else}
+        Then run <code>pkanban login</code> and approve it in your browser.
+      {/if}
+    </p>
   </div>
 </section>
 
@@ -99,10 +124,24 @@
     margin: 0 0 var(--space-6);
   }
 
-  .lede code {
+  .next-step code {
     font-family: var(--font-mono);
     font-size: 0.95em;
     color: var(--color-foreground);
+  }
+
+  .next-step {
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-4);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .next-step a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .install-box {
