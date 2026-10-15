@@ -331,6 +331,22 @@ models.
 - SDK 2.x (`mcp>=2.3,<3`): `FastMCP` is now `MCPServer`, and 1.x examples do
   not apply.
 
+**OAuth** (`backend/oauth.py`, Dev #969) is how the chat apps get a key. The
+SDK's handlers do the protocol at `/oauth/register`, `/oauth/authorize` and
+`/oauth/token`; this server supplies their storage (`OAuthClient`,
+`OAuthGrant`) and the consent page's API (`/api/oauth/requests/{id}` and its
+`approve` and `deny`, session only). The token is a new `ApiKey`, so a
+connected app is revoked in Settings > API keys and `/mcp` checks only keys.
+
+- The discovery documents under `/.well-known/` are built from the request's
+  URL, not the SDK's metadata routes, which fix one issuer URL. A self-hosted
+  server describes itself.
+- The consent page sends the browser to the app's registered redirect URI, so
+  `redirect_uri_problem()` refuses `javascript:`, `data:` and the like, and
+  plain `http` anywhere but localhost. Keep it that way: one of those would
+  run as script on this site.
+- No refresh tokens and no revocation endpoint: keys do not expire.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

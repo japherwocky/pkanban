@@ -9,7 +9,7 @@ from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
 from backend.billing import PlanLimitExceeded
 from backend.database import init_db
-from backend import mcp_server
+from backend import mcp_server, oauth
 
 STATIC_PATH = os.environ.get(
     "STATIC_PATH", os.path.join(os.path.dirname(__file__), "static")
@@ -85,9 +85,12 @@ async def plan_limit_exceeded(request, exc: PlanLimitExceeded):
 
 app.include_router(api, prefix="/api")
 
-# MCP, for AI apps that call tools rather than run commands. Added before the
-# SPA catch-all below, which would otherwise answer GET /mcp with the web app.
+# MCP, for AI apps that call tools rather than run commands, and the OAuth
+# sign-in the chat apps use to reach it. Added before the SPA catch-all below,
+# which would otherwise answer GET /mcp and GET /oauth/authorize with the app.
 mcp_server.mount(app)
+oauth.mount(app)
+app.include_router(oauth.router, prefix="/api")
 
 # Serve documentation content files from docs/
 CONTENT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs")
