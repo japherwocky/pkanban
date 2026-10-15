@@ -171,3 +171,24 @@ def test_sitemap_lists_the_public_pages(client):
 def test_sitemap_names_this_server(db_session):
     with TestClient(app, base_url="https://kanban.example.org") as c:
         assert "<loc>https://kanban.example.org/pricing</loc>" in c.get("/sitemap.xml").text
+
+
+# --- The social-preview image ------------------------------------------------
+
+
+def test_preview_image_is_served_at_the_root(tmp_path, monkeypatch, db_session):
+    # Vite puts public files under /static/; previews look at the root, which
+    # used to answer with the web app's HTML.
+    shutil.copy(os.path.join(FRONTEND, "public", "og-image.png"), tmp_path / "og-image.png")
+    monkeypatch.setattr(main, "STATIC_PATH", str(tmp_path))
+    response = TestClient(app).get("/og-image.png")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+@pytest.mark.parametrize("path", ["/", "/boards"])
+def test_preview_image_names_this_server(client, path):
+    html = client.get(path).text
+    assert meta(html, "property", "og:image") == f"{BASE}/og-image.png"
+    assert meta(html, "name", "twitter:image") == f"{BASE}/og-image.png"

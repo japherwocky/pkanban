@@ -174,6 +174,17 @@ async def install_cmd(request: Request):
     return _installer(request, "install.cmd")
 
 
+# The social-preview image. Link previews fetch it from the site root, but the
+# build puts public files under /static/, so the root URL used to answer with
+# the web app's HTML and no preview ever had an image.
+@app.get(pages.OG_IMAGE_PATH)
+async def og_image():
+    path = os.path.join(STATIC_PATH, "og-image.png")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, media_type="image/png")
+
+
 # For search engines, built from this server's own URL like the installers.
 @app.get("/robots.txt")
 async def robots_txt(request: Request):

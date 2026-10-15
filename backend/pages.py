@@ -92,6 +92,10 @@ DISALLOWED = [
     "/device",
 ]
 
+# Where the social-preview image is served (main.py), at the root, where
+# link previews look for it.
+OG_IMAGE_PATH = "/og-image.png"
+
 DOC_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 DESCRIPTION_LIMIT = 160
 
@@ -163,6 +167,17 @@ def head_for(path: str) -> Optional[dict]:
     return {"title": title, "description": _doc_description(markdown)} if title else None
 
 
+def _set_meta(page: str, attr: str, name: str, value: str) -> str:
+    """`page` with one <meta>'s content replaced by `value` (already escaped)."""
+    # index.html wraps some of these over several lines, hence \s+.
+    return re.sub(
+        rf'(<meta\s+{attr}="{re.escape(name)}"\s+content=")[^"]*(")',
+        lambda m: f"{m.group(1)}{value}{m.group(2)}",
+        page,
+        count=1,
+    )
+
+
 def page_html(template: str, path: str, base_url: str) -> str:
     """index.html for `path`: its own <head> if it is public, and the titles
     the app needs to keep the tab title right as it navigates."""
@@ -178,6 +193,11 @@ def page_html(template: str, path: str, base_url: str) -> str:
         f'  <script type="application/json" id="page-titles">{titles_json}</script>\n  </head>',
         1,
     )
+    # The preview image, on every page and from this server: index.html names
+    # the hosted one, which a self-hosted server should not advertise.
+    image = html.escape(f"{base_url.rstrip('/')}{OG_IMAGE_PATH}")
+    for attr, name in (("property", "og:image"), ("name", "twitter:image")):
+        out = _set_meta(out, attr, name, image)
 
     head = head_for(path)
     if head is None:
@@ -195,13 +215,7 @@ def page_html(template: str, path: str, base_url: str) -> str:
         flags=re.S,
     )
     for attr, name, key in META_TAGS:
-        # index.html wraps some of these over several lines, hence \s+.
-        out = re.sub(
-            rf'(<meta\s+{attr}="{re.escape(name)}"\s+content=")[^"]*(")',
-            lambda m: f"{m.group(1)}{values[key]}{m.group(2)}",
-            out,
-            count=1,
-        )
+        out = _set_meta(out, attr, name, values[key])
     return out.replace(
         "</head>", f'  <link rel="canonical" href="{values["url"]}" />\n  </head>', 1
     )
