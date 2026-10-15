@@ -310,6 +310,27 @@ decision (Dev #781), so `billing.count_cards` deliberately counts them. Unarchiv
 puts a card at the bottom of its column's live cards. Deleting a column deletes
 its archived cards too, and the web UI's confirmation says how many.
 
+### MCP server
+
+`backend/mcp_server.py` serves MCP at `/mcp` on the same app (Dev #970; the
+plan is on #900). Every tool is an in-process call to the REST API (httpx
+`ASGITransport`) carrying the caller's API key, so access checks, validation
+and plan limits are the API's own. A new tool calls an endpoint, never the
+models.
+
+- `/mcp` takes an API key only, as `X-API-Key` or `Authorization: Bearer`. A
+  session JWT is refused: it expires within a day, and MCP clients never see
+  the renewal header.
+- Stateless, with JSON responses. `GET /mcp` answers 405 on purpose; the SDK
+  would otherwise hold an empty event stream open until something times out.
+- The SDK's default Host-header check allows only localhost, which refuses
+  every request that arrives through nginx. `NO_HOST_CHECK` turns it off.
+- `running()`, in the app's lifespan, starts the request handler and builds a
+  new one at every startup. A test that calls `/mcp` has to enter
+  `with TestClient(app)` so the lifespan runs (see `backend/tests/test_mcp.py`).
+- SDK 2.x (`mcp>=2.3,<3`): `FastMCP` is now `MCPServer`, and 1.x examples do
+  not apply.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships

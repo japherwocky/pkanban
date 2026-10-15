@@ -9,6 +9,7 @@ from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
 from backend.billing import PlanLimitExceeded
 from backend.database import init_db
+from backend import mcp_server
 
 STATIC_PATH = os.environ.get(
     "STATIC_PATH", os.path.join(os.path.dirname(__file__), "static")
@@ -18,7 +19,8 @@ STATIC_PATH = os.environ.get(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    yield
+    async with mcp_server.running():
+        yield
 
 
 app = FastAPI(
@@ -82,6 +84,10 @@ async def plan_limit_exceeded(request, exc: PlanLimitExceeded):
 
 
 app.include_router(api, prefix="/api")
+
+# MCP, for AI apps that call tools rather than run commands. Added before the
+# SPA catch-all below, which would otherwise answer GET /mcp with the web app.
+mcp_server.mount(app)
 
 # Serve documentation content files from docs/
 CONTENT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs")
