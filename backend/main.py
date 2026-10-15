@@ -3,7 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    Response,
+)
 
 from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
@@ -96,8 +102,18 @@ app.include_router(oauth.router, prefix="/api")
 CONTENT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs")
 
 
+def spa(request: Request, path: str):
+    """index.html for an app route, with that page's <head> written in when it
+    is a public one (backend/pages.py). None if the frontend is not built."""
+    index_path = os.path.join(STATIC_PATH, "index.html")
+    if not os.path.exists(index_path):
+        return None
+    with open(index_path, encoding="utf-8") as f:
+        return HTMLResponse(pages.page_html(f.read(), path, str(request.base_url)))
+
+
 @app.get("/docs/{path:path}")
-async def docs_handler(path: str):
+async def docs_handler(path: str, request: Request):
     """Serve docs: .md files serve raw markdown, clean URLs serve SPA."""
     if path.endswith(".md"):
         # Serve the markdown file
@@ -106,10 +122,7 @@ async def docs_handler(path: str):
             return FileResponse(file_path)
 
     # Clean URL or missing file → serve SPA
-    index_path = os.path.join(STATIC_PATH, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "pkanban API is running"}
+    return spa(request, f"/docs/{path}") or {"message": "pkanban API is running"}
 
 
 # The one-line installers: `curl -fsSL <server>/install.sh | sh` and
@@ -161,12 +174,22 @@ async def install_cmd(request: Request):
     return _installer(request, "install.cmd")
 
 
+# For search engines, built from this server's own URL like the installers.
+@app.get("/robots.txt")
+async def robots_txt(request: Request):
+    return PlainTextResponse(pages.robots_txt(str(request.base_url)))
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml(request: Request):
+    return Response(pages.sitemap_xml(str(request.base_url)), media_type="application/xml")
+
+
 @app.get("/")
-async def root():
-    index_path = os.path.join(STATIC_PATH, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "pkanban API is running. Build the frontend to serve it here."}
+async def root(request: Request):
+    return spa(request, "/") or {
+        "message": "pkanban API is running. Build the frontend to serve it here."
+    }
 
 
 @app.get("/{path:path}")
@@ -180,13 +203,4 @@ async def catch_all(path: str, request: Request):
     if path == "api" or path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Not found")
 
-    index_path = os.path.join(STATIC_PATH, "index.html")
-    if os.path.exists(index_path):
-        # A page meant to be found from outside gets its own <head>; see
-        # backend/pages.py for why the app's own <svelte:head> is not enough.
-        if f"/{path}".rstrip("/") in pages.PAGES:
-            with open(index_path, encoding="utf-8") as f:
-                html = pages.page_html(f.read(), f"/{path}", str(request.base_url))
-            return HTMLResponse(html)
-        return FileResponse(index_path)
-    return {"message": "pkanban API is running"}
+    return spa(request, f"/{path}") or {"message": "pkanban API is running"}

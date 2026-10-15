@@ -1,19 +1,18 @@
 <script>
-  import { navigate } from 'svelte-routing';
+  // Real links, not buttons: crawlers follow <a href> and nothing else, and
+  // these are how a search engine finds the rest of the site. use:link keeps
+  // the click inside the app, and still lets ctrl/cmd-click open a new tab.
+  import { link } from 'svelte-routing';
   import Logo from './Logo.svelte';
-
-  function goTo(path) {
-    navigate(path);
-  }
 </script>
 
 <footer class="footer">
   <div class="footer-container">
     <!-- Brand Column -->
     <div class="footer-brand">
-      <button class="logo" onclick={() => goTo('/')}>
+      <a class="logo" href="/" use:link>
         <Logo />
-      </button>
+      </a>
       <p class="tagline">A CLI-first Kanban board for humans and AI agents.</p>
     </div>
 
@@ -21,20 +20,20 @@
     <div class="footer-links">
       <div class="link-group">
         <h4>Product</h4>
-        <button onclick={() => goTo('/docs')}>Documentation</button>
-        <button onclick={() => goTo('/pricing')}>Pricing</button>
+        <a href="/docs" use:link>Documentation</a>
+        <a href="/pricing" use:link>Pricing</a>
       </div>
 
       <div class="link-group">
         <h4>Company</h4>
-        <button onclick={() => goTo('/about')}>About</button>
-        <button onclick={() => goTo('/contact')}>Contact</button>
+        <a href="/about" use:link>About</a>
+        <a href="/contact" use:link>Contact</a>
       </div>
 
       <div class="link-group">
         <h4>Legal</h4>
-        <button onclick={() => goTo('/privacy')}>Privacy</button>
-        <button onclick={() => goTo('/terms')}>Terms</button>
+        <a href="/privacy" use:link>Privacy</a>
+        <a href="/terms" use:link>Terms</a>
       </div>
     </div>
   </div>
@@ -79,6 +78,7 @@
     background: none;
     border: none;
     cursor: pointer;
+    text-decoration: none;
     padding: 0;
     transition: opacity var(--transition-fast);
   }
@@ -113,7 +113,7 @@
     margin: 0;
   }
 
-  .link-group button {
+  .link-group a {
     background: none;
     border: none;
     color: var(--color-muted-foreground);
@@ -121,10 +121,11 @@
     cursor: pointer;
     padding: 0;
     text-align: left;
+    text-decoration: none;
     transition: color var(--transition-fast);
   }
 
-  .link-group button:hover {
+  .link-group a:hover {
     color: var(--color-foreground);
     text-decoration: underline;
   }

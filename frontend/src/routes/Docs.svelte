@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { navigate } from 'svelte-routing';
   import { marked } from 'marked';
+  import { docTitle } from '../lib/pageTitle.js';
   import Prism from 'prismjs';
   import '../prism-theme.css';
   import 'prismjs/components/prism-bash';
@@ -95,6 +96,8 @@
       }
 
       let rawMarkdown = await response.text();
+      // The same title the server wrote into this page's HTML.
+      document.title = docTitle(rawMarkdown) ?? document.title;
       markdownContent = convertMarkdownLinks(rawMarkdown);
       htmlContent = marked(markdownContent);
 

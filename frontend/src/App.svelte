@@ -13,6 +13,7 @@
   import Docs from './routes/Docs.svelte';
   import NotFound from './routes/NotFound.svelte';
   import ProtectedRoute from './lib/ProtectedRoute.svelte';
+  import PageTitle from './lib/PageTitle.svelte';
   import PublicLayout from './lib/PublicLayout.svelte';
   import Pricing from './routes/Pricing.svelte';
   import About from './routes/About.svelte';
@@ -38,6 +39,8 @@
 </script>
 
 <Router>
+  <PageTitle />
+
   <!-- Marketing pages with Header and Footer (via PublicLayout) -->
   <Route path="/" let:params>
     <PublicLayout>
