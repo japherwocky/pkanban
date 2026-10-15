@@ -202,16 +202,22 @@ async def _call(ctx: Context, method: str, path: str, **kwargs) -> httpx.Respons
     return response
 
 
-def tool(annotations: ToolAnnotations):
-    """server.tool(), with the docstring dedented first.
+def tool(title: str, annotations: ToolAnnotations):
+    """server.tool(), with a title and the docstring dedented first.
 
     The SDK sends a docstring as written, continuation-line indentation and
-    all, and the model pays for every space of it on every request.
+    all, and the model pays for every space of it on every request. The title
+    is what an app shows a person ("Allow Move a card?"), and connector
+    directories expect one on every tool; it goes in the annotations too, for
+    clients that read it from there.
     """
 
     def register(fn):
-        description = inspect.cleandoc(fn.__doc__)
-        return server.tool(description=description, annotations=annotations)(fn)
+        return server.tool(
+            title=title,
+            description=inspect.cleandoc(fn.__doc__),
+            annotations=annotations.model_copy(update={"title": title}),
+        )(fn)
 
     return register
 
@@ -221,7 +227,7 @@ ColumnId = Annotated[int, Field(description="Column id, from get_board")]
 CardId = Annotated[int, Field(description="Card id")]
 
 
-@tool(READ)
+@tool("List boards", READ)
 async def list_boards(ctx: Context) -> list[dict[str, Any]]:
     """List every board you can see: your own and the ones shared with you."""
     boards = []
@@ -235,7 +241,7 @@ async def list_boards(ctx: Context) -> list[dict[str, Any]]:
         params = {"cursor": cursor}
 
 
-@tool(READ)
+@tool("Get a board", READ)
 async def get_board(
     ctx: Context,
     board_id: BoardId,
@@ -272,13 +278,13 @@ async def get_board(
     }
 
 
-@tool(READ)
+@tool("Get a card", READ)
 async def get_card(ctx: Context, card_id: CardId) -> dict[str, Any]:
     """One card in full: title, description, comments, and its board and column."""
     return (await _call(ctx, "GET", f"/api/cards/{card_id}")).json()
 
 
-@tool(READ)
+@tool("Search cards", READ)
 async def search_cards(
     ctx: Context,
     query: Annotated[str, Field(description="Words to find in card titles and descriptions")],
@@ -298,7 +304,7 @@ async def search_cards(
     return (await _call(ctx, "GET", "/api/search", params=params)).json()
 
 
-@tool(WRITE)
+@tool("Create a board", WRITE)
 async def create_board(
     ctx: Context, name: Annotated[str, Field(description="The board's name")]
 ) -> dict[str, Any]:
@@ -306,7 +312,7 @@ async def create_board(
     return (await _call(ctx, "POST", "/api/boards", json={"name": name})).json()
 
 
-@tool(WRITE)
+@tool("Add a column", WRITE)
 async def create_column(
     ctx: Context,
     board_id: BoardId,
@@ -323,7 +329,7 @@ async def create_column(
     return (await _call(ctx, "POST", "/api/columns", json=data)).json()
 
 
-@tool(WRITE)
+@tool("Create a card", WRITE)
 async def create_card(
     ctx: Context,
     column_id: ColumnId,
@@ -345,7 +351,7 @@ async def create_card(
     return (await _call(ctx, "POST", "/api/cards", json=data)).json()
 
 
-@tool(OVERWRITE)
+@tool("Edit a card", OVERWRITE)
 async def update_card(
     ctx: Context,
     card_id: CardId,
@@ -366,7 +372,7 @@ async def update_card(
     return (await _call(ctx, "PUT", f"/api/cards/{card_id}", json=data)).json()
 
 
-@tool(WRITE)
+@tool("Move a card", WRITE)
 async def move_card(
     ctx: Context,
     card_id: CardId,
@@ -389,7 +395,7 @@ async def move_card(
     return (await _call(ctx, "PUT", f"/api/cards/{card_id}", json=data)).json()
 
 
-@tool(WRITE)
+@tool("Comment on a card", WRITE)
 async def add_comment(
     ctx: Context,
     card_id: CardId,
@@ -400,14 +406,14 @@ async def add_comment(
     return (await _call(ctx, "POST", "/api/comments", json=data)).json()
 
 
-@tool(WRITE)
+@tool("Archive a card", WRITE)
 async def archive_card(ctx: Context, card_id: CardId) -> dict[str, Any]:
     """Archive a card: hidden from its board, kept with its comments, and still
     found by search_cards. unarchive_card brings it back."""
     return (await _call(ctx, "POST", f"/api/cards/{card_id}/archive")).json()
 
 
-@tool(WRITE)
+@tool("Unarchive a card", WRITE)
 async def unarchive_card(ctx: Context, card_id: CardId) -> dict[str, Any]:
     """Bring an archived card back, at the bottom of its column."""
     return (await _call(ctx, "POST", f"/api/cards/{card_id}/unarchive")).json()

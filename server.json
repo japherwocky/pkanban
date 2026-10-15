@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.japherwocky/pkanban",
+  "title": "pkanban",
+  "description": "A kanban board your AI reads and updates as it works, and you watch in your browser.",
+  "version": "0.9.0",
+  "websiteUrl": "https://pkanban.pearachute.com/docs/mcp",
+  "repository": {
+    "url": "https://github.com/japherwocky/pkanban",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://pkanban.pearachute.com/static/apple-touch-icon.png",
+      "mimeType": "image/png",
+      "sizes": ["180x180"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://pkanban.pearachute.com/mcp"
+    }
+  ]
+}
