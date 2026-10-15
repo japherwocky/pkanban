@@ -247,6 +247,17 @@ def test_search_cards(client, key, board):
     assert results[0]["board_name"] == "MCP board"
 
 
+def test_search_snippets_mark_matches_in_bold(client, key, board):
+    # The API's STX/ETX highlight markers mean nothing to a model (Dev #978).
+    todo = columns(board)[0]
+    ok(client, key, "create_card", column_id=todo.id, title="Birds",
+       description="The pelican flies south for the winter.")
+    ok(client, key, "create_card", column_id=todo.id, title="Pelican, no description")
+    results = {r["title"]: r for r in ok(client, key, "search_cards", query="pelican")}
+    assert results["Birds"]["snippet"] == "The **pelican** flies south for the winter."
+    assert results["Pelican, no description"]["snippet"] is None
+
+
 def test_create_board_and_column(client, key):
     board = ok(client, key, "create_board", name="Fresh")
     column = ok(client, key, "create_column", board_id=board["id"], name="Blocked")
