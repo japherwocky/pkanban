@@ -4,6 +4,8 @@
   import Modal from './Modal.svelte';
   import ShareModal from './ShareModal.svelte';
   import Comments from './Comments.svelte';
+  import Markdown from './Markdown.svelte';
+  import { markdownToText } from './markdown.js';
   import { navigate } from 'svelte-routing';
   import { dndzone } from 'svelte-dnd-action';
   import { createBoardDnd } from './boardDnd.js';
@@ -21,6 +23,8 @@
   let editingCard = $state(null);
   let editTitle = $state('');
   let editDescription = $state('');
+  // An open card shows its description rendered; Edit swaps in the form.
+  let editingDetails = $state(false);
   let editLoading = $state(false);
   let showCreateColumnModal = $state(false);
   let newColumnName = $state('');
@@ -147,17 +151,23 @@
 
   function openEditCard(card, { updateUrl = true } = {}) {
     editingCard = card;
-    editTitle = card.title || '';
-    editDescription = card.description || '';
+    editingDetails = false;
     showEditCardModal = true;
     if (updateUrl) {
       history.replaceState(history.state, '', cardUrl(card.id));
     }
   }
 
+  function startEditDetails() {
+    editTitle = editingCard.title || '';
+    editDescription = editingCard.description || '';
+    editingDetails = true;
+  }
+
   function closeEditCard() {
     showEditCardModal = false;
     editingCard = null;
+    editingDetails = false;
     history.replaceState(history.state, '', `/boards/${board.id}`);
   }
 
@@ -184,15 +194,14 @@
     editLoading = true;
     try {
       await api.cards.update(editingCard.id, editTitle.trim(), editDescription.trim() || null, null, null);
+      const changes = { title: editTitle.trim(), description: editDescription.trim() };
       columns = columns.map(col => ({
         ...col,
-        cards: col.cards.map(c =>
-          c.id === editingCard.id
-            ? { ...c, title: editTitle.trim(), description: editDescription.trim() }
-            : c
-        )
+        cards: col.cards.map(c => (c.id === editingCard.id ? { ...c, ...changes } : c))
       }));
-      closeEditCard();
+      // Back to the card, so the saved text is seen as it renders.
+      editingCard = { ...editingCard, ...changes };
+      editingDetails = false;
     } catch (e) {
       alert('Failed to update card: ' + e.message);
     } finally {
@@ -432,7 +441,7 @@
                   }}
                   role="button"
                   tabindex="0"
-                  aria-label={card.description ? `Edit card: ${card.title}. ${card.description}` : `Edit card: ${card.title}`}
+                  aria-label={card.description ? `Open card: ${card.title}. ${markdownToText(card.description)}` : `Open card: ${card.title}`}
                 >
                   <div class="card-header">
                     <span class="card-title">
@@ -443,7 +452,9 @@
                     <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
                   </div>
                   {#if card.description}
-                    <p class="card-description">{card.description}</p>
+                    <!-- Plain text: rendered Markdown in a three-line clamp
+                         looks broken. The card itself renders it. -->
+                    <p class="card-description">{markdownToText(card.description)}</p>
                   {/if}
                   <div class="card-meta">
                     {#if card.created_at}
@@ -499,7 +510,7 @@
             <div class="grow-wrap" data-replicated-value={newCardDescription}>
               <textarea
                 bind:value={newCardDescription}
-                placeholder="Description (optional)"
+                placeholder="Description (optional, Markdown)"
               ></textarea>
             </div>
             <div class="modal-actions">
@@ -514,20 +525,44 @@
     {/if}
 
     {#if showEditCardModal}
-      <Modal open={showEditCardModal} onClose={closeEditCard} title="Edit Card" titleBadge={`#${editingCard?.id}`} wide>
+      <Modal
+        open={showEditCardModal}
+        onClose={closeEditCard}
+        title={editingDetails ? 'Edit Card' : editingCard?.title}
+        titleBadge={`#${editingCard?.id}`}
+        wide
+      >
         {#snippet children()}
-          <form onsubmit={(e) => { e.preventDefault(); saveCard(); }}>
-            <input
-              bind:value={editTitle}
-              placeholder="Card title"
-              required
-            />
-            <div class="grow-wrap" data-replicated-value={editDescription}>
-              <textarea
-                bind:value={editDescription}
-                placeholder="Description (optional)"
-              ></textarea>
-            </div>
+          {#if editingDetails}
+            <form onsubmit={(e) => { e.preventDefault(); saveCard(); }}>
+              <input
+                bind:value={editTitle}
+                placeholder="Card title"
+                aria-label="Title"
+                required
+              />
+              <div class="grow-wrap" data-replicated-value={editDescription}>
+                <!-- svelte-ignore a11y_autofocus -->
+                <textarea
+                  bind:value={editDescription}
+                  placeholder="Description (optional, Markdown)"
+                  aria-label="Description"
+                  autofocus
+                ></textarea>
+              </div>
+              <div class="modal-actions">
+                <button type="button" class="cancel-btn" onclick={() => (editingDetails = false)}>Cancel</button>
+                <button type="submit" class="create-btn" disabled={editLoading}>
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          {:else}
+            {#if editingCard?.description}
+              <Markdown text={editingCard.description} />
+            {:else}
+              <button type="button" class="add-description" onclick={startEditDetails}>Add a description</button>
+            {/if}
             <div class="modal-actions">
               {#if editingCard?.archived_at}
                 <button type="button" class="archive-btn" onclick={unarchiveCard} disabled={archiveLoading}>
@@ -544,13 +579,11 @@
                   {archiveLoading ? 'Archiving...' : 'Archive'}
                 </button>
               {/if}
-              <button type="button" class="cancel-btn" onclick={closeEditCard}>Cancel</button>
-              <button type="submit" class="create-btn" disabled={editLoading}>
-                {editLoading ? 'Saving...' : 'Save Changes'}
-              </button>
+              <button type="button" class="cancel-btn" onclick={closeEditCard}>Close</button>
+              <button type="button" class="create-btn" onclick={startEditDetails} data-autofocus>Edit</button>
             </div>
-          </form>
-          
+          {/if}
+
           {#if editingCard}
             <Comments 
               card={editingCard} 
@@ -1057,6 +1090,22 @@
   .archive-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* Where the description would be, on a card without one. */
+  .add-description {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    border: 1px dashed var(--color-border);
+    font-size: var(--text-sm);
+  }
+
+  .add-description:hover {
+    color: var(--color-foreground);
+    border-color: var(--color-border-strong);
   }
 
   .archived-toggle[aria-pressed='true'] {

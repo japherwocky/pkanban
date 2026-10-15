@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "bits-ui": "^2.14.4",
+    "dompurify": "^3.4.16",
     "marked": "^17.0.1",
     "prismjs": "^1.30.0",
     "svelte-dnd-action": "^0.9.44",

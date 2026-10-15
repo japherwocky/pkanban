@@ -1,5 +1,6 @@
 <script>
   import { api } from './api.js';
+  import Markdown from './Markdown.svelte';
 
   let { card, onCommentsUpdate } = $props();
 
@@ -172,7 +173,7 @@
               </div>
             </div>
           {:else}
-            <p class="comment-text">{comment.content}</p>
+            <div class="comment-text"><Markdown text={comment.content} /></div>
             {#if comment.updated_at && comment.updated_at !== comment.created_at}
               <span class="comment-edited">(edited)</span>
             {/if}
@@ -191,7 +192,7 @@
     <textarea 
       bind:value={newComment}
       class="new-comment-input"
-      placeholder="Add a comment..."
+      placeholder="Add a comment (Markdown)..."
       disabled={loading}
       onkeydown={(e) => handleKeydown(e, createComment)}
     ></textarea>
@@ -292,14 +293,6 @@
 
   .comment-content {
     margin: 0;
-  }
-
-  .comment-text {
-    margin: 0;
-    line-height: var(--leading-normal);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    color: var(--color-foreground);
   }
 
   .comment-edited {

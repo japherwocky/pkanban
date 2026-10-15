@@ -310,6 +310,23 @@ decision (Dev #781), so `billing.count_cards` deliberately counts them. Unarchiv
 puts a card at the bottom of its column's live cards. Deleting a column deletes
 its archived cards too, and the web UI's confirmation says how many.
 
+### Card Markdown
+
+Card descriptions and comments are Markdown (Dev #980). The web app renders
+them in exactly one place, `frontend/src/lib/Markdown.svelte`, through
+`renderMarkdown()` in `markdown.js`: its own `Marked` instance, then DOMPurify
+with an allowlist of the tags marked emits. Anyone who can see a board can
+write its cards, agents included, so card text never reaches `{@html}` any
+other way.
+
+- HTML typed into a card is shown as text, not rendered, and an image becomes
+  a link to it rather than a request to a stranger's server.
+- Links open in a new tab with `rel="noopener noreferrer nofollow"`.
+- Board tiles show `markdownToText()`, the words without the syntax; a card
+  opens to the rendered view, and Edit swaps in the textarea.
+- The tests in `markdown.test.js` throw hostile card text at it. A new tag in
+  the allowlist needs a reason, and a case there.
+
 ### MCP server
 
 `backend/mcp_server.py` serves MCP at `/mcp` on the same app (Dev #970; the

@@ -112,13 +112,13 @@ describe('a link to an archived card', () => {
 
     await waitFor(() => expect(api.boards.get).toHaveBeenCalledWith(1, { includeArchived: true }));
     expect(await screen.findByRole('button', { name: 'Unarchive' })).toBeInTheDocument();
-    expect(screen.getByDisplayValue('gamma')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /^gamma\s*#3$/ })).toBeInTheDocument();
   });
 
   it('does not reload for a live card', async () => {
     renderBoard({ initialCardId: '1' });
 
-    expect(await screen.findByDisplayValue('alpha')).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: /^alpha\s*#1$/ })).toBeInTheDocument();
     expect(api.boards.get).not.toHaveBeenCalled();
   });
 });
