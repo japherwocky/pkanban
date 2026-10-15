@@ -7,6 +7,7 @@ Welcome to the pkanban documentation. This guide covers everything you need to k
 New to pkanban? Start here:
 
 - [Quick Start Guide](/docs/quickstart) - Get up and running in minutes
+- [Connect an AI app (MCP)](/docs/mcp) - Use pkanban from Claude, ChatGPT and other apps that can't run commands
 - [Command Reference](/docs/reference) - Complete list of all commands
 
 ## Core Concepts

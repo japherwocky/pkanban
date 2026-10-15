@@ -5,6 +5,9 @@ kanban board you drive from the command line and they watch in a browser at
 __PKANBAN_SERVER__. Follow these steps in order. Each one checks before it
 acts, so it is safe to start again from the top.
 
+If you can't run commands (a chat app with no shell), skip to "Without a
+shell" at the end.
+
 ## 1. Install the CLI
 
 Check first:
@@ -113,3 +116,21 @@ Rules that save trouble:
   your person; the response carries an `upgrade_url`. Nothing was lost.
 
 Every command takes `--help`. Full docs: __PKANBAN_SERVER__/docs
+
+## Without a shell
+
+If you can't run commands, you can't use the CLI, but pkanban also works as an
+MCP connector. Ask your person to add it to the app you're running in, with
+this address:
+
+```
+__PKANBAN_SERVER__/mcp
+```
+
+In Claude, that's Settings › Connectors › Add custom connector, then Connect;
+the steps are at __PKANBAN_SERVER__/connect/claude. Other apps, ChatGPT
+included, are covered at __PKANBAN_SERVER__/docs/mcp. They sign in through
+their browser and approve; you never need a password or a key. Once it's
+connected, its tools (`list_boards`, `get_board`, `create_card`, `move_card`
+and the rest) do what the commands above do, and the same rules apply: move
+cards as you work, and tell your person about a plan limit.

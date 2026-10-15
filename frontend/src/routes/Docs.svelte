@@ -19,6 +19,7 @@
   const docsSections = [
     { id: 'docs', title: 'Documentation', path: '/docs' },
     { id: 'quickstart', title: 'Quick Start', path: '/docs/quickstart' },
+    { id: 'mcp', title: 'Connect an AI app', path: '/docs/mcp' },
     { id: 'reference', title: 'Command Reference', path: '/docs/reference' },
     { id: 'workflows', title: 'Common Workflows', path: '/docs/workflows' },
     { id: 'commands', title: 'All Commands', path: '/docs/commands' },
