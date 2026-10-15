@@ -29,6 +29,8 @@
   import Signup from './routes/Signup.svelte';
   import VerifyEmail from './routes/VerifyEmail.svelte';
   import Device from './routes/Device.svelte';
+  import Consent from './routes/Consent.svelte';
+  import ConnectClaude from './routes/ConnectClaude.svelte';
 
   onMount(() => {
     theme.init();
@@ -85,6 +87,20 @@
   <Route path="/device">
     <PublicLayout>
       <Device />
+    </PublicLayout>
+  </Route>
+
+  <!-- Approving an app's OAuth sign-in (Claude, ChatGPT...) for /mcp. Signs
+       people in on the way, like /device. -->
+  <Route path="/oauth/consent">
+    <PublicLayout>
+      <Consent />
+    </PublicLayout>
+  </Route>
+
+  <Route path="/connect/claude">
+    <PublicLayout>
+      <ConnectClaude />
     </PublicLayout>
   </Route>
 

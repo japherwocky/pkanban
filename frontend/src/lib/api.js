@@ -328,6 +328,12 @@ export const api = {
     approve: (code) => apiFetch(`/api/auth/device/${encodeURIComponent(code)}/approve`, { method: 'POST' }),
     deny: (code) => apiFetch(`/api/auth/device/${encodeURIComponent(code)}/deny`, { method: 'POST' }),
   },
+  // An app's OAuth sign-in, approved on /oauth/consent.
+  oauthRequest: {
+    get: (id) => apiFetch(`/api/oauth/requests/${encodeURIComponent(id)}`),
+    approve: (id) => apiFetch(`/api/oauth/requests/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
+    deny: (id) => apiFetch(`/api/oauth/requests/${encodeURIComponent(id)}/deny`, { method: 'POST' }),
+  },
   invites: {
     get: (token) => apiFetch(`/api/invites/${token}`),
     accept: (token) => apiFetch(`/api/invites/${token}/accept`, { method: 'POST' }),

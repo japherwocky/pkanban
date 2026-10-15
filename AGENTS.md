@@ -347,6 +347,18 @@ connected app is revoked in Settings > API keys and `/mcp` checks only keys.
   run as script on this site.
 - No refresh tokens and no revocation endpoint: keys do not expire.
 
+The consent page is `frontend/src/routes/Consent.svelte` at `/oauth/consent`.
+`/connect/claude` is the public how-to for adding the connector to Claude.
+
+### Public pages people find from outside
+
+The web app renders in the browser, so every URL arrives with `index.html`'s
+generic title unless the server is told otherwise. A page meant to be found
+by search or shared as a link goes in `PAGES` in `backend/pages.py`. The
+server then sends its own title, description, social-preview tags and
+canonical URL in the HTML. The page sets the same title in `<svelte:head>`
+for navigation inside the app, and its test holds the two to the same text.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships
