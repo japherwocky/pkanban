@@ -89,6 +89,24 @@ def test_a_card_title_prints_as_written(title):
             lambda n: {"id": 1, "name": n, "columns": []},
         ),
         (
+            ["board", "get", "1", "--archived"],
+            "board_get",
+            lambda n: {
+                "id": 1,
+                "name": "board",
+                "columns": [
+                    {
+                        "id": 2,
+                        "name": n,
+                        "archived_count": 1,
+                        "cards": [
+                            {"id": 3, "title": n, "archived_at": "2026-10-15T00:00:00Z"}
+                        ],
+                    }
+                ],
+            },
+        ),
+        (
             ["org", "list"],
             "organizations",
             lambda n: [{"id": 1, "name": n, "owner_username": n}],

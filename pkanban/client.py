@@ -209,8 +209,11 @@ class PkanbanClient:
     def board_create(self, name):
         return self._request("POST", "/api/boards", json={"name": name})
 
-    def board_get(self, board_id):
-        return self._request("GET", f"/api/boards/{board_id}")
+    def board_get(self, board_id, include_archived=False):
+        # Only sent when asked for, so an older server that has never heard of
+        # the parameter is not handed one.
+        params = {"include_archived": "true"} if include_archived else None
+        return self._request("GET", f"/api/boards/{board_id}", params=params)
 
     def board_update(self, board_id, name):
         return self._request("POST", f"/api/boards/{board_id}", json={"name": name})
@@ -268,6 +271,12 @@ class PkanbanClient:
 
     def card_delete(self, card_id):
         return self._request("DELETE", f"/api/cards/{card_id}")
+
+    def card_archive(self, card_id):
+        return self._request("POST", f"/api/cards/{card_id}/archive")
+
+    def card_unarchive(self, card_id):
+        return self._request("POST", f"/api/cards/{card_id}/unarchive")
 
     def comment_create(self, card_id, content):
         return self._request(

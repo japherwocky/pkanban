@@ -332,6 +332,15 @@ class Card(BaseModel):
     title = CharField(max_length=500)
     description = TextField(null=True)
     position = IntegerField()
+    # Set when the card is archived, null while it is live. Archived cards keep
+    # their column and stay searchable; board views leave them out unless asked.
+    # They still count toward the free plan's cards-per-board limit
+    # (billing.count_cards): archiving is not a way around it, by decision.
+    archived_at = DateTimeField(null=True)
+
+    @property
+    def is_archived(self):
+        return self.archived_at is not None
 
 
 # Keep CardSearch in step with card. They live in the database rather than in

@@ -47,6 +47,21 @@ describe('CardSearch', () => {
     expect(search).toHaveBeenCalledWith('count', expect.anything());
   });
 
+  it('marks archived results', async () => {
+    search.mockResolvedValue([
+      { ...archiving, archived_at: '2026-10-15T12:00:00Z' },
+      { ...archiving, id: 782, title: 'Launch billing', archived_at: null },
+    ]);
+    render(CardSearch);
+
+    await type('card');
+
+    const archived = await screen.findByRole('link', { name: /Card archiving/ });
+    const live = screen.getByRole('link', { name: /Launch billing/ });
+    expect(archived.querySelector('.archived-badge').textContent).toBe('Archived');
+    expect(live.querySelector('.archived-badge')).toBeNull();
+  });
+
   it('says so when nothing matches', async () => {
     search.mockResolvedValue([]);
     render(CardSearch);

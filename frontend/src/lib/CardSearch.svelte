@@ -129,6 +129,7 @@
                 <span class="title-line">
                   <span class="card-id">#{result.id}</span>
                   <span class="title">{result.title}</span>
+                  {#if result.archived_at}<span class="archived-badge">Archived</span>{/if}
                 </span>
                 <span class="where">{result.board_name} / {result.column_name}</span>
                 {#if result.snippet}
@@ -270,6 +271,15 @@
     font-size: var(--text-sm);
     color: var(--color-muted-foreground);
     overflow-wrap: anywhere;
+  }
+
+  .archived-badge {
+    flex-shrink: 0;
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-muted-foreground);
+    border: 1px solid var(--color-border);
   }
 
   mark {

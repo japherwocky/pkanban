@@ -281,6 +281,8 @@ class CardResponse(BaseModel):
     title: str
     description: Optional[str]
     position: int
+    # When the card was archived, or null while it is live (#781).
+    archived_at: Optional[datetime] = None
     comments: Optional[list] = []
 
 
@@ -313,6 +315,9 @@ class SearchResult(BaseModel):
     column_name: str
     board_id: int
     board_name: str
+    # Archived cards are searched like any other -- search is how they are found
+    # again -- and this says which ones they are.
+    archived_at: Optional[datetime] = None
 
 
 class CommentCreate(BaseModel):
@@ -1527,19 +1532,38 @@ async def update_board(
 
 @api.get("/boards/{board_id}", response_model=BoardResponse)
 async def get_board(
-    board_id: int, current_user: User = Depends(get_current_user_or_api_key)
+    board_id: int,
+    include_archived: bool = Query(
+        False, description="Also return archived cards, each with archived_at set"
+    ),
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
+    """A board with its columns and cards.
+
+    Archived cards are left out unless include_archived is set. Each column
+    says how many it holds either way (archived_count), so a client can offer
+    to show them and can warn before deleting a column that holds them.
+    """
     board = Board.get_or_none(Board.id == board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     if not can_access_board(current_user, board):
         raise HTTPException(status_code=403, detail="Not authorized")
+    archived_counts = dict(
+        Card.select(Card.column, fn.COUNT(Card.id))
+        .join(Column)
+        .where((Column.board == board) & Card.archived_at.is_null(False))
+        .group_by(Card.column)
+        .tuples()
+    )
     columns = []
     # Get columns sorted by position
     for column in board.columns.order_by(Column.position):
         cards = []
-        # Get cards sorted by position
-        for card in column.cards.order_by(Card.position):
+        listed = column.cards.order_by(Card.position, Card.id)
+        if not include_archived:
+            listed = listed.where(Card.archived_at.is_null())
+        for card in listed:
             # Get comments for this card
             comments = (
                 Comment.select()
@@ -1558,21 +1582,14 @@ async def get_board(
                 }
                 for comment in comments
             ]
-            cards.append(
-                {
-                    "id": card.id,
-                    "title": card.title,
-                    "description": card.description,
-                    "position": card.position,
-                    "comments": card_comments,
-                }
-            )
+            cards.append({**card_fields(card), "comments": card_comments})
         columns.append(
             {
                 "id": column.id,
                 "name": column.name,
                 "position": column.position,
                 "cards": cards,
+                "archived_count": archived_counts.get(column.id, 0),
             }
         )
     return {
@@ -1746,6 +1763,17 @@ async def reorder_columns(
     return {"ok": True}
 
 
+def card_fields(card):
+    """The fields every card response carries, comments aside."""
+    return {
+        "id": card.id,
+        "title": card.title,
+        "description": card.description,
+        "position": card.position,
+        "archived_at": _as_datetime(card.archived_at) if card.archived_at else None,
+    }
+
+
 @api.post("/cards", response_model=CardResponse)
 async def create_card(
     card_data: CardCreate,
@@ -1763,12 +1791,7 @@ async def create_card(
         description=card_data.description,
         position=card_data.position,
     )
-    return {
-        "id": card.id,
-        "title": card.title,
-        "description": card.description,
-        "position": card.position,
-    }
+    return card_fields(card)
 
 
 @api.get("/cards/{card_id}", response_model=CardDetailResponse)
@@ -1787,10 +1810,7 @@ async def get_card(
 
     comments = Comment.select().where(Comment.card == card).order_by(Comment.created_at)
     return {
-        "id": card.id,
-        "title": card.title,
-        "description": card.description,
-        "position": card.position,
+        **card_fields(card),
         "column_id": card.column.id,
         "column_name": card.column.name,
         "board_id": card.column.board.id,
@@ -1839,12 +1859,7 @@ async def update_card(
     if card_data.position is not None:
         card.position = card_data.position
     card.save()
-    return {
-        "id": card.id,
-        "title": card.title,
-        "description": card.description,
-        "position": card.position,
-    }
+    return card_fields(card)
 
 
 @api.delete("/cards/{card_id}")
@@ -1858,6 +1873,59 @@ async def delete_card(
         raise HTTPException(status_code=403, detail="Not authorized")
     card.delete_instance()
     return {"ok": True}
+
+
+def _card_to_modify(card_id, user):
+    card = Card.get_or_none(Card.id == card_id)
+    if not card:
+        raise HTTPException(status_code=404, detail="Card not found")
+    if not can_modify_board(user, card.column.board):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return card
+
+
+@api.post("/cards/{card_id}/archive", response_model=CardResponse)
+async def archive_card(
+    card_id: int, current_user: User = Depends(get_current_user_or_api_key)
+):
+    """Archive a card: board views stop showing it, search still finds it.
+
+    The card keeps its column, text and comments. Archiving one that already
+    is changes nothing, so the original archived_at survives a retry. Archived
+    cards still count toward the free plan's per-board limit.
+    """
+    card = _card_to_modify(card_id, current_user)
+    if card.archived_at is None:
+        card.archived_at = datetime.now(timezone.utc)
+        card.save()
+    return card_fields(card)
+
+
+@api.post("/cards/{card_id}/unarchive", response_model=CardResponse)
+async def unarchive_card(
+    card_id: int, current_user: User = Depends(get_current_user_or_api_key)
+):
+    """Bring an archived card back, at the bottom of the column it was in.
+
+    The bottom rather than its old position: the live cards around it have
+    been reordered since, and the number it left with no longer means
+    anything. Unarchiving a live card changes nothing.
+    """
+    card = _card_to_modify(card_id, current_user)
+    if card.archived_at is not None:
+        last = (
+            Card.select(fn.MAX(Card.position))
+            .where(
+                (Card.column == card.column)
+                & Card.archived_at.is_null()
+                & (Card.id != card.id)
+            )
+            .scalar()
+        )
+        card.position = 0 if last is None else last + 1
+        card.archived_at = None
+        card.save()
+    return card_fields(card)
 
 
 @api.post("/cards/reorder")

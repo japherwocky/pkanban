@@ -15,7 +15,7 @@ import re
 
 from peewee import SQL, fn
 
-from backend.models import Board, Card, CardSearch, Column
+from backend.models import Board, Card, CardSearch, Column, _as_datetime
 
 # A title hit counts ten times a description hit -- the same 10:1 jobwolverine
 # settled on. A card is usually titled for what it is about, and a description
@@ -63,7 +63,9 @@ def match_expression(query):
     return " ".join(phrases)
 
 
-def _result(card_id, title, snippet, column_id, column_name, board_id, board_name):
+def _result(
+    card_id, title, snippet, column_id, column_name, board_id, board_name, archived_at
+):
     return {
         "id": card_id,
         "title": title,
@@ -72,6 +74,9 @@ def _result(card_id, title, snippet, column_id, column_name, board_id, board_nam
         "column_name": column_name,
         "board_id": board_id,
         "board_name": board_name,
+        # Archived cards are not filtered out: finding them again is much of
+        # what search is for (#781). The flag lets a caller mark them.
+        "archived_at": _as_datetime(archived_at) if archived_at else None,
     }
 
 
@@ -104,6 +109,7 @@ def _by_id(query, boards):
         card.column.name,
         card.column.board.id,
         card.column.board.name,
+        card.archived_at,
     )
 
 
@@ -148,6 +154,7 @@ def search_cards(query, boards, limit):
             Column.name.alias("column_name"),
             Board.id.alias("board_id"),
             Board.name.alias("board_name"),
+            Card.archived_at,
             score.alias("score"),
         )
         .join(Card, on=(CardSearch.rowid == Card.id))
@@ -160,11 +167,9 @@ def search_cards(query, boards, limit):
         .tuples()
     )
 
-    for card_id, title, text, column_id, column_name, board_id, board_name, _ in rows:
-        if pinned is not None and card_id == pinned["id"]:
+    for row in rows:
+        if pinned is not None and row[0] == pinned["id"]:
             continue
-        results.append(
-            _result(card_id, title, text, column_id, column_name, board_id, board_name)
-        )
+        results.append(_result(*row[:-1]))  # everything but the score
 
     return results[:limit]
