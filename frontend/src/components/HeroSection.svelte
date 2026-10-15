@@ -47,6 +47,14 @@
           <span class="button-copy">{copied ? 'Copied' : 'Copy'}</span>
         </button>
       </div>
+
+      <!-- The sentence above needs an AI that can run commands. A chat window
+           can't, so the reader who would try it there gets the route that
+           works for them. See MARKETING.md section 2. -->
+      <p class="chat-route">
+        Using Claude in the chat window instead?
+        <a href="/connect/claude" use:link>Add pkanban as a connector</a>.
+      </p>
     </div>
 
     <div class="demo-container">
@@ -135,6 +143,18 @@
     justify-content: center;
     flex-wrap: wrap;
     gap: var(--space-4);
+  }
+
+  .chat-route {
+    margin: var(--space-6) 0 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-muted-foreground);
+  }
+
+  .chat-route a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .signup-button {

@@ -30,8 +30,8 @@ PAGES = {
         "title": "pkanban — give your AI a to-do list you can both see",
         "description": (
             "A kanban board your AI reads and updates as it works, and you watch "
-            "in your browser. Works with Claude Code, Codex, opencode, or any AI "
-            "that can run commands."
+            "in your browser. Works with Claude Code, Codex and opencode, and with "
+            "Claude and ChatGPT as a connector."
         ),
     },
     "/pricing": {
