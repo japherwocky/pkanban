@@ -401,6 +401,11 @@ The CLI package is published as **pkanban** on PyPI. Publishing is automated via
    - Publishes to PyPI (using trusted publishing)
    - Creates a GitHub Release with notes
 
+5. Optionally, update the MCP registry listing (`server.json`) to the new
+   version: Actions > Publish to the MCP Registry > Run workflow. It takes the
+   version from `pyproject.toml` and runs only by hand, because a listing is
+   public.
+
 
 ## GOTCHAS
 
