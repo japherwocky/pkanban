@@ -30,12 +30,21 @@ engineers -- and the person we're actually for has no idea what stdout is.)*
   sign-in. Lead with that sentence, not with `pip install pkanban`. The link
   matters: /agents.md is the setup written for the agent, so it doesn't have
   to guess.
-* **Only promise where it works.** pkanban works in any AI that can run
-  commands. The ChatGPT and Claude *chat windows* can't, so never name
-  "ChatGPT" or "Claude" bare -- name the agent apps (Claude Code, Codex). The
-  less technical the reader, the likelier they are to try it in the chat
-  window first, and that's a bad first five minutes. This changes only if
-  pkanban ships an MCP connector.
+* **Only promise where it works -- and say how.** *(Revised 2026-10-15: pkanban
+  now ships an MCP connector, so the chat apps are in. This used to say never
+  to name "Claude" or "ChatGPT" bare, because their chat windows couldn't run
+  commands.)* There are two ways in, and each reader needs the right one:
+    * **An AI that runs commands** (Claude Code, Codex, opencode, Cursor): the
+      one sentence above.
+    * **A chat app** (Claude, or ChatGPT in Developer mode): add pkanban as a
+      connector. Send Claude users to /connect/claude and everyone else to
+      /docs/mcp.
+
+  Name "Claude" or "ChatGPT" only next to the connector route. A chat-window
+  user who pastes the agent sentence still gets a bad first five minutes: the
+  chat can't run the install. ChatGPT's Developer mode, and which plans have
+  it, is OpenAI's call and has changed more than once, so promise no more
+  than "works in ChatGPT's Developer mode."
 
 ## 3. Brand Voice & Tone
 Our voice is **dry, concrete, and technically load-bearing.** We sound like a
@@ -83,7 +92,7 @@ This section now describes the voice the product actually uses.)*
 | "Manage your projects easily." | "Give your AI a to-do list you can both see." | Specificity wins. |
 | "Orchestrate agents via CLI." | "Your AI moves the cards as it works." | Say what happens, not how it's plumbed. |
 | "Standard Input/Output Interface." | "Works with any AI that can run commands." | The reader knows what their AI can do. They don't know what stdout is. |
-| "Works with ChatGPT." | "Works with Claude Code, Codex, opencode." | Only name places it actually works -- see section 2. |
+| "Works with any AI." | "Paste one sentence into Claude Code or Codex, or add pkanban to Claude as a connector." | Say how it works where it works -- see section 2. |
 | "Initialize Workspace." | "Create your account." | Terminal role-play reads as a barrier to someone who has never used one. |
 | "Seamless integration." | "Paste one sentence into your AI." | "Seamless" is a buzzword. The sentence is the proof. |
 
@@ -143,6 +152,7 @@ If you need to generate text for a new section, pick one of these four angles:
 1.  **Works With Your AI:**
     * "Give your AI a to-do list you can both see. Works with Claude Code, Codex, opencode, or any AI that can run commands."
     * "If your AI can run a command, it can use pkanban."
+    * "Use Claude in the chat window? Add pkanban as a connector, and Claude moves the cards itself."
 2.  **Visibility:**
     * "See what your AI is working on, what it finished, and what it's stuck on -- without scrolling back through the chat."
 3.  **Memory:**

@@ -11,10 +11,13 @@
   // "Cron job" and the like; true, but invisible to the people the page is
   // now for. See MARKETING.md section 2.)
   //
-  // Every entry has to be an agent that runs shell commands, because that is
-  // the whole integration. The ChatGPT and Claude chat windows can't, so they
-  // don't belong here until pkanban ships an MCP connector.
+  // Every entry is an app where pkanban works today: the agents by running
+  // its commands, and the Claude and ChatGPT chat apps through the MCP
+  // connector (/connect/claude, /docs/mcp). Before the connector shipped the
+  // chat apps were left off, because their chat windows can't run commands.
   const agents = [
+    'Claude',
+    'ChatGPT',
     'Claude Code',
     'Codex',
     'opencode',
@@ -173,7 +176,7 @@
           </span>
           <h3>Works with the AI you already use</h3>
         </div>
-        <p class="box-description">If your AI can run a command, it can use pkanban. No plugin to install, no integration to set up.</p>
+        <p class="box-description">If your AI can run a command, it can use pkanban, with nothing to install on its side. If it can't, as in the Claude and ChatGPT apps, add pkanban as a connector.</p>
 
         <div class="logo-marquee">
           <div class="logo-track" class:paused={hoveredBox !== 3}>

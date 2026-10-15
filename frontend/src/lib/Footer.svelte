@@ -21,6 +21,7 @@
       <div class="link-group">
         <h4>Product</h4>
         <a href="/docs" use:link>Documentation</a>
+        <a href="/connect/claude" use:link>Use with Claude</a>
         <a href="/pricing" use:link>Pricing</a>
       </div>
 
