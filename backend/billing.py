@@ -78,6 +78,8 @@ def count_owned_boards(user):
 
 
 def count_cards(board):
+    # Archived cards included, deliberately: the free plan's limit is on cards
+    # a board holds, and archiving is not a way to stay under it (card #781).
     return Card.select().join(Column).where(Column.board == board).count()
 
 
@@ -111,7 +113,8 @@ def check_can_add_card(board):
             FREE_MAX_CARDS_PER_BOARD,
             current,
             f"This board is on the free plan, which allows "
-            f"{FREE_MAX_CARDS_PER_BOARD} cards per board, and it has {current}. "
+            f"{FREE_MAX_CARDS_PER_BOARD} cards per board, and it has {current}, "
+            "archived cards included. "
             "The board's owner can upgrade to Pro for unlimited cards.",
         )
 

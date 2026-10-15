@@ -51,7 +51,7 @@ Board management commands
 
 - `pkanban board create` — Create a new board.
 - `pkanban board delete` — Delete a board.
-- `pkanban board get` — Show board details with column and card IDs.
+- `pkanban board get` — Show board details with column and card IDs; --archived adds archived cards.
 - `pkanban board list` — List all boards.
 - `pkanban board update` — Update board name.
 
@@ -78,11 +78,13 @@ Column management commands
 
 Card management commands
 
+- `pkanban card archive` — Archive a card: hidden from the board, still found by search.
 - `pkanban card comment` — Comment on a card. `card get` shows a card's comments.
 - `pkanban card create` — Create a new card.
 - `pkanban card delete` — Delete a card.
 - `pkanban card get` — Show a card's full contents: its description and comments.
 - `pkanban card move` — Move a card to another column or position, leaving its text alone.
+- `pkanban card unarchive` — Bring an archived card back, at the bottom of its column.
 - `pkanban card update` — Update a card. Anything you don't pass is left unchanged.
 
 ### [`pkanban search`](/docs/commands/search)

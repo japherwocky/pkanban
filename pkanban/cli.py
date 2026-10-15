@@ -443,28 +443,43 @@ def cmd_board_create(name: str = typer.Argument(..., help="Board name")):
 
 
 @board_app.command("get")
-def cmd_board_get(board_id: int = typer.Argument(..., help="Board ID")):
-    """Show board details with column and card IDs."""
+def cmd_board_get(
+    board_id: int = typer.Argument(..., help="Board ID"),
+    archived: bool = typer.Option(
+        False, "--archived", "-a", help="Include archived cards, marked as such"
+    ),
+):
+    """Show board details with column and card IDs; --archived adds archived cards."""
     from rich.text import Text
     from rich.console import Console
 
     client = make_client()
-    board = client.board_get(board_id)
+    board = client.board_get(board_id, include_archived=archived)
 
     def render():
         console = Console()
         console.print(f"Board: [bold]{esc(board['name'])}[/bold]")
         for col in board.get("columns", []):
+            live = [c for c in col["cards"] if not c.get("archived_at")]
             line = Text("  ")
             line.append(f"#{col['id']}", style="yellow")
             line.append(f" {col['name']}")
-            line.append(f" ({len(col['cards'])} cards)")
+            line.append(f" ({len(live)} cards")
+            # An older server sends no archived_count; say nothing then.
+            hidden = col.get("archived_count") or 0
+            if hidden:
+                line.append(f", {hidden} archived")
+            line.append(")")
             console.print(line)
             for card in col.get("cards", []):
                 card_line = Text("    - ")
                 card_line.append(f"#{card['id']}", style="yellow")
                 card_line.append(f" {card['title']}")
+                if card.get("archived_at"):
+                    card_line.append("  (archived)", style="dim")
                 console.print(card_line)
+        if not archived and any(c.get("archived_count") for c in board.get("columns", [])):
+            console.print("[dim]Archived cards hidden; --archived shows them.[/dim]")
 
     emit(board, render)
 
@@ -541,6 +556,11 @@ def cmd_card_get(card_id: int = typer.Argument(..., help="Card ID")):
             f"  on {esc(card['board_name'])} / {esc(card['column_name'])} "
             f"(column {card['column_id']})"
         )
+        if card.get("archived_at"):
+            console.print(
+                f"  [dim]archived {esc(card['archived_at'][:10])}; "
+                f"`pkanban card unarchive {card['id']}` brings it back[/dim]"
+            )
         # The description is user-written text, so hand it to rich as plain
         # data -- printing it as markup would let a stray [b] eat characters.
         if card.get("description"):
@@ -716,6 +736,44 @@ def cmd_card_delete(card_id: int = typer.Argument(..., help="Card ID")):
             message = f"Error: {e.response.text}"
         emit_error(message, status=status)
         raise typer.Exit(1)
+
+
+def _archive_command(card_id, archive):
+    """Shared by `card archive` and `card unarchive`."""
+    client = make_client()
+    try:
+        if archive:
+            result = client.card_archive(card_id)
+        else:
+            result = client.card_unarchive(card_id)
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code
+        if status == 404:
+            message = f"Card {card_id} not found."
+        elif status == 403:
+            message = "You don't have permission to change this card."
+        else:
+            message = f"Error: {e.response.text}"
+        emit_error(message, status=status)
+        raise typer.Exit(1)
+
+    if archive:
+        done = "Card archived. Search still finds it; `board get --archived` lists it."
+    else:
+        done = "Card unarchived, at the bottom of its column."
+    emit(result, lambda: rprint(f"[green]{done}[/green]"))
+
+
+@card_app.command("archive")
+def cmd_card_archive(card_id: int = typer.Argument(..., help="Card ID")):
+    """Archive a card: hidden from the board, still found by search."""
+    _archive_command(card_id, archive=True)
+
+
+@card_app.command("unarchive")
+def cmd_card_unarchive(card_id: int = typer.Argument(..., help="Card ID")):
+    """Bring an archived card back, at the bottom of its column."""
+    _archive_command(card_id, archive=False)
 
 
 @card_app.command("comment")
@@ -924,6 +982,8 @@ def cmd_search(
             line.append(f"#{result['id']}", style="yellow")
             line.append(f" {result['title']}", style="bold")
             line.append(f"  {result['board_name']} / {result['column_name']}", style="dim")
+            if result.get("archived_at"):
+                line.append("  (archived)", style="dim")
             console.print(line)
             if result.get("snippet"):
                 console.print(Text("    ").append_text(_highlighted(result["snippet"])))

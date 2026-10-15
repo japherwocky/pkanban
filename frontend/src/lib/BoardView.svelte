@@ -29,6 +29,14 @@
   let showRenameBoardModal = $state(false);
   let renameBoardName = $state('');
   let renameLoading = $state(false);
+  // Archived cards are hidden unless this is on. Off by default, and off on
+  // every visit: the board is for the work that is live.
+  let showArchived = $state(false);
+  let archiveLoading = $state(false);
+
+  // Live cards only: the header and column counts describe what is on the board.
+  const liveCount = (cards) => cards.filter((c) => !c.archived_at).length;
+  let archivedTotal = $derived(columns.reduce((sum, col) => sum + (col.archived_count || 0), 0));
 
   // Get current user's id from token
   let currentUserId = $state(null);
@@ -49,7 +57,7 @@
   async function loadBoard() {
     loading = true;
     try {
-      const data = await api.boards.get(board.id);
+      const data = await api.boards.get(board.id, { includeArchived: showArchived });
       columns = data.columns || [];
     } catch (e) {
       console.error('Failed to load board:', e);
@@ -156,11 +164,18 @@
   // Deep-link support: open the card named in the URL once the board has loaded.
   let didOpenInitialCard = $state(false);
   $effect(() => {
-    if (didOpenInitialCard || !initialCardId || columns.length === 0) return;
-    didOpenInitialCard = true;
+    if (didOpenInitialCard || !initialCardId || columns.length === 0 || loading) return;
     const card = columns.flatMap(col => col.cards).find(c => String(c.id) === String(initialCardId));
     if (card) {
+      didOpenInitialCard = true;
       openEditCard(card, { updateUrl: false });
+    } else if (!showArchived && archivedTotal > 0) {
+      // Search links to archived cards, and the default view leaves them out.
+      // Show them and look again; this effect runs once more when they land.
+      showArchived = true;
+      loadBoard();
+    } else {
+      didOpenInitialCard = true;
     }
   });
 
@@ -182,6 +197,59 @@
       alert('Failed to update card: ' + e.message);
     } finally {
       editLoading = false;
+    }
+  }
+
+  async function toggleArchived() {
+    showArchived = !showArchived;
+    await loadBoard();
+  }
+
+  function replaceCard(cardId, change) {
+    columns = columns.map((col) => change(col, col.cards.find((c) => c.id === cardId)));
+  }
+
+  async function archiveCard() {
+    if (!editingCard) return;
+    archiveLoading = true;
+    try {
+      const updated = await api.cards.archive(editingCard.id);
+      replaceCard(editingCard.id, (col, card) => {
+        if (!card) return col;
+        const cards = showArchived
+          ? col.cards.map((c) => (c.id === card.id ? { ...c, archived_at: updated.archived_at } : c))
+          : col.cards.filter((c) => c.id !== card.id);
+        return { ...col, cards, archived_count: (col.archived_count || 0) + 1 };
+      });
+      closeEditCard();
+    } catch (e) {
+      alert('Failed to archive card: ' + e.message);
+    } finally {
+      archiveLoading = false;
+    }
+  }
+
+  async function unarchiveCard() {
+    if (!editingCard) return;
+    archiveLoading = true;
+    try {
+      const updated = await api.cards.unarchive(editingCard.id);
+      // The server puts it at the bottom of its column's live cards.
+      replaceCard(editingCard.id, (col, card) => {
+        if (!card) return col;
+        const rest = col.cards.filter((c) => c.id !== card.id);
+        const revived = { ...card, archived_at: null, position: updated.position };
+        return {
+          ...col,
+          cards: [...rest.filter((c) => !c.archived_at), revived, ...rest.filter((c) => c.archived_at)],
+          archived_count: Math.max(0, (col.archived_count || 0) - 1),
+        };
+      });
+      closeEditCard();
+    } catch (e) {
+      alert('Failed to unarchive card: ' + e.message);
+    } finally {
+      archiveLoading = false;
     }
   }
 
@@ -218,7 +286,10 @@
   }
 
   async function deleteColumn(columnId, columnName) {
-    if (!confirm(`Delete column "${columnName}" and all its cards?`)) return;
+    // Archived cards go with the column, and they are not on screen, so say so.
+    const archived = columns.find((col) => col.id === columnId)?.archived_count || 0;
+    const including = archived ? `, including ${archived} archived` : '';
+    if (!confirm(`Delete column "${columnName}" and all its cards${including}?`)) return;
     try {
       await api.columns.delete(columnId);
       columns = columns.filter(col => col.id !== columnId);
@@ -302,7 +373,12 @@
           </button>
         {/if}
       {/if}
-      <span class="card-count">{columns.reduce((sum, col) => sum + col.cards.length, 0)} cards</span>
+      {#if archivedTotal > 0 || showArchived}
+        <button class="nav-btn archived-toggle" aria-pressed={showArchived} onclick={toggleArchived}>
+          {showArchived ? 'Hide archived' : `Show archived (${archivedTotal})`}
+        </button>
+      {/if}
+      <span class="card-count">{columns.reduce((sum, col) => sum + liveCount(col.cards), 0)} cards</span>
     </div>
   </header>
 
@@ -322,7 +398,7 @@
           <div class="column-header">
             <h3>{column.name}</h3>
             <div class="column-actions">
-              <span class="card-count">{column.cards.length}</span>
+              <span class="card-count">{liveCount(column.cards)}</span>
               {#if isBoardOwner()}
                 <button class="column-delete-btn" onclick={() => deleteColumn(column.id, column.name)} title="Delete column">×</button>
               {/if}
@@ -345,6 +421,7 @@
               {#each column.cards as card (card.id)}
                 <div
                   class="card"
+                  class:archived={card.archived_at}
                   draggable="true"
                   onclick={() => openEditCard(card)}
                   onkeydown={(e) => {
@@ -358,7 +435,11 @@
                   aria-label={card.description ? `Edit card: ${card.title}. ${card.description}` : `Edit card: ${card.title}`}
                 >
                   <div class="card-header">
-                    <span class="card-title"><span class="card-id">#{card.id}</span> {card.title}</span>
+                    <span class="card-title">
+                      <span class="card-id">#{card.id}</span>
+                      {#if card.archived_at}<span class="archived-badge">Archived</span>{/if}
+                      {card.title}
+                    </span>
                     <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
                   </div>
                   {#if card.description}
@@ -448,6 +529,21 @@
               ></textarea>
             </div>
             <div class="modal-actions">
+              {#if editingCard?.archived_at}
+                <button type="button" class="archive-btn" onclick={unarchiveCard} disabled={archiveLoading}>
+                  {archiveLoading ? 'Unarchiving...' : 'Unarchive'}
+                </button>
+              {:else}
+                <button
+                  type="button"
+                  class="archive-btn"
+                  onclick={archiveCard}
+                  disabled={archiveLoading}
+                  title="Hide it from the board. Search still finds it."
+                >
+                  {archiveLoading ? 'Archiving...' : 'Archive'}
+                </button>
+              {/if}
               <button type="button" class="cancel-btn" onclick={closeEditCard}>Cancel</button>
               <button type="submit" class="create-btn" disabled={editLoading}>
                 {editLoading ? 'Saving...' : 'Save Changes'}
@@ -943,5 +1039,44 @@
   .create-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* Pushed to the far left of the actions, away from Save. */
+  .archive-btn {
+    margin-right: auto;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    border: 1px solid var(--color-border);
+  }
+
+  .archive-btn:hover {
+    color: var(--color-foreground);
+    background: var(--color-muted);
+  }
+
+  .archive-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .archived-toggle[aria-pressed='true'] {
+    border-color: var(--color-primary);
+  }
+
+  .card.archived {
+    opacity: 0.6;
+    border-style: dashed;
+  }
+
+  .archived-badge {
+    display: inline-block;
+    margin: 0 var(--space-1);
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-muted-foreground);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    vertical-align: middle;
   }
 </style>

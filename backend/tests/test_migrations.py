@@ -343,3 +343,58 @@ def test_008_adds_plan_columns_to_a_pre_008_user_table():
         assert _schema(old_path)["user"] == _schema(fresh_path)["user"]
         # The pre-existing account is on the free plan with no Stripe customer.
         assert rows == [("u", "free", None)]
+
+
+def test_009_adds_archived_at_to_a_pre_009_card_table():
+    """A fresh install already has card.archived_at, so 009 skips there. Build
+    the card table as it stood before 009 and check the migration brings it
+    level with the model, leaves every existing card live, and keeps the
+    search triggers -- an ADD COLUMN must not cost card its triggers the way
+    a table rebuild would."""
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh_path = os.path.join(tmp, "fresh.db")
+        old_path = os.path.join(tmp, "old.db")
+
+        fresh = SqliteDatabase(fresh_path)
+        with fresh.bind_ctx(ALL_MODELS):
+            fresh.connect()
+            fresh.create_tables(ALL_MODELS)
+            fresh.close()
+
+        old = SqliteDatabase(old_path)
+        with old.bind_ctx(ALL_MODELS):
+            old.connect()
+            old.create_tables(ALL_MODELS)
+            old.execute_sql('ALTER TABLE "card" DROP COLUMN archived_at')
+            old.execute_sql(
+                "INSERT INTO user (username, password_hash, email_verified, admin) "
+                "VALUES ('u', 'x', 1, 0)"
+            )
+            old.execute_sql(
+                "INSERT INTO board (owner_id, name, is_public_to_org, created_at) "
+                "VALUES (1, 'b', 0, '2026-01-01')"
+            )
+            old.execute_sql(
+                "INSERT INTO \"column\" (board_id, name, position) VALUES (1, 'c', 0)"
+            )
+            old.execute_sql(
+                "INSERT INTO card (column_id, title, position) VALUES (1, 'kept', 0)"
+            )
+            Router(old, migrate_dir=MIGRATIONS_DIR).run()
+            rows = old.execute_sql("SELECT title, archived_at FROM card").fetchall()
+            triggers = {
+                row[0]
+                for row in old.execute_sql(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' "
+                    "AND tbl_name='card'"
+                )
+            }
+            old.close()
+
+        assert _schema(old_path)["card"] == _schema(fresh_path)["card"]
+        assert rows == [("kept", None)]
+        assert triggers == {
+            "card_search_insert",
+            "card_search_delete",
+            "card_search_update",
+        }

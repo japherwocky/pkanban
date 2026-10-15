@@ -6,7 +6,7 @@ Board management commands
 
 - [`pkanban board create`](#pkanban-board-create) — Create a new board.
 - [`pkanban board delete`](#pkanban-board-delete) — Delete a board.
-- [`pkanban board get`](#pkanban-board-get) — Show board details with column and card IDs.
+- [`pkanban board get`](#pkanban-board-get) — Show board details with column and card IDs; --archived adds archived cards.
 - [`pkanban board list`](#pkanban-board-list) — List all boards.
 - [`pkanban board update`](#pkanban-board-update) — Update board name.
 
@@ -38,15 +38,19 @@ pkanban board delete <board_id>
 
 ## `pkanban board get`
 
-Show board details with column and card IDs.
+Show board details with column and card IDs; --archived adds archived cards.
 
 ```bash
-pkanban board get <board_id>
+pkanban board get <board_id> [--archived]
 ```
 
 **Arguments**
 
 - `board_id` (int) — Board ID
+
+**Options**
+
+- `--archived`, `-a` (bool) — Include archived cards, marked as such
 
 ## `pkanban board list`
 

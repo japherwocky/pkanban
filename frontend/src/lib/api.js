@@ -159,7 +159,9 @@ export const api = {
   },
   boards: {
     list: () => apiFetch('/api/boards'),
-    get: (id) => apiFetch(`/api/boards/${id}`),
+    // Archived cards are left out unless includeArchived is set.
+    get: (id, { includeArchived = false } = {}) =>
+      apiFetch(`/api/boards/${id}${includeArchived ? '?include_archived=true' : ''}`),
     create: (name) => apiFetch('/api/boards', {
       method: 'POST',
       body: JSON.stringify({ name }),
@@ -210,6 +212,8 @@ export const api = {
       body: JSON.stringify({ cards }),
     }),
     delete: (id) => apiFetch(`/api/cards/${id}`, { method: 'DELETE' }),
+    archive: (id) => apiFetch(`/api/cards/${id}/archive`, { method: 'POST' }),
+    unarchive: (id) => apiFetch(`/api/cards/${id}/unarchive`, { method: 'POST' }),
     // Cards matching `q` on every board the user can open, best first.
     search: (q, { boardId = null, limit = null, signal } = {}) => {
       const params = new URLSearchParams({ q });

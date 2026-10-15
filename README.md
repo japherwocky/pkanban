@@ -222,7 +222,7 @@ The backend exposes a REST API at `/api/`:
 **Boards**
 - `GET /api/boards` - List accessible boards
 - `POST /api/boards` - Create a board
-- `GET /api/boards/{id}` - Get board details
+- `GET /api/boards/{id}` - Get board details (archived cards hidden; `?include_archived=true` adds them)
 - `POST /api/boards/{id}` - Update board
 - `DELETE /api/boards/{id}` - Delete board
 
@@ -236,6 +236,8 @@ The backend exposes a REST API at `/api/`:
 - `POST /api/cards` - Create card
 - `PUT /api/cards/{id}` - Update card
 - `DELETE /api/cards/{id}` - Delete card
+- `POST /api/cards/{id}/archive` - Archive a card: hidden from board views, still found by search
+- `POST /api/cards/{id}/unarchive` - Bring it back, at the bottom of its column
 
 **Comments**
 - `GET /api/cards/{id}/comments` - List a card's comments

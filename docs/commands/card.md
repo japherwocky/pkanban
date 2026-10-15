@@ -4,14 +4,28 @@ Card management commands
 
 ## Commands
 
+- [`pkanban card archive`](#pkanban-card-archive) — Archive a card: hidden from the board, still found by search.
 - [`pkanban card comment`](#pkanban-card-comment) — Comment on a card. `card get` shows a card's comments.
 - [`pkanban card create`](#pkanban-card-create) — Create a new card.
 - [`pkanban card delete`](#pkanban-card-delete) — Delete a card.
 - [`pkanban card get`](#pkanban-card-get) — Show a card's full contents: its description and comments.
 - [`pkanban card move`](#pkanban-card-move) — Move a card to another column or position, leaving its text alone.
+- [`pkanban card unarchive`](#pkanban-card-unarchive) — Bring an archived card back, at the bottom of its column.
 - [`pkanban card update`](#pkanban-card-update) — Update a card. Anything you don't pass is left unchanged.
 
 ---
+
+## `pkanban card archive`
+
+Archive a card: hidden from the board, still found by search.
+
+```bash
+pkanban card archive <card_id>
+```
+
+**Arguments**
+
+- `card_id` (int) — Card ID
 
 ## `pkanban card comment`
 
@@ -89,6 +103,18 @@ pkanban card move <card_id> [--column COLUMN] [--position POSITION]
 
 - `--column`, `-c` (int) — Destination column ID
 - `--position`, `-p` (int) — Position within the column
+
+## `pkanban card unarchive`
+
+Bring an archived card back, at the bottom of its column.
+
+```bash
+pkanban card unarchive <card_id>
+```
+
+**Arguments**
+
+- `card_id` (int) — Card ID
 
 ## `pkanban card update`
 

@@ -299,6 +299,17 @@ Three triggers on `card` keep it current, so nothing in the API has to.
   the board list and `can_access_board` all use it, so a card search can never
   reach a board the list would hide.
 
+### Card archiving
+
+`Card.archived_at` is null for a live card (migration 009). Archived cards keep
+their column, text and comments: `GET /boards/{id}` leaves them out unless
+`include_archived=true`, and reports `archived_count` per column either way.
+Search keeps returning them with `archived_at` set, because search is how they
+get found again. They still count toward the free plan's per-board limit, by
+decision (Dev #781), so `billing.count_cards` deliberately counts them. Unarchive
+puts a card at the bottom of its column's live cards. Deleting a column deletes
+its archived cards too, and the web UI's confirmation says how many.
+
 ### Database Patterns
 
 - Use Peewee ORM with proper relationships
