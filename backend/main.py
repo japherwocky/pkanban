@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 
 from backend.api import api
 from backend.auth import RENEWED_TOKEN_HEADER, renew_access_token
 from backend.billing import PlanLimitExceeded
 from backend.database import init_db
-from backend import mcp_server, oauth
+from backend import mcp_server, oauth, pages
 
 STATIC_PATH = os.environ.get(
     "STATIC_PATH", os.path.join(os.path.dirname(__file__), "static")
@@ -170,7 +170,7 @@ async def root():
 
 
 @app.get("/{path:path}")
-async def catch_all(path: str):
+async def catch_all(path: str, request: Request):
     """Serve index.html for all non-API, non-docs routes (SPA fallback)"""
     # Anything under /api/ reaching the fallback is an endpoint that does not
     # exist, and the SPA is the wrong answer for it: a 200 of HTML makes a
@@ -182,5 +182,11 @@ async def catch_all(path: str):
 
     index_path = os.path.join(STATIC_PATH, "index.html")
     if os.path.exists(index_path):
+        # A page meant to be found from outside gets its own <head>; see
+        # backend/pages.py for why the app's own <svelte:head> is not enough.
+        if f"/{path}".rstrip("/") in pages.PAGES:
+            with open(index_path, encoding="utf-8") as f:
+                html = pages.page_html(f.read(), f"/{path}", str(request.base_url))
+            return HTMLResponse(html)
         return FileResponse(index_path)
     return {"message": "pkanban API is running"}
