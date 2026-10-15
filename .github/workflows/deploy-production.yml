@@ -12,6 +12,16 @@ on:
     types: [completed]
     branches: [main]
 
+# One deploy at a time (Dev #977). Three merges a minute apart started three
+# runs that overlapped on the server, and one failed its build because another
+# was replacing node_modules under it. A run that arrives while one is going
+# waits; if a newer one arrives too, GitHub drops the older waiting run, which
+# loses nothing, because every run deploys origin/main as it is when it starts.
+# Never cancel-in-progress: stopping a deploy halfway is the thing to avoid.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   DEPLOY_HOST: pkanban.pearachute.com
   DEPLOY_USER: pkanban
