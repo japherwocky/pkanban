@@ -12,3 +12,4 @@ requests
 typer
 rich
 stripe>=11
+mcp>=2.3,<3
