@@ -169,6 +169,14 @@ def test_tool_list(client, key):
     assert by_name["update_card"]["annotations"]["destructiveHint"] is True
 
 
+def test_every_tool_has_a_title(client, key):
+    # What an app shows a person, and what connector directories ask for.
+    tools = rpc(client, "tools/list", headers={"X-API-Key": key}).json()["result"]["tools"]
+    for t in tools:
+        assert t.get("title"), t["name"]
+        assert t["annotations"].get("title") == t["title"], t["name"]
+
+
 def test_descriptions_are_dedented(client, key):
     tools = rpc(client, "tools/list", headers={"X-API-Key": key}).json()["result"]["tools"]
     for t in tools:
