@@ -648,6 +648,71 @@ class DeviceLogin(BaseModel):
         return datetime.now(timezone.utc) > _as_datetime(self.expires_at)
 
 
+# An app has this long to have its person approve, and then this long to trade
+# the code for a token. A code is a bearer secret until it is used.
+OAUTH_REQUEST_EXPIRY_MINUTES = 10
+OAUTH_CODE_EXPIRY_MINUTES = 5
+
+
+class OAuthClient(BaseModel):
+    """An app that registered itself to connect to /mcp: Claude, ChatGPT, and
+    anything else that speaks MCP (dynamic client registration, RFC 7591).
+
+    `info` is the registration as the MCP SDK models it, stored whole as JSON,
+    because its handlers validate redirect URIs, scopes and the token endpoint's
+    client authentication against exactly that. The client secret sits in it
+    in the clear: the SDK compares it as given, and on its own a secret gets
+    nothing -- a token also takes a code that a person approved and the PKCE
+    verifier only the app holds.
+    """
+
+    client_id = CharField(max_length=64, unique=True)
+    client_name = CharField(max_length=100)
+    info = TextField()
+    created_at = DateTimeField()
+    # Set the first time a person approves it. Registration is open to anyone,
+    # so registrations nobody ever approved are cleared out after a day.
+    authorized_at = DateTimeField(null=True)
+
+    @classmethod
+    def prune_unused(cls):
+        cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+        cls.delete().where(
+            cls.authorized_at.is_null() & (cls.created_at < cutoff)
+        ).execute()
+
+
+class OAuthGrant(BaseModel):
+    """One OAuth sign-in, from an app's request to the token it receives.
+
+    pending (waiting for the person) -> approved (a code is out) -> used, or
+    pending -> denied. The request id is the consent page's handle on it. The
+    code is kept only as a SHA-256, like an API key, and the token it buys is a
+    new API key, so a connected app shows up in Settings > API keys and is
+    disconnected by revoking it there.
+    """
+
+    request_id = CharField(max_length=64, unique=True)
+    client = ForeignKeyField(OAuthClient, backref="grants", on_delete="CASCADE")
+    # What the app asked for, held for the token endpoint to check against.
+    redirect_uri = TextField()
+    redirect_uri_provided_explicitly = BooleanField()
+    code_challenge = CharField(max_length=128)
+    state = TextField(null=True)
+    scopes = TextField(default="")  # space-separated
+    resource = TextField(null=True)
+    status = CharField(max_length=16, default="pending")
+    user = ForeignKeyField(User, null=True, backref="oauth_grants")
+    code_sha256 = CharField(max_length=64, unique=True, null=True)
+    api_key = ForeignKeyField(ApiKey, null=True, backref="oauth_grants")
+    created_at = DateTimeField()
+    # The request's expiry while pending; the code's once approved.
+    expires_at = DateTimeField()
+
+    def is_expired(self):
+        return datetime.now(timezone.utc) > _as_datetime(self.expires_at)
+
+
 # Every model, parents before children.
 #
 # Single source of truth: database.py, manage.py and the test fixtures all read
@@ -671,4 +736,6 @@ ALL_MODELS = [
     OrganizationInvite,
     EmailVerificationToken,
     DeviceLogin,
+    OAuthClient,
+    OAuthGrant,
 ]

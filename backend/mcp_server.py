@@ -7,9 +7,9 @@ it: a tool can do exactly what `pkanban` with the same key could do, and no
 more.
 
 /mcp takes an API key, as `X-API-Key` or as `Authorization: Bearer`. Header-
-based clients (Claude Code, Cursor, Codex) can use one today. The chat apps
-sign in through OAuth instead (#969), and the token that hands them is an API
-key too, so nothing here has to change for it.
+based clients (Claude Code, Cursor, Codex) can be given one directly. The chat
+apps sign in through OAuth instead (backend/oauth.py), and the token that hands
+them is an API key too, so this endpoint checks only keys.
 
 Stateless, with plain JSON responses: no sessions to lose on a restart or to
 pin to a worker, and no event stream for nginx to buffer.
@@ -30,6 +30,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from backend.auth import get_current_user_from_api_key_header
+from backend.oauth import resource_metadata_url
 
 INSTRUCTIONS = """\
 pkanban is a kanban board. A board has columns, and a column holds cards. A
@@ -75,11 +76,20 @@ def api_key_from(headers) -> Optional[str]:
     return None
 
 
-def _unauthorized(detail: str) -> JSONResponse:
+def _unauthorized(request: Request, detail: str, key_given: bool) -> JSONResponse:
+    """A 401 whose challenge says where to sign in (RFC 9728, MCP auth spec).
+
+    resource_metadata is how an MCP client finds this server's OAuth endpoints.
+    error="invalid_token" goes only on a key that was presented and refused:
+    a request that sent none gets the bare challenge (RFC 6750 3.1).
+    """
+    challenge = f'Bearer realm="pkanban", resource_metadata="{resource_metadata_url(request)}"'
+    if key_given:
+        challenge += ', error="invalid_token"'
     return JSONResponse(
         {"error": "invalid_token", "error_description": detail},
         status_code=401,
-        headers={"WWW-Authenticate": 'Bearer realm="pkanban"'},
+        headers={"WWW-Authenticate": challenge},
     )
 
 
@@ -101,14 +111,17 @@ class McpEndpoint:
         key = api_key_from(request.headers)
         if not key:
             response = _unauthorized(
-                "/mcp needs a pkanban API key, as X-API-Key or Authorization: Bearer."
+                request,
+                "/mcp needs a pkanban API key, as X-API-Key or Authorization: Bearer, "
+                "or an OAuth sign-in.",
+                key_given=False,
             )
             await response(scope, receive, send)
             return
         try:
             await get_current_user_from_api_key_header(key)
         except HTTPException as e:
-            await _unauthorized(str(e.detail))(scope, receive, send)
+            await _unauthorized(request, str(e.detail), key_given=True)(scope, receive, send)
             return
         if request.method == "GET":
             # GET opens a stream for messages the server starts on its own. A
