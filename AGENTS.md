@@ -335,6 +335,11 @@ plan is on #900). Every tool is an in-process call to the REST API (httpx
 and plan limits are the API's own. A new tool calls an endpoint, never the
 models.
 
+- A tool that changes a card answers with `_card_now()`, the card read back
+  with its column, board and `comment_count`, not the write endpoint's
+  response. That response says `"comments": []` whatever the card has, and a
+  model believed it (Dev #982).
+
 - `/mcp` takes an API key only, as `X-API-Key` or `Authorization: Bearer`. A
   session JWT is refused: it expires within a day, and MCP clients never see
   the renewal header.
