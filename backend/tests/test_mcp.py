@@ -239,6 +239,41 @@ def test_archive_hides_and_unarchive_restores(client, key, board):
     assert [c["id"] for c in layout["columns"][0]["cards"]] == [card["id"]]
 
 
+def test_card_writes_answer_with_the_card_as_it_is(client, key, board):
+    # The API's write responses carry "comments": [] whatever the card has,
+    # and no column (Dev #982). A model took that to mean no comments.
+    todo = columns(board)[0]
+    card = ok(client, key, "create_card", column_id=todo.id, title="Busy card")
+    assert "comments" not in card
+    assert card["comment_count"] == 0
+    assert (card["column_name"], card["board_name"]) == (todo.name, "MCP board")
+
+    ok(client, key, "add_comment", card_id=card["id"], content="One.")
+    ok(client, key, "add_comment", card_id=card["id"], content="Two.")
+
+    for tool in ("update_card", "archive_card", "unarchive_card"):
+        extra = {"title": "Still busy"} if tool == "update_card" else {}
+        result = ok(client, key, tool, card_id=card["id"], **extra)
+        assert "comments" not in result, tool
+        assert result["comment_count"] == 2, tool
+        assert result["column_id"] == todo.id, tool
+
+    assert result["title"] == "Still busy"
+    assert result["archived_at"] is None
+
+
+def test_move_card_says_where_the_card_went(client, key, board, user):
+    elsewhere = Board.create_with_columns(owner=user, name="Elsewhere")
+    target = columns(elsewhere)[-1]
+    card = ok(client, key, "create_card", column_id=columns(board)[0].id, title="Traveller")
+
+    moved = ok(client, key, "move_card", card_id=card["id"], column_id=target.id)
+
+    assert moved["column_id"] == target.id
+    assert moved["column_name"] == target.name
+    assert (moved["board_id"], moved["board_name"]) == (elsewhere.id, "Elsewhere")
+
+
 def test_search_cards(client, key, board):
     todo = columns(board)[0]
     ok(client, key, "create_card", column_id=todo.id, title="Pelican migration")
