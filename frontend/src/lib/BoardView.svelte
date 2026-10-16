@@ -633,10 +633,15 @@
     flex-direction: column;
   }
 
+  /* Wraps, so on a phone the actions go under the title. On one line the
+     header was 537px wide, which made the whole page wider than a 375px
+     screen: it scrolled sideways, and an open card sat half off it (#990). */
   header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-3);
     padding: var(--space-4) var(--space-6);
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
@@ -646,6 +651,7 @@
      its own and drops the card count below it. Fine with one button, not two. */
   .header-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
   }
@@ -654,6 +660,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-4);
+    min-width: 0;
   }
 
   .back-btn {
@@ -676,11 +683,15 @@
     font-weight: 700;
     color: var(--color-foreground);
     margin: 0;
+    /* A long board name wraps rather than widening the header. */
+    overflow-wrap: anywhere;
   }
 
   .board-title-btn {
     display: flex;
     align-items: center;
+    min-width: 0;
+    text-align: left;
     gap: var(--space-2);
     padding: var(--space-1) var(--space-2);
     margin-left: -0.5rem;
@@ -1127,5 +1138,24 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     vertical-align: middle;
+  }
+
+  /* Last, so it wins over the rules above at equal specificity. */
+  @media (max-width: 640px) {
+    header {
+      padding: var(--space-3) var(--space-4);
+    }
+
+    .header-left {
+      gap: var(--space-3);
+    }
+
+    header h1 {
+      font-size: var(--text-lg);
+    }
+
+    .columns-container {
+      padding: var(--space-4);
+    }
   }
 </style>
