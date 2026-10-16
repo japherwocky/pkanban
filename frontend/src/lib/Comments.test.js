@@ -43,7 +43,7 @@ describe('Comments', () => {
     create.mockResolvedValue({ id: 3, user_id: 'me', username: 'me', content: 'hello', created_at: '2026-01-01T00:00:00Z' });
     render(Comments, { card: CARD, onCommentsUpdate });
 
-    await fireEvent.input(screen.getByPlaceholderText('Add a comment...'), { target: { value: ' hello ' } });
+    await fireEvent.input(screen.getByPlaceholderText('Add a comment (Markdown)...'), { target: { value: ' hello ' } });
     await fireEvent.click(screen.getByRole('button', { name: /comment/i }));
 
     expect(create).toHaveBeenCalledWith(7, 'hello');
@@ -70,6 +70,23 @@ describe('Comments', () => {
 
     await vi.waitFor(() => expect(alert).toHaveBeenCalled());
     expect(screen.getByText('mine')).toBeInTheDocument();
+  });
+
+  it('renders a comment as Markdown, and HTML in it as text', () => {
+    render(Comments, {
+      card: {
+        id: 9,
+        comments: [{
+          id: 4, user_id: 'them', username: 'them', created_at: '2026-01-01T00:00:00Z',
+          content: 'Looks **good**, see `#42`.\n<img src=x onerror=alert(1)>',
+        }],
+      },
+    });
+    expect(screen.getByText('good').tagName).toBe('STRONG');
+    expect(screen.getByText('#42').tagName).toBe('CODE');
+    const comment = commentEl('good');
+    expect(comment.querySelector('img')).toBeNull();
+    expect(comment.textContent).toContain('<img src=x onerror=alert(1)>');
   });
 
   it('shows the comments of a card swapped in later, not the previous one', async () => {

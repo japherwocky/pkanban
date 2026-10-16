@@ -115,3 +115,18 @@ describe('Modal stacking', () => {
     expect(screen.getByRole('dialog', { name: 'Card limit reached' })).toBeInTheDocument();
   });
 });
+
+describe('Modal initial focus', () => {
+  // A card opens to its rendered description, and the first focusable thing
+  // in it can be a link in the middle of the text. Focus landed there, ringed,
+  // as if the link were the point of the dialog.
+  it('starts on the first focusable element by default', async () => {
+    renderModal({ title: 'Plain' });
+    await vi.waitFor(() => expect(document.activeElement).toHaveTextContent('a link in the text'));
+  });
+
+  it('starts on the element marked data-autofocus', async () => {
+    renderModal({ title: 'Card', preferEdit: true });
+    await vi.waitFor(() => expect(document.activeElement).toHaveTextContent('Edit'));
+  });
+});

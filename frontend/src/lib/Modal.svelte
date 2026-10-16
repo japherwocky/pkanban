@@ -71,8 +71,15 @@
       // Save previous focused element
       previousActiveElement = document.activeElement;
 
-      // Focus first focusable element in modal
+      // Focus the element the caller marked with data-autofocus, or else the
+      // first focusable one. A card opens to its rendered description, whose
+      // first focusable element can be a link in the middle of the text.
       setTimeout(() => {
+        const preferred = modalRef?.querySelector('[data-autofocus]');
+        if (preferred) {
+          preferred.focus();
+          return;
+        }
         const focusableElements = modalRef?.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
