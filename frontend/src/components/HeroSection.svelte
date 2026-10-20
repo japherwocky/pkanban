@@ -60,8 +60,17 @@
          pear, and makes its way to Done. This replaced a terminal typing CLI
          commands beside a flat board; with the MCP connector, the terminal
          is no longer the way most people will meet pkanban. -->
-    <div class="hero-scene">
-      <ParachuteScene height="clamp(340px, 50vw, 560px)" />
+    <div class="hero-stage">
+      <div class="hero-scene">
+        <ParachuteScene height="clamp(340px, 50vw, 560px)" />
+      </div>
+      <!-- The end card. Outside .hero-scene, whose edge fade would otherwise
+           fade the text with it. -->
+      <div class="scene-caption">
+        <p class="scene-eyebrow">pkanban</p>
+        <h2>Your AI moves the cards.</h2>
+        <p class="scene-sub">It adds them as it finds the work and moves them as it goes. You watch the board.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -228,6 +237,10 @@
      the hero: the old demo grew and shrank with its content and shifted the
      whole page every few seconds. The edges fade into the page, so the scene
      reads as part of it rather than as a video in a box. */
+  .hero-stage {
+    position: relative;
+  }
+
   .hero-scene {
     width: 100%;
     /* Chutes fade in from above instead of being clipped by the top edge. */
@@ -235,6 +248,44 @@
       linear-gradient(to bottom, transparent 0, #000 16%, #000 84%, transparent 100%),
       linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%);
     mask-composite: intersect;
+  }
+
+  /* Over the scene's lower left, like a commercial's end card. A soft wash of
+     the page color behind it keeps it legible when a card passes beneath. */
+  .scene-caption {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    max-width: min(34rem, 60%);
+    padding: var(--space-10) var(--space-10) var(--space-6) var(--space-2);
+    background: radial-gradient(ellipse at 20% 80%, var(--color-background) 30%, transparent 72%);
+    pointer-events: none;
+  }
+
+  .scene-caption h2 {
+    margin: 0;
+    font-size: clamp(2rem, 4.6vw, 4rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--color-foreground);
+    text-wrap: balance;
+  }
+
+  .scene-eyebrow {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+  }
+
+  .scene-sub {
+    margin: var(--space-4) 0 0;
+    max-width: 40ch;
+    font-size: var(--text-lg);
+    color: var(--color-muted-foreground);
   }
 
   @media (max-width: 640px) {
@@ -258,6 +309,15 @@
       width: 100%;
       justify-content: space-between;
       padding: var(--space-3) var(--space-5);
+    }
+
+    /* A phone's scene is too short to carry text over it: the caption
+       follows it instead. */
+    .scene-caption {
+      position: static;
+      max-width: none;
+      padding: var(--space-4) 0 0;
+      background: none;
     }
   }
 </style>
