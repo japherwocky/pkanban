@@ -232,23 +232,31 @@
     width: 100%;
   }
 
+  /* Fixed heights, not min-heights. The terminal prints a command's output
+     and the board moves cards every few seconds; with room to grow, each
+     step resized the hero and shifted the whole page under the reader --
+     by up to ~350px on a phone. Now the demo plays inside boxes that never
+     change size: the terminal scrolls like a real one, and the board's
+     height covers its tallest state (KanbanDemo.svelte). */
   .demo-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-6);
-    min-height: 400px;
+    height: 420px;
   }
 
   .demo-terminal,
   .demo-board {
     position: relative;
+    min-height: 0;
   }
 
   @media (max-width: 1024px) {
     .demo-grid {
       grid-template-columns: 1fr;
+      grid-template-rows: 320px auto;
       gap: var(--space-4);
-      min-height: 700px;
+      height: auto;
     }
   }
 
@@ -276,7 +284,7 @@
     }
 
     .demo-grid {
-      min-height: 600px;
+      grid-template-rows: 300px auto;
     }
   }
 </style>

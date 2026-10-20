@@ -1,4 +1,5 @@
 <script>
+  import Logo from '../lib/Logo.svelte';
 
   let hoveredBox = $state(null);
   let mouseX = $state(0);
@@ -6,26 +7,35 @@
 
   // Compatibility, not partnership. These are AI tools the reader already
   // uses, named in plain text so they recognize one -- pkanban has no
-  // integration code for any of them, and no logos go here: those carry
-  // trademark terms a name doesn't. (This list used to be "Bash script",
-  // "Cron job" and the like; true, but invisible to the people the page is
-  // now for. See MARKETING.md section 2.)
+  // integration code for any of them.
+  //
+  // No logos, still. Checked 2026-10-20: Anthropic, OpenAI, Google and the
+  // Linux Foundation (Goose) all want a logo approved first, and OpenAI's
+  // brand page says an app's branding should carry none of theirs. A name,
+  // used accurately, is fine. So each name gets one of our own icons, for how
+  // pkanban reaches it, and the strip still looks like the logo row everyone
+  // expects. (This list used to be "Bash script", "Cron job" and the like;
+  // true, but invisible to the people the page is now for. See MARKETING.md
+  // section 2.)
   //
   // Every entry is an app where pkanban works today: the agents by running
   // its commands, and the Claude and ChatGPT chat apps through the MCP
-  // connector (/connect/claude, /docs/mcp). Before the connector shipped the
-  // chat apps were left off, because their chat windows can't run commands.
+  // connector (/connect/claude, /docs/mcp).
+  //
+  //   chat      a chat app, through the connector
+  //   terminal  an agent that runs commands in a terminal
+  //   editor    an agent that lives in a code editor
   const agents = [
-    'Claude',
-    'ChatGPT',
-    'Claude Code',
-    'Codex',
-    'opencode',
-    'Cursor',
-    'Gemini CLI',
-    'GitHub Copilot',
-    'Cline',
-    'Goose'
+    { name: 'Claude', kind: 'chat' },
+    { name: 'ChatGPT', kind: 'chat' },
+    { name: 'Claude Code', kind: 'terminal' },
+    { name: 'Codex', kind: 'terminal' },
+    { name: 'opencode', kind: 'terminal' },
+    { name: 'Cursor', kind: 'editor' },
+    { name: 'Gemini CLI', kind: 'terminal' },
+    { name: 'GitHub Copilot', kind: 'editor' },
+    { name: 'Cline', kind: 'editor' },
+    { name: 'Goose', kind: 'terminal' },
   ];
 
   function handleMouseMove(event, boxId) {
@@ -36,6 +46,25 @@
     }
   }
 </script>
+
+{#snippet agentIcon(kind)}
+  <svg class="logo-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    {#if kind === 'chat'}
+      <path d="M5 4.5h14a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5h-8l-4.5 3.5v-3.5H5A1.5 1.5 0 013.5 15V6A1.5 1.5 0 015 4.5z"/>
+      <path d="M8 9.5h8"/>
+      <path d="M8 12.5h5"/>
+    {:else if kind === 'terminal'}
+      <rect x="3" y="4.5" width="18" height="15" rx="1.5"/>
+      <path d="M7 9.5l3 2.5-3 2.5"/>
+      <path d="M12.5 15h4.5"/>
+    {:else}
+      <rect x="3" y="4.5" width="18" height="15" rx="1.5"/>
+      <path d="M3 8.5h18"/>
+      <path d="M10 11.5l-2.5 2.5 2.5 2.5"/>
+      <path d="M14 11.5l2.5 2.5-2.5 2.5"/>
+    {/if}
+  </svg>
+{/snippet}
 
 <section class="features-section">
   <div class="features-header">
@@ -155,13 +184,11 @@
       <div class="glow-spot" style="left: {mouseX}%; top: {mouseY}%"></div>
     </div>
 
-    <!-- Box 3: Works where your Agents live (Wide) -->
+    <!-- Box 3: Works where your Agents live (Wide). No hover effect: the
+         strip is already moving, and the lift, glow and blue on top of it
+         were too much. -->
     <div
-      class="bento-box box-wide"
-      class:hovered={hoveredBox === 3}
-      onmouseenter={() => hoveredBox = 3}
-      onmouseleave={() => hoveredBox = null}
-      onmousemove={(e) => handleMouseMove(e, 3)}
+      class="bento-box box-wide box-static"
       role="group"
       aria-label="Works with the AI you already use"
     >
@@ -178,18 +205,30 @@
         </div>
         <p class="box-description">If your AI can run a command, it can use pkanban, with nothing to install on its side. If it can't, as in the Claude and ChatGPT apps, add pkanban as a connector.</p>
 
+        <!-- Two identical groups, the track sliding left by exactly one of them,
+             so the loop has no seam. The copy is hidden from screen readers:
+             they get the list once, as a list. -->
         <div class="logo-marquee">
-          <div class="logo-track" class:paused={hoveredBox !== 3}>
-            {#each [...agents, ...agents, ...agents] as agent}
-              <div class="logo-item" class:colored={hoveredBox === 3}>
-                <span class="logo-text">{agent}</span>
-              </div>
+          <div class="logo-track">
+            {#each [false, true] as copy (copy)}
+              <ul class="logo-group" aria-hidden={copy ? 'true' : undefined}>
+                {#each agents as agent (agent.name)}
+                  <li class="logo-item">
+                    {@render agentIcon(agent.kind)}
+                    <span class="logo-text">{agent.name}</span>
+                  </li>
+                {/each}
+                <!-- The pear is ours, so it is the one real logo in the row, in the
+                     row's own color like the icons beside it. -->
+                <li class="logo-item logo-item-pear">
+                  <Logo size={18} showWordmark={false} mono />
+                  <span class="logo-text">Anything that can run a command, you included</span>
+                </li>
+              </ul>
             {/each}
           </div>
         </div>
       </div>
-
-      <div class="glow-spot" style="left: {mouseX}%; top: {mouseY}%"></div>
     </div>
   </div>
 </section>
@@ -246,6 +285,16 @@
 
   .bento-box.hovered {
     border-color: var(--color-primary);
+  }
+
+  .bento-box.box-static {
+    cursor: default;
+  }
+
+  .bento-box.box-static:hover {
+    border-color: var(--color-border);
+    transform: none;
+    box-shadow: none;
   }
 
   .glow-spot {
@@ -412,21 +461,59 @@
   .logo-marquee {
     overflow: hidden;
     padding: var(--space-4) 0;
+    /* Names fade in and out at the edges instead of being cut off. */
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
   }
 
+  /* Always moving, and still under the pointer so a name can be read. It used
+     to move only while hovered, which nobody would guess to do. */
   .logo-track {
     display: flex;
-    gap: var(--space-8);
-    animation: scroll 20s linear infinite;
+    width: max-content;
+    animation: scroll 40s linear infinite;
   }
 
-  .logo-track.paused {
+  .logo-marquee:hover .logo-track {
     animation-play-state: paused;
   }
 
+  /* The spacing is padding on each group, not a gap between them, so one
+     group plus its spacing is exactly half the track and -50% lands the
+     second group where the first began. With a gap the loop jumped. */
+  .logo-group {
+    display: flex;
+    gap: var(--space-8);
+    padding: 0 var(--space-8) 0 0;
+    margin: 0;
+    list-style: none;
+  }
+
   @keyframes scroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Still, and every name visible: wrapped, once. */
+  @media (prefers-reduced-motion: reduce) {
+    .logo-marquee {
+      mask-image: none;
+    }
+
+    .logo-track {
+      width: auto;
+      animation: none;
+    }
+
+    .logo-group {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--space-3);
+      padding: 0;
+    }
+
+    .logo-group[aria-hidden='true'] {
+      display: none;
+    }
   }
 
   .logo-item {
@@ -441,11 +528,16 @@
     transition: background-color var(--transition-slow), border-color var(--transition-slow), color var(--transition-slow);
   }
 
-  .logo-item:hover,
-  .logo-item.colored {
-    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
-    color: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  .logo-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .logo-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
   }
 
   .logo-text {

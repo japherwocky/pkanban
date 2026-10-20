@@ -108,11 +108,22 @@ function resetAnimation() {
   }, RESET_PAUSE);
 }
 
+  // The window has a fixed height (HeroSection), so output scrolls instead of
+  // growing the page. Keep the newest line in view, the way a terminal does:
+  // whenever the text changes, which is after the DOM has it.
+  let contentEl;
+  let follow;
+
   onMount(() => {
+    follow = new MutationObserver(() => {
+      contentEl.scrollTop = contentEl.scrollHeight;
+    });
+    follow.observe(contentEl, { childList: true, subtree: true, characterData: true });
     timeoutId = setTimeout(typeCharacter, 800);
   });
 
   onDestroy(() => {
+    follow?.disconnect();
     if (animationFrame) clearTimeout(animationFrame);
     if (timeoutId) clearTimeout(timeoutId);
   });
@@ -127,7 +138,7 @@ function resetAnimation() {
     </div>
     <div class="terminal-title">Terminal — zsh</div>
   </div>
-  <div class="terminal-content">
+  <div class="terminal-content" bind:this={contentEl}>
     {#each commandHistory as entry}
       <div class="command-entry">
         <div class="command-line">
@@ -152,9 +163,10 @@ function resetAnimation() {
 
 <style>
   .terminal-window {
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
-    min-height: 280px;
     background: var(--color-code-bg);
     border-radius: var(--radius-xl);
     overflow: hidden;
@@ -203,8 +215,15 @@ function resetAnimation() {
     font-size: var(--text-sm);
     line-height: 1.5;
     color: var(--color-code-fg);
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    max-height: calc(100% - 50px);
+    /* Scrolled by the demo, not the reader: no scrollbar. */
+    scrollbar-width: none;
+  }
+
+  .terminal-content::-webkit-scrollbar {
+    display: none;
   }
 
   .command-entry {
@@ -263,10 +282,6 @@ function resetAnimation() {
   }
 
   @media (max-width: 768px) {
-    .terminal-window {
-      min-height: 200px;
-    }
-
     .terminal-content {
       font-size: var(--text-sm);
       padding: var(--space-3) var(--space-4);
