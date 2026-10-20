@@ -1,7 +1,6 @@
 <script>
   import { link } from 'svelte-routing';
-  import TerminalSimulator from './TerminalSimulator.svelte';
-  import KanbanDemo from './KanbanDemo.svelte';
+  import ParachuteScene from './ParachuteScene.svelte';
 
   // What the visitor pastes into their AI. Not `pip install pkanban`: the
   // reader this page is for may never have opened a terminal, and doesn't
@@ -57,15 +56,12 @@
       </p>
     </div>
 
-    <div class="demo-container">
-      <div class="demo-grid">
-        <div class="demo-terminal">
-          <TerminalSimulator />
-        </div>
-        <div class="demo-board">
-          <KanbanDemo />
-        </div>
-      </div>
+    <!-- The story in one shot: work lands on the board, carried down by a
+         pear, and makes its way to Done. This replaced a terminal typing CLI
+         commands beside a flat board; with the MCP connector, the terminal
+         is no longer the way most people will meet pkanban. -->
+    <div class="hero-scene">
+      <ParachuteScene height="clamp(340px, 50vw, 560px)" />
     </div>
   </div>
 </section>
@@ -228,36 +224,17 @@
     background: color-mix(in srgb, var(--color-foreground) 10%, transparent);
   }
 
-  .demo-container {
+  /* A fixed height (set on the scene), so nothing in the shot can resize
+     the hero: the old demo grew and shrank with its content and shifted the
+     whole page every few seconds. The edges fade into the page, so the scene
+     reads as part of it rather than as a video in a box. */
+  .hero-scene {
     width: 100%;
-  }
-
-  /* Fixed heights, not min-heights. The terminal prints a command's output
-     and the board moves cards every few seconds; with room to grow, each
-     step resized the hero and shifted the whole page under the reader --
-     by up to ~350px on a phone. Now the demo plays inside boxes that never
-     change size: the terminal scrolls like a real one, and the board's
-     height covers its tallest state (KanbanDemo.svelte). */
-  .demo-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-6);
-    height: 420px;
-  }
-
-  .demo-terminal,
-  .demo-board {
-    position: relative;
-    min-height: 0;
-  }
-
-  @media (max-width: 1024px) {
-    .demo-grid {
-      grid-template-columns: 1fr;
-      grid-template-rows: 320px auto;
-      gap: var(--space-4);
-      height: auto;
-    }
+    /* Chutes fade in from above instead of being clipped by the top edge. */
+    mask-image:
+      linear-gradient(to bottom, transparent 0, #000 16%, #000 84%, transparent 100%),
+      linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%);
+    mask-composite: intersect;
   }
 
   @media (max-width: 640px) {
@@ -281,10 +258,6 @@
       width: 100%;
       justify-content: space-between;
       padding: var(--space-3) var(--space-5);
-    }
-
-    .demo-grid {
-      grid-template-rows: 300px auto;
     }
   }
 </style>

@@ -34,6 +34,7 @@
     "marked": "^17.0.1",
     "prismjs": "^1.30.0",
     "svelte-dnd-action": "^0.9.44",
-    "svelte-routing": "^2.13.0"
+    "svelte-routing": "^2.13.0",
+    "three": "0.170.0"
   }
 }
