@@ -184,13 +184,11 @@
       <div class="glow-spot" style="left: {mouseX}%; top: {mouseY}%"></div>
     </div>
 
-    <!-- Box 3: Works where your Agents live (Wide) -->
+    <!-- Box 3: Works where your Agents live (Wide). No hover effect: the
+         strip is already moving, and the lift, glow and blue on top of it
+         were too much. -->
     <div
-      class="bento-box box-wide"
-      class:hovered={hoveredBox === 3}
-      onmouseenter={() => hoveredBox = 3}
-      onmouseleave={() => hoveredBox = null}
-      onmousemove={(e) => handleMouseMove(e, 3)}
+      class="bento-box box-wide box-static"
       role="group"
       aria-label="Works with the AI you already use"
     >
@@ -215,14 +213,14 @@
             {#each [false, true] as copy (copy)}
               <ul class="logo-group" aria-hidden={copy ? 'true' : undefined}>
                 {#each agents as agent (agent.name)}
-                  <li class="logo-item" class:colored={hoveredBox === 3}>
+                  <li class="logo-item">
                     {@render agentIcon(agent.kind)}
                     <span class="logo-text">{agent.name}</span>
                   </li>
                 {/each}
                 <!-- The pear is ours, so it is the one real logo in the row, in the
                      row's own color like the icons beside it. -->
-                <li class="logo-item logo-item-pear" class:colored={hoveredBox === 3}>
+                <li class="logo-item logo-item-pear">
                   <Logo size={18} showWordmark={false} mono />
                   <span class="logo-text">Anything that can run a command, you included</span>
                 </li>
@@ -231,8 +229,6 @@
           </div>
         </div>
       </div>
-
-      <div class="glow-spot" style="left: {mouseX}%; top: {mouseY}%"></div>
     </div>
   </div>
 </section>
@@ -289,6 +285,16 @@
 
   .bento-box.hovered {
     border-color: var(--color-primary);
+  }
+
+  .bento-box.box-static {
+    cursor: default;
+  }
+
+  .bento-box.box-static:hover {
+    border-color: var(--color-border);
+    transform: none;
+    box-shadow: none;
   }
 
   .glow-spot {
@@ -520,13 +526,6 @@
     font-weight: 500;
     font-size: var(--text-sm);
     transition: background-color var(--transition-slow), border-color var(--transition-slow), color var(--transition-slow);
-  }
-
-  .logo-item:hover,
-  .logo-item.colored {
-    background: color-mix(in srgb, var(--color-foreground) 8%, transparent);
-    color: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-foreground) 12%, transparent);
   }
 
   .logo-item {

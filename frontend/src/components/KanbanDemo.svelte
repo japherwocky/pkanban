@@ -378,11 +378,22 @@
     }
   }
 
+  /* Below the desktop layout the board sits under the terminal at its own
+     height, which changed as cards moved and shifted the page. These hold
+     the tallest state of the demo (measured 2026-10-20: 345px side by side,
+     628px stacked at 375px wide); re-measure if the demo script changes. */
+  @media (max-width: 1024px) {
+    .kanban-board {
+      min-height: 360px;
+    }
+  }
+
   @media (max-width: 768px) {
     .kanban-board {
       flex-direction: column;
       gap: var(--space-3);
       padding: var(--space-4);
+      min-height: 640px;
     }
 
     .column {
