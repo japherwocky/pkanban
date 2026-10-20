@@ -112,7 +112,10 @@ wins.
   -- unmodified apart from cropping, in `frontend/src/assets/logo.svg`. That
   one file is the `Logo` component, the favicon and the source for the PNG
   icons and OG image in `frontend/public/`. It's a self-contained disc with
-  its own outline, so it's never recolored per theme.
+  its own outline, so the full-color version reads on both themes as it is.
+  The pear can be recolored too: `logo-mono.svg` is the same drawing with the
+  color taken out (`<Logo mono />`), taking the surrounding text color the
+  way an icon does. The homepage's agents strip uses it like that.
 * **Color Palette:**
     * **Backgrounds:** Warm black (`#231f20`), keyed to the pearachute logo
       rather than a blue-violet near-black -- it's meant to read as a
