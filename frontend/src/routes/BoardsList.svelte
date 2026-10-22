@@ -13,13 +13,21 @@
   let showCreateModal = $state(false);
   let newBoardName = $state('');
   let createLoading = $state(false);
-  let teamsMap = $state({}); // Map team_id -> team object
   let isAdmin = $state(false);
   // While there is a query the results take the boards grid's place.
   let searchQuery = $state('');
 
+  // Only the owner can delete a board, so only the owner gets the button.
+  let currentUserId = null;
+  try {
+    const token = localStorage.getItem('token');
+    if (token) currentUserId = JSON.parse(atob(token.split('.')[1])).sub;
+  } catch (e) {
+    console.error('Failed to decode token:', e);
+  }
+
   onMount(async () => {
-    await Promise.all([loadBoards(), loadTeams(), loadAdminStatus()]);
+    await Promise.all([loadBoards(), loadAdminStatus()]);
   });
 
   function logout() {
@@ -38,24 +46,6 @@
     }
   }
 
-  async function loadTeams() {
-    try {
-      const teams = [];
-      const orgs = await api.organizations.list();
-
-      for (const org of orgs) {
-        const orgTeams = await api.organizations.teams.list(org.id);
-        for (const team of orgTeams) {
-          teams[team.id] = team;
-        }
-      }
-
-      teamsMap = teams;
-    } catch (e) {
-      console.error('Failed to load teams:', e);
-    }
-  }
-
   async function loadAdminStatus() {
     try {
       const status = await api.admin.status();
@@ -66,8 +56,9 @@
     }
   }
 
-  function getTeamName(teamId) {
-    return teamsMap[teamId]?.name || null;
+  // Each board names the teams it is shared with, so no lookup is needed.
+  function sharedWith(board) {
+    return (board.teams ?? []).map((t) => t.name).join(', ');
   }
 
   async function createBoard() {
@@ -136,24 +127,29 @@
   {:else}
     <div class="boards-grid">
       {#each boards as board (board.id)}
-        <div class="board-card" class:shared={board.shared_team_id}>
+        <div class="board-card" class:shared={board.teams?.length}>
           <button class="card-content" onclick={() => navigate(`/boards/${board.id}`)}>
             <div class="board-header">
               <h3>{board.name}</h3>
             </div>
             <div class="board-meta">
               <span>Created {formatDate(board.created_at)}</span>
-              {#if board.shared_team_id}
+              {#if board.teams?.length}
                 <span class="shared-badge">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M7 2C6.44772 2 6 2.44772 6 3V5H4C3.44772 5 3 5.44772 3 6V7C3 7.55228 4.44772 9 6 9H6V10C6 10.5523 6.44772 11 7 11H7.5C8.05228 11 8.5 10.5523 8.5 10V9H10C11.5523 9 13 7.55228 13 6V5H8.5V3C8.5 2.44772 8.05228 2 7.5 2H7ZM4.5 6C4.5 5.72386 4.72386 5.5 5 5.5H6.5V6H4.5V6ZM10 6V6.5H11.5V6C11.5 5.72386 11.2761 5.5 11 5.5H10V6Z" stroke="currentColor" stroke-width="1"/>
                   </svg>
-                  {getTeamName(board.shared_team_id)}
+                  {sharedWith(board)}
                 </span>
+              {/if}
+              {#if board.permission === 'read'}
+                <span class="shared-badge">Read only</span>
               {/if}
             </div>
           </button>
-          <button class="delete-btn" onclick={(e) => deleteBoard(board.id, e)} title="Delete board">×</button>
+          {#if board.permission === undefined || String(board.owner_id) === String(currentUserId)}
+            <button class="delete-btn" onclick={(e) => deleteBoard(board.id, e)} title="Delete board">×</button>
+          {/if}
         </div>
       {/each}
       <button class="board-card create-card" onclick={() => showCreateModal = true}>

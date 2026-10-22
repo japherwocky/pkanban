@@ -166,7 +166,7 @@ def send_verification_email(user, token: str) -> bool:
 def send_invite_email(
     to_email: str,
     invite_token: str,
-    org_name: str,
+    org_name: str | None,
     inviter_username: str,
     team_name: str = None,
 ) -> bool:
@@ -179,10 +179,12 @@ def send_invite_email(
     """
     url = f"{public_base_url()}/invite/{invite_token}"
     if team_name:
+        # A team needs no organization, and then there is none to name.
+        where = f", in {escape(org_name)}" if org_name else ""
         lede = (
             f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
             f"</strong> added you to the <strong>{escape(team_name)}</strong> "
-            f"team on pkanban, in {escape(org_name)}.</p>"
+            f"team on pkanban{where}.</p>"
             f'<p style="color:{_BRAND_DARK}">Accepting gives you the boards '
             "shared with that team.</p>"
         )

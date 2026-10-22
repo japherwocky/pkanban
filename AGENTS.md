@@ -299,6 +299,28 @@ Three triggers on `card` keep it current, so nothing in the API has to.
   the board list and `can_access_board` all use it, so a card search can never
   reach a board the list would hide.
 
+### Board sharing
+
+Boards and teams are many-to-many through `BoardTeam` (board, team,
+permission), like groups on a file with an ACL (Dev #1037, migration 010).
+
+- **Levels are `read`, `write`, `admin`.** `board_permission(user, board)` in
+  `backend/api.py` is the one answer: the owner is admin, otherwise the highest
+  of each team grant and the org grant (`Board.org_permission`, when
+  `is_public_to_org`). `can_access_board` = any level, `can_modify_board` =
+  write, `can_share_board` = admin. A new endpoint that changes a board asks
+  `can_modify_board`; commenting counts as a change.
+- **Only the owner deletes a board**, admins included, by decision.
+- **You share only with a team you are on, or one in your org**
+  (`can_share_with_team`). Otherwise a board could be dropped into a
+  stranger's board list.
+- **A team needs no organization.** `Team.organization` is nullable; an
+  orgless team is run by its members (no org owner to fall back on, see
+  `_team_org_owner`), and its invites carry no org either. Anything that reads
+  `team.organization` must handle `None`.
+- The web UI hides what the server would refuse: `permission` comes back on
+  every board response, and a `read` board shows no edit controls.
+
 ### Card archiving
 
 `Card.archived_at` is null for a live card (migration 009). Archived cards keep

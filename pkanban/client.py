@@ -345,9 +345,16 @@ class PkanbanClient:
         return self._request("GET", f"/api/organizations/{org_id}/teams")
 
     def team_create(self, org_id, name):
+        """A team in an organization, or in none when org_id is None."""
+        if org_id is None:
+            return self._request("POST", "/api/teams", json={"name": name})
         return self._request(
             "POST", f"/api/organizations/{org_id}/teams", json={"name": name}
         )
+
+    def my_teams(self):
+        """Every team you could share a board with."""
+        return self._request("GET", "/api/me/teams")
 
     def team_get(self, team_id):
         return self._request("GET", f"/api/teams/{team_id}")
@@ -376,15 +383,30 @@ class PkanbanClient:
         return self._request("GET", "/api/search", params=params)
 
     # Board sharing
-    def board_share(
-        self, board_id, team_id=None, is_public_to_org=False, organization_id=None
+    def board_share_org(
+        self, board_id, is_public_to_org, organization_id=None, permission=None
     ):
-        data = {
-            "team_id": team_id,
-            "is_public_to_org": is_public_to_org,
-            "organization_id": organization_id,
-        }
+        """The org half of sharing. Leaves the board's teams alone."""
+        data = {"is_public_to_org": is_public_to_org, "organization_id": organization_id}
+        if permission is not None:
+            data["org_permission"] = permission
         return self._request("POST", f"/api/boards/{board_id}/share", json=data)
+
+    def board_make_private(self, board_id):
+        """No teams, and not public to any org."""
+        data = {"team_id": None, "is_public_to_org": False}
+        return self._request("POST", f"/api/boards/{board_id}/share", json=data)
+
+    def board_team_set(self, board_id, team_id, permission="write"):
+        """Share with a team, or change its level. Other teams keep theirs."""
+        return self._request(
+            "PUT",
+            f"/api/boards/{board_id}/teams/{team_id}",
+            json={"permission": permission},
+        )
+
+    def board_team_remove(self, board_id, team_id):
+        return self._request("DELETE", f"/api/boards/{board_id}/teams/{team_id}")
 
     # API Key methods
     def api_keys(self):

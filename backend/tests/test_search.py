@@ -26,6 +26,7 @@ from backend.models import (  # noqa: E402
     Column,
     Organization,
     OrganizationMember,
+    BoardTeam,
     Team,
     TeamMember,
     User,
@@ -321,8 +322,7 @@ class TestAccess:
 
         private = make_board(owner, "Private")
         team_board = make_board(owner, "Team")
-        team_board.shared_team = team
-        team_board.save()
+        BoardTeam.create(board=team_board, team=team, permission="write")
         org_board = make_board(owner, "Org")
         org_board.organization = org
         org_board.is_public_to_org = True

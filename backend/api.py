@@ -34,6 +34,11 @@ from backend.models import (
     OrganizationMember,
     Team,
     TeamMember,
+    BoardTeam,
+    READ,
+    WRITE,
+    ADMIN,
+    PERMISSIONS,
     BetaSignup,
     ApiKey,
     OrganizationInvite,
@@ -71,41 +76,82 @@ def accessible_boards(user):
     list and the access check used to be separate code, and an org-public
     board was reachable by URL for a while before it ever appeared in the list.
 
-    A board is open to its owner, to members of the team it is shared with,
-    and -- when is_public_to_org is set -- to the members and owner of its
-    organization. The three are OR'd: a board can carry a shared team and the
-    org flag at once (share_board does not clear the team when the flag goes
-    on), and either one is enough.
+    A board is open to its owner, to members of every team it is shared with
+    (BoardTeam), and -- when is_public_to_org is set -- to the members and
+    owner of its organization. Any of them is enough, at any level: this says
+    who can see a board, and board_permission() says what they may do there.
 
     Nothing here dereferences a foreign key, so dangling ones are harmless. A
-    shared_team_id whose team was deleted matches no membership. An
-    organization_id whose org is gone matches nothing either, because
-    member_orgs joins through Organization. organization_id is null for a
-    personal board, and the flag means nothing without it.
+    grant whose team was deleted matches no membership. An organization_id
+    whose org is gone matches nothing either, because member_orgs joins
+    through Organization. organization_id is null for a personal board, and
+    the flag means nothing without it.
     """
-    teams = TeamMember.select(TeamMember.team).where(TeamMember.user == user)
-    member_orgs = (
-        Organization.select(Organization.id)
-        .join(OrganizationMember)
-        .where(OrganizationMember.user == user)
-    )
-    owned_orgs = Organization.select(Organization.id).where(Organization.owner == user)
     return Board.select().where(
         (Board.owner == user)
-        | Board.shared_team.in_(teams)
+        | Board.id.in_(
+            BoardTeam.select(BoardTeam.board).where(BoardTeam.team.in_(_teams_of(user)))
+        )
         | (
             (Board.is_public_to_org == True)  # noqa: E712 -- peewee needs ==
-            & (Board.organization.in_(member_orgs) | Board.organization.in_(owned_orgs))
+            & Board.organization.in_(_orgs_of(user))
         )
     )
 
 
+def _teams_of(user):
+    return TeamMember.select(TeamMember.team).where(TeamMember.user == user)
+
+
+def _orgs_of(user):
+    """Ids of the organizations `user` belongs to or owns."""
+    member = (
+        Organization.select(Organization.id)
+        .join(OrganizationMember)
+        .where(OrganizationMember.user == user)
+    )
+    owned = Organization.select(Organization.id).where(Organization.owner == user)
+    return member | owned
+
+
+def board_permission(user, board):
+    """What `user` may do on `board`: None, READ, WRITE or ADMIN.
+
+    The owner is always admin. Otherwise the highest of every route in: each
+    team the board is shared with that `user` is on, and the org grant when
+    the board is public to an organization they are in. Agrees with
+    accessible_boards() on who gets anything at all.
+    """
+    if board.owner_id == user.id:
+        return ADMIN
+    levels = [
+        grant.permission
+        for grant in BoardTeam.select(BoardTeam.permission).where(
+            (BoardTeam.board == board) & BoardTeam.team.in_(_teams_of(user))
+        )
+    ]
+    if (
+        board.is_public_to_org
+        and board.organization_id is not None
+        and Organization.select()
+        .where(Organization.id.in_(_orgs_of(user)) & (Organization.id == board.organization_id))
+        .exists()
+    ):
+        levels.append(board.org_permission)
+    known = [level for level in levels if level in PERMISSIONS]
+    return max(known, key=PERMISSIONS.index) if known else None
+
+
+def _at_least(level, wanted):
+    return level is not None and PERMISSIONS.index(level) >= PERMISSIONS.index(wanted)
+
+
 def can_access_board(user, board):
-    return accessible_boards(user).where(Board.id == board.id).exists()
+    return board_permission(user, board) is not None
 
 
 def can_modify_board(user, board):
-    return can_access_board(user, board)
+    return _at_least(board_permission(user, board), WRITE)
 
 
 def is_org_member(user, organization):
@@ -120,11 +166,73 @@ def is_org_member(user, organization):
 
 
 def can_delete_board(user, board):
+    # Owner only, admins included, by decision (Dev #1037).
     return board.owner == user
 
 
 def can_share_board(user, board):
-    return board.owner == user
+    return _at_least(board_permission(user, board), ADMIN)
+
+
+def can_share_with_team(user, team):
+    """Whether `user` may hand a board to `team`.
+
+    Only a team they are on, or one in an organization they belong to.
+    Without this anyone could drop their board into a stranger's team, and it
+    would turn up in those strangers' board lists.
+    """
+    if TeamMember.get_or_none((TeamMember.team == team) & (TeamMember.user == user)):
+        return True
+    return (
+        team.organization_id is not None
+        and Organization.select()
+        .where(Organization.id.in_(_orgs_of(user)) & (Organization.id == team.organization_id))
+        .exists()
+    )
+
+
+def _team_org_owner(team, user):
+    """The org owner is the fallback manager of the org's teams. A team with
+    no organization has none: its members run it."""
+    return team.organization_id is not None and team.organization.owner_id == user.id
+
+
+def board_teams(board):
+    """Every team `board` is shared with, and at what level."""
+    grants = (
+        BoardTeam.select(BoardTeam, Team)
+        .join(Team)
+        .where(BoardTeam.board == board)
+        .order_by(Team.name, Team.id)
+    )
+    return [
+        {
+            "id": grant.team.id,
+            "name": grant.team.name,
+            "organization_id": grant.team.organization_id,
+            "organization_name": grant.team.organization.name
+            if grant.team.organization_id
+            else None,
+            "permission": grant.permission,
+        }
+        for grant in grants
+    ]
+
+
+def board_sharing(board, user):
+    """The sharing half of a board response, as `user` sees it."""
+    return {
+        "is_public_to_org": board.is_public_to_org,
+        "organization_id": board.organization_id,
+        "org_permission": board.org_permission,
+        "owner_id": board.owner_id,
+        "permission": board_permission(user, board),
+        "teams": board_teams(board),
+    }
+
+
+def _drop_team_grants(team):
+    BoardTeam.delete().where(BoardTeam.team == team).execute()
 
 
 def _resolve_share_organization(user, organization_id):
@@ -198,13 +306,29 @@ class BoardUpdate(BaseModel):
     name: str
 
 
+Permission = Literal["read", "write", "admin"]
+
+
 class BoardShare(BaseModel):
+    """The org-wide half of sharing. Teams have their own endpoints
+    (PUT/DELETE /boards/{id}/teams/{team_id})."""
+
+    # Older clients' way to share with a team: adds it at write. Sent as an
+    # explicit null with the org flag off, it means "make private" -- every
+    # team comes off, as it did when a board could hold only one. Leave it out
+    # to change the org settings alone.
     team_id: Optional[int] = None
     is_public_to_org: Optional[bool] = False
     # Which org "public to org" means. Optional: with exactly one organization
     # to choose from the server infers it, which is the common case and keeps
     # the existing single-checkbox UI working unchanged.
     organization_id: Optional[int] = None
+    # What the org gets. Unchanged when left out.
+    org_permission: Optional[Permission] = None
+
+
+class BoardTeamGrant(BaseModel):
+    permission: Permission = WRITE
 
 
 class BoardResponse(BaseModel):
@@ -214,10 +338,13 @@ class BoardResponse(BaseModel):
     name: str
     created_at: datetime
     columns: list
-    shared_team_id: Optional[int] = None
     is_public_to_org: bool = False
     organization_id: Optional[int] = None
+    org_permission: str = WRITE
     owner_id: int
+    # The caller's level on this board, and every team it is shared with.
+    permission: Optional[str] = None
+    teams: list = []
 
 
 class ColumnCreate(BaseModel):
@@ -377,7 +504,7 @@ class TeamResponse(BaseModel):
 
     id: int
     name: str
-    organization_id: int
+    organization_id: Optional[int]
     created_at: datetime
 
 
@@ -495,8 +622,8 @@ class TeamResponseAdmin(BaseModel):
 
     id: int
     name: str
-    organization_id: int
-    organization_name: str
+    organization_id: Optional[int]
+    organization_name: Optional[str]
     member_count: int
     created_at: datetime
 
@@ -517,8 +644,7 @@ class BoardResponseAdmin(BaseModel):
     name: str
     owner_id: int
     owner_username: str
-    shared_team_id: Optional[int]
-    shared_team_name: Optional[str]
+    teams: list
     is_public_to_org: bool
     column_count: int
     card_count: int
@@ -1043,12 +1169,16 @@ async def list_admin_teams(current_admin_user: User = Depends(get_current_admin)
                 "id": team.id,
                 "name": team.name,
                 "organization_id": team.organization_id,
-                "organization_name": team.organization.name,
+                "organization_name": _org_name(team),
                 "member_count": member_count,
                 "created_at": team.created_at,
             }
         )
     return result
+
+
+def _org_name(team):
+    return team.organization.name if team.organization_id else None
 
 
 @api.post("/admin/teams", response_model=TeamResponseAdmin)
@@ -1069,7 +1199,7 @@ async def create_admin_team(
         "id": team.id,
         "name": team.name,
         "organization_id": team.organization_id,
-        "organization_name": team.organization.name,
+        "organization_name": _org_name(team),
         "member_count": member_count,
         "created_at": team.created_at,
     }
@@ -1103,7 +1233,7 @@ async def update_admin_team(
         "id": team.id,
         "name": team.name,
         "organization_id": team.organization_id,
-        "organization_name": team.organization.name,
+        "organization_name": _org_name(team),
         "member_count": member_count,
         "created_at": team.created_at,
     }
@@ -1121,7 +1251,7 @@ async def delete_admin_team(
 
     with db.atomic():
         # Remove team from any boards
-        Board.update(shared_team=None).where(Board.shared_team == team).execute()
+        _drop_team_grants(team)
         # Delete team members
         TeamMember.delete().where(TeamMember.team == team).execute()
         # Delete team
@@ -1163,9 +1293,9 @@ async def list_available_team_members(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    # Get all org members
+    # Get all org members (none, for a team with no organization)
     org_members = OrganizationMember.select().where(
-        OrganizationMember.organization == team.organization
+        OrganizationMember.organization == team.organization_id
     )
 
     # Get existing team member user IDs
@@ -1262,7 +1392,6 @@ async def list_admin_boards(
     for board in boards:
         column_count = Column.select().where(Column.board == board).count()
         card_count = Card.select().join(Column).where(Column.board == board).count()
-        shared_team_name = board.shared_team.name if board.shared_team else None
 
         result.append(
             {
@@ -1270,8 +1399,7 @@ async def list_admin_boards(
                 "name": board.name,
                 "owner_id": board.owner_id,
                 "owner_username": board.owner.username,
-                "shared_team_id": board.shared_team_id,
-                "shared_team_name": shared_team_name,
+                "teams": board_teams(board),
                 "is_public_to_org": board.is_public_to_org,
                 "organization_id": board.organization_id,
                 "column_count": column_count,
@@ -1304,8 +1432,7 @@ async def create_admin_board(
         "name": board.name,
         "owner_id": board.owner_id,
         "owner_username": board.owner.username,
-        "shared_team_id": board.shared_team_id,
-        "shared_team_name": None,
+        "teams": [],
         "is_public_to_org": board.is_public_to_org,
         "organization_id": board.organization_id,
         "column_count": column_count,
@@ -1330,15 +1457,13 @@ async def update_admin_board(
 
     column_count = Column.select().where(Column.board == board).count()
     card_count = Card.select().join(Column).where(Column.board == board).count()
-    shared_team_name = board.shared_team.name if board.shared_team else None
 
     return {
         "id": board.id,
         "name": board.name,
         "owner_id": board.owner_id,
         "owner_username": board.owner.username,
-        "shared_team_id": board.shared_team_id,
-        "shared_team_name": shared_team_name,
+        "teams": board_teams(board),
         "is_public_to_org": board.is_public_to_org,
         "organization_id": board.organization_id,
         "column_count": column_count,
@@ -1358,10 +1483,11 @@ async def delete_admin_board(
         raise HTTPException(status_code=404, detail="Board not found")
 
     with db.atomic():
-        # Delete cards, columns, board
+        # Delete cards, columns, grants, board
         for column in board.columns:
             Card.delete().where(Card.column == column).execute()
             column.delete_instance()
+        BoardTeam.delete().where(BoardTeam.board == board).execute()
         board.delete_instance()
 
     return {"ok": True}
@@ -1380,8 +1506,9 @@ async def create_board(
         "id": board.id,
         "name": board.name,
         "created_at": board.created_at,
-        "shared_team_id": board.shared_team_id,
         "owner_id": board.owner_id,
+        "permission": ADMIN,
+        "teams": [],
     }
 
 
@@ -1493,10 +1620,7 @@ async def list_boards(
             "id": board.id,
             "name": board.name,
             "created_at": board.created_at,
-            "shared_team_id": board.shared_team_id,
-            "is_public_to_org": board.is_public_to_org,
-            "organization_id": board.organization_id,
-            "owner_id": board.owner_id,
+            **board_sharing(board, current_user),
         }
         for board in boards
     ]
@@ -1523,10 +1647,7 @@ async def update_board(
         "name": board.name,
         "created_at": board.created_at,
         "columns": columns,
-        "shared_team_id": board.shared_team_id,
-        "is_public_to_org": board.is_public_to_org,
-        "organization_id": board.organization_id,
-        "owner_id": board.owner_id,
+        **board_sharing(board, current_user),
     }
 
 
@@ -1597,10 +1718,7 @@ async def get_board(
         "name": board.name,
         "created_at": board.created_at,
         "columns": columns,
-        "shared_team_id": board.shared_team_id,
-        "is_public_to_org": board.is_public_to_org,
-        "organization_id": board.organization_id,
-        "owner_id": board.owner_id,
+        **board_sharing(board, current_user),
     }
 
 
@@ -1618,6 +1736,7 @@ async def delete_board(
             for card in column.cards:
                 card.delete_instance()
             column.delete_instance()
+        BoardTeam.delete().where(BoardTeam.board == board).execute()
         board.delete_instance()
     return {"ok": True}
 
@@ -1632,35 +1751,89 @@ async def share_board(
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     if not can_share_board(current_user, board):
-        raise HTTPException(status_code=403, detail="Only the owner can share a board")
+        raise HTTPException(status_code=403, detail="Sharing a board needs admin on it")
 
-    # Set public to org status
-    if share_data.is_public_to_org is not None:
-        board.is_public_to_org = share_data.is_public_to_org
+    with db.atomic():
+        if share_data.is_public_to_org is not None:
+            board.is_public_to_org = share_data.is_public_to_org
+        if share_data.org_permission is not None:
+            board.org_permission = share_data.org_permission
 
-    # A board is not owned by an organization, it is shared into one, so the
-    # org is resolved at the moment it goes public rather than at creation.
-    if board.is_public_to_org:
-        board.organization = _resolve_share_organization(
-            current_user, share_data.organization_id
+        # A board is not owned by an organization, it is shared into one, so the
+        # org is resolved at the moment it goes public rather than at creation.
+        if board.is_public_to_org:
+            board.organization = _resolve_share_organization(
+                current_user, share_data.organization_id
+            )
+
+        if share_data.team_id is not None:
+            _grant_team(current_user, board, share_data.team_id, WRITE)
+        elif "team_id" in share_data.model_fields_set and not board.is_public_to_org:
+            # An explicit null with the org flag off: older clients' "make
+            # private". Left out entirely, the request is about the org alone.
+            BoardTeam.delete().where(BoardTeam.board == board).execute()
+
+        board.save()
+    return {"ok": True, **board_sharing(board, current_user)}
+
+
+def _sharable_board(board_id, user):
+    board = Board.get_or_none(Board.id == board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not can_share_board(user, board):
+        raise HTTPException(status_code=403, detail="Sharing a board needs admin on it")
+    return board
+
+
+def _grant_team(user, board, team_id, permission):
+    team = Team.get_or_none(Team.id == team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not can_share_with_team(user, team):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only share with a team you are on, or one in your organization",
         )
+    grant = BoardTeam.get_or_none((BoardTeam.board == board) & (BoardTeam.team == team))
+    if grant is None:
+        BoardTeam.create(board=board, team=team, permission=permission)
+    elif grant.permission != permission:
+        grant.permission = permission
+        grant.save()
 
-    # Set shared team (only if not public to org)
-    if not board.is_public_to_org and share_data.team_id is not None:
-        team = Team.get_or_none(Team.id == share_data.team_id)
-        if not team:
-            raise HTTPException(status_code=404, detail="Team not found")
-        board.shared_team = team
-    elif not board.is_public_to_org and share_data.team_id is None:
-        board.shared_team = None
 
-    board.save()
-    return {
-        "ok": True,
-        "shared_team_id": board.shared_team_id,
-        "is_public_to_org": board.is_public_to_org,
-        "organization_id": board.organization_id,
-    }
+@api.put("/boards/{board_id}/teams/{team_id}")
+async def share_board_with_team(
+    board_id: int,
+    team_id: int,
+    grant: BoardTeamGrant,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Share a board with a team at read, write or admin, or change its level.
+    Other teams keep theirs."""
+    board = _sharable_board(board_id, current_user)
+    _grant_team(current_user, board, team_id, grant.permission)
+    return {"ok": True, **board_sharing(board, current_user)}
+
+
+@api.delete("/boards/{board_id}/teams/{team_id}")
+async def unshare_board_from_team(
+    board_id: int,
+    team_id: int,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Take a team's access to a board away. No check on the team itself:
+    removing a grant only ever narrows who can see the board."""
+    board = _sharable_board(board_id, current_user)
+    removed = (
+        BoardTeam.delete()
+        .where((BoardTeam.board == board) & (BoardTeam.team == team_id))
+        .execute()
+    )
+    if not removed:
+        raise HTTPException(status_code=404, detail="Board is not shared with that team")
+    return {"ok": True, **board_sharing(board, current_user)}
 
 
 @api.post("/columns", response_model=ColumnResponse)
@@ -1985,10 +2158,10 @@ async def create_comment(
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    # Check if user can access the board containing this card
-    if not can_access_board(current_user, card.column.board):
+    # Commenting is writing: a read-only member reads the thread, no more.
+    if not can_modify_board(current_user, card.column.board):
         raise HTTPException(
-            status_code=403, detail="Not authorized to access this card"
+            status_code=403, detail="Not authorized to comment on this card"
         )
 
     # Create the comment
@@ -2050,8 +2223,11 @@ async def update_comment(
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    # Only the comment author can update their comment
-    if comment.user != current_user:
+    # Only the comment author can update their comment, and only while they
+    # can still write to the board -- not after being dropped to read or out.
+    if comment.user != current_user or not can_modify_board(
+        current_user, comment.card.column.board
+    ):
         raise HTTPException(
             status_code=403, detail="Not authorized to update this comment"
         )
@@ -2080,8 +2256,10 @@ async def delete_comment(
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    # Only the comment author can delete their comment
-    if comment.user != current_user:
+    # Only the comment author can delete their comment, while they can write.
+    if comment.user != current_user or not can_modify_board(
+        current_user, comment.card.column.board
+    ):
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this comment"
         )
@@ -2475,7 +2653,7 @@ async def get_invite(token: str):
 
     return {
         "id": invite.id,
-        "organization_name": invite.organization.name,
+        "organization_name": invite.organization.name if invite.organization_id else None,
         "team_name": invite.team.name if invite.team else None,
         "email": invite.email,
         "status": invite.status,
@@ -2538,13 +2716,62 @@ async def accept_invite(
     invite.accept(current_user)
     return {
         "ok": True,
-        "organization_id": invite.organization.id,
-        "organization_name": invite.organization.name,
+        "organization_id": invite.organization_id,
+        "organization_name": invite.organization.name if invite.organization_id else None,
         # Null for an org invite. The client needs this to know where to send
         # someone: a team-only member has no access to the organization page.
         "team_id": invite.team_id,
         "team_name": invite.team.name if invite.team else None,
     }
+
+
+@api.post("/teams", response_model=TeamResponse)
+async def create_personal_team(
+    team_data: TeamCreate,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """A team in no organization, with its creator as the first member.
+
+    Membership is the grant, so this is all it takes to share a board with
+    someone outside your organization: make a team, add them, share the
+    board with it. Its members run it; there is no org owner to fall back on.
+    """
+    with db.atomic():
+        team = Team.create_with_columns(name=team_data.name)
+        TeamMember.create(
+            user=current_user, team=team, joined_at=datetime.now(timezone.utc)
+        )
+    return {
+        "id": team.id,
+        "name": team.name,
+        "organization_id": None,
+        "created_at": team.created_at,
+    }
+
+
+@api.get("/me/teams", response_model=list)
+async def list_my_teams(current_user: User = Depends(get_current_user_or_api_key)):
+    """Every team the caller could share a board with: the ones they are on,
+    and every team in an organization they belong to (can_share_with_team)."""
+    teams = (
+        Team.select()
+        .where(
+            Team.id.in_(_teams_of(current_user))
+            | Team.organization.in_(_orgs_of(current_user))
+        )
+        .order_by(Team.name, Team.id)
+    )
+    mine = {row.team_id for row in _teams_of(current_user)}
+    return [
+        {
+            "id": team.id,
+            "name": team.name,
+            "organization_id": team.organization_id,
+            "organization_name": _org_name(team),
+            "is_member": team.id in mine,
+        }
+        for team in teams
+    ]
 
 
 @api.post("/organizations/{org_id}/teams", response_model=TeamResponse)
@@ -2641,12 +2868,19 @@ async def delete_team(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    # Only the organization owner (root) can delete teams
-    if team.organization.owner != current_user:
+    # The organization owner (root) deletes an org's teams. A team with no
+    # organization has no root, so any of its members may.
+    if team.organization_id is not None:
+        allowed = _team_org_owner(team, current_user)
+    else:
+        allowed = TeamMember.get_or_none(
+            (TeamMember.team == team) & (TeamMember.user == current_user)
+        ) is not None
+    if not allowed:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     with db.atomic():
-        Board.update(shared_team=None).where(Board.shared_team == team).execute()
+        _drop_team_grants(team)
         TeamMember.delete().where(TeamMember.team == team).execute()
         team.delete_instance()
 
@@ -2670,7 +2904,7 @@ async def add_team_member(
     tm = TeamMember.get_or_none(
         (TeamMember.team == team) & (TeamMember.user == current_user)
     )
-    if not tm and team.organization.owner != current_user:
+    if not tm and not _team_org_owner(team, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to add members")
 
     user = User.get_or_none(User.username == request.username)
@@ -2751,7 +2985,7 @@ async def remove_team_member(
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    is_owner = team.organization.owner == current_user
+    is_owner = _team_org_owner(team, current_user)
     tm = TeamMember.get_or_none(
         (TeamMember.team == team) & (TeamMember.user == current_user)
     )
@@ -2784,7 +3018,7 @@ def _team_invite_authority(team, user):
     """
     if TeamMember.get_or_none((TeamMember.team == team) & (TeamMember.user == user)):
         return True
-    return team.organization.owner_id == user.id
+    return _team_org_owner(team, user)
 
 
 @api.post("/teams/{team_id}/invites", response_model=InviteResponse)
@@ -2832,7 +3066,7 @@ async def create_team_invite(
         send_invite_email,
         email,
         token,
-        team.organization.name,
+        _org_name(team),
         current_user.username,
         team.name,
     )

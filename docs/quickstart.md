@@ -205,26 +205,40 @@ password or other keys.
 
 Boards are private to you until you share them. **Teams are what grant
 access** -- being on a team that a board is shared with is the check that runs.
+A board can be shared with any number of teams, each at its own level:
+
+- **read** -- see the board, its cards and comments; change nothing
+- **write** -- everything on the board: cards, columns, comments
+- **admin** -- write, plus share the board with other teams
+
+Only the owner can delete a board.
 
 ```bash
-pkanban org create "Acme"                    # prints an org id
-pkanban team create <org-id> "Engineering"   # prints a team id
+pkanban team create "Curtis"                 # prints a team id; you are on it
 pkanban team member-add <team-id> <username> # put them on the team
-pkanban share 7 <team-id>                    # share board 7 with the team
+pkanban share 7 <team-id> -p read            # share board 7 with the team, read-only
 ```
 
-A team may include people who are **not** in the organization, which is how you
-give a contractor one project without the run of the org. `org member-add` is
-about org membership -- invites, and org-wide sharing below -- not about board
-access, so it is not a required step here.
+A team needs no organization, and may include anyone, which is how you give a
+partner or a contractor one board without the run of anything else. Put a team
+in an organization with `pkanban team create "Engineering" --org-id <org-id>`.
 
-To share a board with everyone in an organization instead of one team:
+Change a team's level by sharing again with a new `-p`; take it away with
+`--remove`:
 
 ```bash
-pkanban share 7 --org <org-id>
+pkanban share 7 <team-id> -p admin
+pkanban share 7 <team-id> --remove
 ```
 
-Make a board private again at any time:
+To share a board with everyone in an organization, at a level of its own:
+
+```bash
+pkanban share 7 --org <org-id> -p write
+```
+
+Make a board private again -- every team and the organization off -- at any
+time:
 
 ```bash
 pkanban share 7 private

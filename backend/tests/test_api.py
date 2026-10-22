@@ -84,8 +84,8 @@ def test_create_board(client, auth_headers, test_user):
     assert data["name"] == "Test Board"
     assert "created_at" in data
     assert data["created_at"] is not None
-    assert "shared_team_id" in data
-    assert data["shared_team_id"] is None
+    assert data["teams"] == []
+    assert data["permission"] == "admin"
     assert "owner_id" in data
     assert data["owner_id"] == test_user.id
 

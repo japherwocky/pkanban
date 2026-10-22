@@ -47,8 +47,8 @@ pkanban team member-add 7 alice
 pkanban team member-add 7 bob
 
 # 4. Share board with team
-pkanban share 5 7
-# Output: Board 5 shared with team 7
+pkanban share 5 7 -p write
+# Output: Board 5 shared with team 7 at write
 
 # 5. Verify setup
 pkanban org get 3

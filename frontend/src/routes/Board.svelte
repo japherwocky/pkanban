@@ -35,20 +35,9 @@
   // teams alone hid the option entirely for a brand new org.
   async function loadShareTargets() {
     try {
-      const teams = [];
-      const orgs = await api.organizations.list();
-
-      for (const org of orgs) {
-        const orgTeams = await api.organizations.teams.list(org.id);
-        for (const team of orgTeams) {
-          teams.push({
-            id: team.id,
-            name: team.name,
-            organization: org.name
-          });
-        }
-      }
-
+      // Teams the server will let this user share with: their own (with or
+      // without an org) and every team in their orgs.
+      const [teams, orgs] = await Promise.all([api.me.teams(), api.organizations.list()]);
       return { teams, orgs };
     } catch (e) {
       console.error('Failed to load share targets:', e);
@@ -60,11 +49,22 @@
     navigate('/boards');
   }
 
-  async function handleShare(teamId, isPublicToOrg, organizationId = null) {
-    await api.boards.share(board.id, teamId, isPublicToOrg, organizationId);
-    // Reload board to get updated shared_team_id and is_public_to_org
-    board = await api.boards.get(board.id);
-  }
+  // Each sharing change reloads the board, so the dialog shows what the
+  // server now holds rather than what it was asked for.
+  const sharing = {
+    setTeam: async (teamId, permission) => {
+      await api.boards.teams.set(board.id, teamId, permission);
+      board = await api.boards.get(board.id);
+    },
+    removeTeam: async (teamId) => {
+      await api.boards.teams.remove(board.id, teamId);
+      board = await api.boards.get(board.id);
+    },
+    shareOrg: async (isPublicToOrg, organizationId, orgPermission) => {
+      await api.boards.shareWithOrg(board.id, isPublicToOrg, organizationId, orgPermission);
+      board = await api.boards.get(board.id);
+    },
+  };
 
   async function handleRename(name) {
     const updated = await api.boards.update(board.id, name);
@@ -80,7 +80,7 @@
     <button onclick={goBack}>Back to Boards</button>
   </div>
  {:else if board}
-  <BoardView board={board} onBack={goBack} availableTeams={availableTeams} availableOrgs={availableOrgs} onShare={handleShare} onRename={handleRename} initialCardId={params.cardId} />
+  <BoardView board={board} onBack={goBack} availableTeams={availableTeams} availableOrgs={availableOrgs} {sharing} onRename={handleRename} initialCardId={params.cardId} />
  {/if}
 
 <style>

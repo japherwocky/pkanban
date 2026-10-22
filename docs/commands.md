@@ -61,7 +61,7 @@ Tell this project's AI agents which board to use.
 
 ### [`pkanban share`](/docs/commands/share)
 
-Share board with a team or a whole organization, or make it private.
+Share a board with a team (read, write or admin) or an organization.
 
 ## Column Management
 
@@ -113,9 +113,9 @@ Organization management commands
 
 Team management commands
 
-- `pkanban team create` — Create a new team.
+- `pkanban team create` — Create a team, with you on it.
 - `pkanban team get` — Show team details.
-- `pkanban team list` — List teams in an organization.
+- `pkanban team list` — List the teams you can share a board with, or one organization's.
 - `pkanban team member-add` — Add member to team.
 - `pkanban team member-remove` — Remove member from team.
 - `pkanban team members` — List team members.

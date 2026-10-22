@@ -263,11 +263,15 @@ class OrganizationMember(BaseModel):
 
 class Team(BaseModel):
     name = CharField(max_length=200)
-    organization = ForeignKeyField(Organization, backref="teams")
+    # Optional. Membership is the grant, so a team needs no organization to
+    # give anyone access; an org only lists its teams and lends its owner as
+    # the fallback manager (see _team_manager). A team with none is run by its
+    # members alone -- the "you plus them" team a board invite makes.
+    organization = ForeignKeyField(Organization, null=True, backref="teams")
     created_at = DateTimeField()
 
     @classmethod
-    def create_with_columns(cls, name, organization):
+    def create_with_columns(cls, name, organization=None):
         return cls.create(
             name=name, organization=organization, created_at=datetime.now(timezone.utc)
         )
@@ -282,10 +286,14 @@ class TeamMember(BaseModel):
         indexes = ((("user", "team"), True),)
 
 
+READ, WRITE, ADMIN = "read", "write", "admin"
+# Lowest first: someone reachable by several routes gets the highest.
+PERMISSIONS = (READ, WRITE, ADMIN)
+
+
 class Board(BaseModel):
     owner = ForeignKeyField(User, backref="boards")
     name = CharField(max_length=200)
-    shared_team = ForeignKeyField(Team, null=True, backref="boards")
     # Which organization "public to org" means. Null for a personal board, and
     # set when the board is first shared org-wide -- boards are not owned by an
     # organization, they are shared into one. is_public_to_org was dead for as
@@ -294,6 +302,11 @@ class Board(BaseModel):
     organization = ForeignKeyField(Organization, null=True, backref="boards")
     is_public_to_org = BooleanField(default=False)
     created_at = DateTimeField()
+    # What "public to org" grants. Write, because that is what the flag meant
+    # before there were levels. Last, where migration 010's ADD COLUMN puts it.
+    org_permission = CharField(
+        max_length=10, default=WRITE, constraints=[SQL("DEFAULT 'write'")]
+    )
 
     @classmethod
     def create_with_columns(
@@ -311,14 +324,31 @@ class Board(BaseModel):
         board = cls.create(
             owner=owner,
             name=name,
-            shared_team=shared_team,
             is_public_to_org=is_public_to_org,
             organization=organization,
             created_at=datetime.now(timezone.utc),
         )
+        if shared_team is not None:
+            BoardTeam.create(board=board, team=shared_team, permission=WRITE)
         for i, col_name in enumerate(column_names):
             Column.create(board=board, name=col_name, position=i)
         return board
+
+
+class BoardTeam(BaseModel):
+    """A team's grant on a board: read, write or admin.
+
+    Teams and boards are many-to-many, like groups on a file with an ACL. A
+    board used to hold one shared_team, so sharing with a second team quietly
+    took the first one's access away (migration 010 moved those in at write).
+    """
+
+    board = ForeignKeyField(Board, backref="team_grants")
+    team = ForeignKeyField(Team, backref="board_grants")
+    permission = CharField(max_length=10, default=WRITE)
+
+    class Meta:  # type: ignore
+        indexes = ((("board", "team"), True),)
 
 
 class Column(BaseModel):
@@ -469,12 +499,13 @@ def generate_invite_token():
 class OrganizationInvite(BaseModel):
     """Invite tokens for joining an organization."""
 
-    organization = ForeignKeyField(Organization, backref="invites")
+    # Null only for an invite to a team that has no organization.
+    organization = ForeignKeyField(Organization, null=True, backref="invites")
     # Set when the invite is to a specific team rather than to the org at
     # large. Accepting one of these grants the team and nothing else: teams
     # already span organizations (see add_team_member), so a collaborator can
     # hold a team without appearing in the org's member list. organization is
-    # still populated, as the team's owner, for display and scoping.
+    # copied from the team, for display and scoping.
     team = ForeignKeyField(Team, null=True, backref="invites")
     email = CharField(max_length=255, null=True)  # optional - can be anonymous invite
     token = CharField(max_length=64, unique=True)
@@ -731,6 +762,7 @@ ALL_MODELS = [
     OrganizationMember,
     Team,
     TeamMember,
+    BoardTeam,
     BetaSignup,
     ApiKey,
     OrganizationInvite,

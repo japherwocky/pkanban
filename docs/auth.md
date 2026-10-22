@@ -98,7 +98,10 @@ Many-to-many relationship between User and Organization.
 |-------|------|-------------|
 | id | Integer | Primary key |
 | name | String(200) | Team name |
-| organization | ForeignKey(Organization) | Parent organization |
+| organization | ForeignKey(Organization), null | Parent organization, if any |
+
+A team with no organization is run by its members: any of them can add people,
+and any of them can delete it. An org's teams also answer to the org owner.
 
 Special team: Each org has an "Administrators" team created by default.
 
@@ -121,36 +124,36 @@ Many-to-many relationship between User and Team.
 | id | Integer | Primary key |
 | owner | ForeignKey(User) | User who created the board |
 | name | String(200) | Board name |
-| shared_team | ForeignKey(Team), null | Team with access |
+| organization | ForeignKey(Organization), null | The org "public to org" means |
+| is_public_to_org | Boolean | Shared with that whole organization |
+| org_permission | String | What the org gets: read, write (default) or admin |
 | created_at | DateTime | Creation timestamp |
 
-**Board Access Rules:**
-- `shared_team = null`: Private board, only owner can access
-- `shared_team = set`: Shared with that team, owner + team members can access
+### BoardTeam
 
-**Permissions:**
-- Owner: Full control (edit, share, delete, change shared_team)
-- Team members: Full edit access (cards, columns), cannot delete or change sharing
+A team's grant on a board. Boards and teams are many-to-many (migration 010
+replaced the old single `Board.shared_team`).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| board | ForeignKey(Board) | |
+| team | ForeignKey(Team) | |
+| permission | String | read \| write \| admin |
+
+**Levels:**
+- `read`: see the board, cards and comments
+- `write`: change anything on the board (cards, columns, comments)
+- `admin`: write, plus share the board (add, change and remove teams)
+- Owner: always admin, and the only one who can delete the board
 
 ## Access Control Logic
 
-### Board Access Check
-
-```python
-def can_access_board(user, board):
-    # Owner always has access
-    if board.owner == user:
-        return True
-
-    # Check team access
-    if board.shared_team:
-        return TeamMember.exists(
-            (TeamMember.user == user) &
-            (TeamMember.team == board.shared_team)
-        )
-
-    return False
-```
+`board_permission(user, board)` in `backend/api.py` returns `None`, `read`,
+`write` or `admin`: the owner is admin, otherwise the highest of every team
+grant the user holds and the org grant if the board is public to an org they
+are in. `can_access_board` is "any level", `can_modify_board` is "write or
+above", `can_share_board` is "admin". `accessible_boards(user)` is the same
+rule as a query, for the board list and search.
 
 ### Org Role Mapping
 
@@ -203,10 +206,11 @@ Users with `admin = true` on User model can:
 
 - `POST /boards` - Create board (personal or org-associated)
 - `GET /boards` - List accessible boards (personal + shared)
-- `PUT /boards/{id}` - Update board (owner or team member)
+- `POST /boards/{id}` - Rename board (write)
 - `DELETE /boards/{id}` - Delete board (owner only)
-- `POST /boards/{id}/share` - Share with team (owner only)
-- `DELETE /boards/{id}/share` - Unshare (owner only)
+- `PUT /boards/{id}/teams/{team_id}` - Share with a team at a level (admin)
+- `DELETE /boards/{id}/teams/{team_id}` - Unshare a team (admin)
+- `POST /boards/{id}/share` - Organization sharing, or make private (admin)
 
 ## Database Schema Diagram
 

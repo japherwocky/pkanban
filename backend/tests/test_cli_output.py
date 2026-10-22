@@ -84,6 +84,18 @@ def test_a_card_title_prints_as_written(title):
     [
         (["board", "list"], "boards", lambda n: [{"id": 1, "name": n}]),
         (
+            ["board", "list"],
+            "boards",
+            lambda n: [
+                {"id": 1, "name": "b", "teams": [{"id": 2, "name": n, "permission": "read"}]}
+            ],
+        ),
+        (
+            ["team", "list"],
+            "my_teams",
+            lambda n: [{"id": 1, "name": n, "organization_name": n}],
+        ),
+        (
             ["board", "get", "1"],
             "board_get",
             lambda n: {"id": 1, "name": n, "columns": []},

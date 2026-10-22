@@ -398,3 +398,89 @@ def test_009_adds_archived_at_to_a_pre_009_card_table():
             "card_search_delete",
             "card_search_update",
         }
+
+
+def _load_010():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "m010", os.path.join(MIGRATIONS_DIR, "010_board_teams.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_010_moves_shared_teams_into_boardteam_and_matches_a_fresh_install():
+    """Build the schema as it stood before 010 -- one shared_team_id per board,
+    no boardteam, an organization required on every team and invite -- with
+    real rows, and check the migration moves each share in at write, drops
+    the dangling one, and leaves the schema a fresh install would have."""
+    m010 = _load_010()
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh_path = os.path.join(tmp, "fresh.db")
+        old_path = os.path.join(tmp, "old.db")
+
+        fresh = SqliteDatabase(fresh_path)
+        with fresh.bind_ctx(ALL_MODELS):
+            fresh.connect()
+            fresh.create_tables(ALL_MODELS)
+            fresh.close()
+
+        old = SqliteDatabase(old_path)
+        with old.bind_ctx(ALL_MODELS):
+            old.connect()
+            old.create_tables(ALL_MODELS)
+            old.execute_sql('DROP TABLE "boardteam"')
+            old.execute_sql('ALTER TABLE "board" DROP COLUMN org_permission')
+            old.execute_sql(
+                'ALTER TABLE "board" ADD COLUMN "shared_team_id" INTEGER '
+                'REFERENCES "team" ("id")'
+            )
+            for table in ("team", "organizationinvite"):
+                sql = m010._create_sql(old, table)
+                m010._rebuild(
+                    old,
+                    table,
+                    sql.replace('"organization_id" INTEGER,', '"organization_id" INTEGER NOT NULL,'),
+                )
+            assert m010._columns(old, "team")["organization_id"][3] == 1
+
+            old.execute_sql(
+                "INSERT INTO user (username, password_hash, email_verified, admin) "
+                "VALUES ('u', 'x', 1, 0)"
+            )
+            old.execute_sql(
+                "INSERT INTO organization (name, slug, owner_id, created_at) "
+                "VALUES ('o', 'o', 1, '2026-01-01')"
+            )
+            old.execute_sql(
+                "INSERT INTO team (name, organization_id, created_at) "
+                "VALUES ('t', 1, '2026-01-01')"
+            )
+            for name, team in (("shared", 1), ("dangling", 999), ("private", None)):
+                old.execute_sql(
+                    "INSERT INTO board (owner_id, name, is_public_to_org, created_at, "
+                    "shared_team_id) VALUES (1, ?, 0, '2026-01-01', ?)",
+                    (name, team),
+                )
+
+            Router(old, migrate_dir=MIGRATIONS_DIR).run()
+            grants = old.execute_sql(
+                "SELECT board_id, team_id, permission FROM boardteam"
+            ).fetchall()
+            boards = old.execute_sql(
+                "SELECT id, name, org_permission FROM board ORDER BY id"
+            ).fetchall()
+            old.close()
+
+        assert grants == [(1, 1, "write")]
+        assert boards == [(1, "shared", "write"), (2, "dangling", "write"), (3, "private", "write")]
+        assert _schema(old_path) == _schema(fresh_path)
+
+        # Running again is a no-op.
+        again = SqliteDatabase(old_path)
+        again.connect()
+        Router(again, migrate_dir=MIGRATIONS_DIR).run()
+        assert again.execute_sql("SELECT count(*) FROM boardteam").fetchone()[0] == 1
+        again.close()

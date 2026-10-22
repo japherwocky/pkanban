@@ -61,8 +61,8 @@ pkanban column create 1 "To Do" 0
 # Add a card
 pkanban card create 1 "First task" --description "Getting started"
 
-# Share a board with a team
-pkanban share 1 <team-id>
+# Share a board with a team (read, write or admin)
+pkanban share 1 <team-id> -p write
 ```
 
 ## API Keys
@@ -126,7 +126,7 @@ to `~/.pkanban.yaml`, and stdout is what CI logs capture.
 | `pkanban board get <id>` | Show board details |
 | `pkanban board delete <id>` | Delete a board |
 | `pkanban board update <id> <name>` | Update board name |
-| `pkanban share <board_id> <team_id\|private>` | Share board or make private |
+| `pkanban share <board_id> <team_id\|private> [-p read\|write\|admin] [--remove]` | Share board with a team at a level, or make private |
 | `pkanban column create <board_id> <name> [position]` | Create a column (appends by default) |
 | `pkanban column delete <id>` | Delete a column |
 | `pkanban card get <id>` | Show a card's description and comments |

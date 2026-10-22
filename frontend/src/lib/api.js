@@ -174,14 +174,24 @@ export const api = {
     // organizationId is only needed when the user belongs to more than one
     // org; the server infers it otherwise and rejects an ambiguous share
     // rather than guessing which set of people to expose the board to.
-    share: (id, teamId, isPublicToOrg = false, organizationId = null) => apiFetch(`/api/boards/${id}/share`, {
+    // The org half of sharing only; teams go through boards.teams. No team_id
+    // is sent, since an explicit null there means "remove every team".
+    shareWithOrg: (id, isPublicToOrg, organizationId = null, orgPermission = null) => apiFetch(`/api/boards/${id}/share`, {
       method: 'POST',
       body: JSON.stringify({
-        team_id: teamId,
         is_public_to_org: isPublicToOrg,
         organization_id: organizationId,
+        ...(orgPermission ? { org_permission: orgPermission } : {}),
       }),
     }),
+    teams: {
+      // Adds the team, or changes its level; other teams keep theirs.
+      set: (id, teamId, permission) => apiFetch(`/api/boards/${id}/teams/${teamId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ permission }),
+      }),
+      remove: (id, teamId) => apiFetch(`/api/boards/${id}/teams/${teamId}`, { method: 'DELETE' }),
+    },
   },
   columns: {
     create: (boardId, name, position) => apiFetch('/api/columns', {
@@ -302,6 +312,8 @@ export const api = {
   },
   me: {
     usage: () => apiFetch('/api/me/usage'),
+    // Teams the caller can share a board with: their own, and their orgs'.
+    teams: () => apiFetch('/api/me/teams'),
     changePassword: (current_password, new_password) =>
       apiFetch('/api/me/password', {
         method: 'POST',

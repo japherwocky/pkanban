@@ -29,7 +29,7 @@ Complete reference for all pkanban commands. Perfect for quick lookups during ag
 | `pkanban board get` | `pkanban board get <board-id>` | Show board details |
 | `pkanban board update` | `pkanban board update <board-id> <name>` | Rename board |
 | `pkanban board delete` | `pkanban board delete <board-id>` | Delete board |
-| `pkanban share` | `pkanban share <board-id> <team-id\|private>` | Share with team or make private |
+| `pkanban share` | `pkanban share <board-id> <team-id\|private> [-p read\|write\|admin] [--remove]` | Share with a team at a level, or make private |
 
 ## 📊 Column Management
 

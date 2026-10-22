@@ -25,6 +25,7 @@ from backend.main import app
 from backend.auth import create_access_token
 from backend.models import (
     Board,
+    BoardTeam,
     Card,
     Column,
     OrganizationMember,
@@ -94,7 +95,7 @@ class TestTeamDeletionCleansUp:
         deleted = client.delete(f"/api/teams/{team['id']}", headers=headers(owner))
         assert deleted.status_code == 200
 
-        assert Board.get_by_id(board["id"]).shared_team_id is None
+        assert not BoardTeam.select().where(BoardTeam.board == board["id"]).exists()
         assert TeamMember.select().where(TeamMember.team == team["id"]).count() == 0
 
     def test_non_owner_gets_403_not_500_after_the_team_is_deleted(
@@ -140,13 +141,13 @@ class TestTeamDeletionCleansUp:
         """Databases already corrupted by the old code still have to load.
 
         Migration 003 clears these, but can_access_board must not depend on
-        having been migrated -- it reads shared_team_id rather than resolving
+        having been migrated -- it reads the grant's team_id rather than resolving
         the FK for exactly this reason.
         """
         owner = User.create_user("dg_owner", "password")
         other = User.create_user("dg_other", "password")
         board = Board.create_with_columns(owner=owner, name="Dangling")
-        Board.update(shared_team=99999).where(Board.id == board.id).execute()
+        BoardTeam.create(board=board, team=99999, permission="write")
 
         assert (
             client.get(f"/api/boards/{board.id}", headers=headers(other)).status_code
