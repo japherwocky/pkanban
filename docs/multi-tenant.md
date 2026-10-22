@@ -52,6 +52,8 @@ The application supports multi-tenant organizations with team-based board sharin
 | `PUT` | `/api/boards/{id}/teams/{team_id}` | Share with a team, or change its level: `{"permission": "read" \| "write" \| "admin"}` (admin) |
 | `DELETE` | `/api/boards/{id}/teams/{team_id}` | Take a team's access away (admin) |
 | `POST` | `/api/boards/{id}/share` | Organization sharing: `{"is_public_to_org", "organization_id", "org_permission"}` (admin) |
+| `POST` | `/api/boards/{id}/invites` | Invite someone by email: `{"email", "permission"}` (admin). Makes a team of you and them, shares the board with it, mails them a link. Answers with the link and `email_sent` |
+| `DELETE` | `/api/boards/{id}/invites/{invite_id}` | Revoke a pending invite (admin) |
 | `POST` | `/api/teams` | Create a team in no organization, with you on it |
 | `GET` | `/api/me/teams` | Teams you can share a board with: yours, and your organizations' |
 

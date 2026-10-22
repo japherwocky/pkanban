@@ -61,7 +61,7 @@ Tell this project's AI agents which board to use.
 
 ### [`pkanban share`](/docs/commands/share)
 
-Share a board with a team (read, write or admin) or an organization.
+Share a board with a team (read, write or admin), a person, or an organization.
 
 ## Column Management
 

@@ -1279,6 +1279,12 @@ def cmd_board_share(
         "write", "--permission", "-p", help=PERMISSION_HELP
     ),
     remove: bool = typer.Option(False, "--remove", help="Take this team's access away"),
+    email: str = typer.Option(
+        None, "--email", "-e", help="Invite this address to the board (sends them mail)"
+    ),
+    revoke_invite: int = typer.Option(
+        None, "--revoke-invite", help="Revoke a pending invite, by its id"
+    ),
     org: bool = typer.Option(
         False, "--org", help="Share with a whole organization instead of a team"
     ),
@@ -1288,11 +1294,14 @@ def cmd_board_share(
         help="Which organization, when you belong to more than one",
     ),
 ):
-    """Share a board with a team (read, write or admin) or an organization.
+    """Share a board with a team (read, write or admin), a person, or an organization.
 
     A board can be shared with any number of teams, each at its own level;
     sharing with one leaves the others alone. `--remove` takes one away, and
     `private` takes every team and the organization away.
+
+    `--email` invites one person, who needs no account yet: they get a link
+    to this board, good for that address only. Inviting them again re-sends.
     """
     # --org-id on its own means --org: naming the organization is a clear
     # enough statement of intent that making people pass both is just friction.
@@ -1301,6 +1310,33 @@ def cmd_board_share(
     if permission not in ("read", "write", "admin"):
         rprint(f"[red]--permission is {PERMISSION_HELP}.[/red]", file=sys.stderr)
         raise typer.Exit(code=1)
+    if email is not None or revoke_invite is not None:
+        if team_id is not None or share_with_org or remove or (email and revoke_invite):
+            rprint(
+                "[red]--email and --revoke-invite each go on their own.[/red]",
+                file=sys.stderr,
+            )
+            raise typer.Exit(code=1)
+        client = make_client()
+        if revoke_invite is not None:
+            result = client.board_invite_revoke(board_id, revoke_invite)
+            emit(result, lambda: rprint(f"Invite [green]{revoke_invite}[/green] revoked"))
+            return
+        result = client.board_invite(board_id, email, permission)
+        invite = result["invite"]
+
+        def render():
+            rprint(
+                f"Invited [green]{esc(email)}[/green] to board {board_id} at {permission} "
+                f"(invite {invite['id']})"
+            )
+            if not result.get("email_sent"):
+                rprint("This server sends no mail. Pass them the link yourself:")
+                # Plain print: rich would fold a long URL across lines.
+                print(invite["url"])
+
+        emit(result, render)
+        return
     if share_with_org and team_id and team_id != "private":
         rprint("[red]Pass a team id or --org, not both.[/red]", file=sys.stderr)
         raise typer.Exit(code=1)

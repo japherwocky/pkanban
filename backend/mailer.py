@@ -44,6 +44,11 @@ def public_base_url() -> str:
     )
 
 
+def mail_configured() -> bool:
+    """Whether send_email will actually send, rather than print to stderr."""
+    return bool(os.environ.get("RESEND_API_KEY", "").strip())
+
+
 def send_email(to: str, subject: str, html: str) -> bool:
     """Send one email. Returns whether it was actually handed to Resend.
 
@@ -204,4 +209,40 @@ def send_invite_email(
         "expires in 7 days.</p>"
         f"{_signoff()}"
     )
+    return send_email(to_email, subject, html)
+
+
+# What each level lets the invitee do, in the words the mail uses.
+_LEVEL_WORDS = {
+    "read": "read it",
+    "write": "read and edit it",
+    "admin": "read, edit and share it",
+}
+
+
+def send_board_invite_email(
+    to_email: str,
+    invite_token: str,
+    inviter_username: str,
+    board_name: str,
+    permission: str,
+) -> bool:
+    """Email someone the link to one board.
+
+    Names the board, not the team made to carry the grant: the invitee has
+    never heard of the team, and the board is what they were asked to.
+    """
+    url = f"{public_base_url()}/invite/{invite_token}"
+    can = _LEVEL_WORDS.get(permission, "open it")
+    html = _wrap(
+        f'<p style="color:{_BRAND_DARK}"><strong>{escape(inviter_username)}'
+        f"</strong> invited you to the <strong>{escape(board_name)}</strong> "
+        "board on pkanban.</p>"
+        f'<p style="color:{_BRAND_DARK}">Once you accept, you can {can}.</p>'
+        f"{_button(url, 'Open the board')}"
+        f'<p style="color:{_BRAND_MUTED};font-size:13px">This invitation '
+        "expires in 7 days. It works only for the address it was sent to.</p>"
+        f"{_signoff()}"
+    )
+    subject = f"{inviter_username} invited you to {board_name} on pkanban"
     return send_email(to_email, subject, html)

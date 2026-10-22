@@ -213,6 +213,22 @@ A board can be shared with any number of teams, each at its own level:
 
 Only the owner can delete a board.
 
+The quickest way to share one board with one person -- a partner, a client, a
+contractor -- is to invite them by email. They need no account yet:
+
+```bash
+pkanban share 7 --email curtis@example.com -p write
+```
+
+They get a link to that board, which works only for that address; signing up
+or logging in with it lands them on the board. Inviting them again re-sends.
+Behind the scenes this is a team of the two of you, shared with the board at
+that level, so everything below applies to it too. The Share dialog on the
+board does the same, and lists pending invites with a Revoke button
+(`pkanban share 7 --revoke-invite <invite-id>` from here).
+
+For a group, make a team yourself:
+
 ```bash
 pkanban team create "Curtis"                 # prints a team id; you are on it
 pkanban team member-add <team-id> <username> # put them on the team

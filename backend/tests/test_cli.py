@@ -967,7 +967,10 @@ def share(**kwargs):
     """Run `pkanban share` with defaults for every option not given."""
     from pkanban.cli import cmd_board_share
 
-    args = dict(team_id=None, permission="write", remove=False, org=False, organization_id=None)
+    args = dict(
+        team_id=None, permission="write", remove=False, email=None, revoke_invite=None,
+        org=False, organization_id=None,
+    )
     args.update(kwargs)
     mock_client = MagicMock()
     mock_client.board_team_set.return_value = {"ok": True, "teams": []}
@@ -1051,3 +1054,46 @@ def test_team_create_still_takes_an_org_id_first():
     with patch("pkanban.cli.make_client", return_value=mock_client):
         cmd_team_create(first="3", name="Core", org_id=None)
     mock_client.team_create.assert_called_once_with(3, "Core")
+
+
+def test_share_email_invites_at_the_level():
+    client = share(email="curtis@example.com", revoke_invite=None, permission="read")
+    client.board_invite.assert_called_once_with(7, "curtis@example.com", "read")
+
+
+def test_share_email_prints_the_link_when_no_mail_went_out(capsys):
+    from pkanban.cli import cmd_board_share
+
+    mock_client = MagicMock()
+    mock_client.board_invite.return_value = {
+        "ok": True,
+        "email_sent": False,
+        "invite": {"id": 40, "url": "https://kanban.test/invite/abc"},
+    }
+    with patch("pkanban.cli.make_client", return_value=mock_client):
+        cmd_board_share(
+            board_id=7, team_id=None, permission="write", remove=False, email="c@example.com",
+            revoke_invite=None, org=False, organization_id=None,
+        )
+    out = capsys.readouterr().out
+    assert "https://kanban.test/invite/abc" in out
+
+
+def test_share_revoke_invite():
+    client = share(revoke_invite=40, email=None)
+    client.board_invite_revoke.assert_called_once_with(7, 40)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"email": "a@b.co", "team_id": "5"},
+        {"email": "a@b.co", "org": True},
+        {"email": "a@b.co", "revoke_invite": 3},
+    ],
+)
+def test_share_email_goes_on_its_own(kwargs):
+    import typer
+
+    with pytest.raises(typer.Exit):
+        share(**{"email": None, "revoke_invite": None, **kwargs})

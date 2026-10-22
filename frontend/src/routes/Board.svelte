@@ -60,6 +60,15 @@
       await api.boards.teams.remove(board.id, teamId);
       board = await api.boards.get(board.id);
     },
+    invite: async (email, permission) => {
+      const result = await api.boards.invites.create(board.id, email, permission);
+      board = await api.boards.get(board.id);
+      return result;
+    },
+    revokeInvite: async (inviteId) => {
+      await api.boards.invites.revoke(board.id, inviteId);
+      board = await api.boards.get(board.id);
+    },
     shareOrg: async (isPublicToOrg, organizationId, orgPermission) => {
       await api.boards.shareWithOrg(board.id, isPublicToOrg, organizationId, orgPermission);
       board = await api.boards.get(board.id);

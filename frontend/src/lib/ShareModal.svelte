@@ -13,6 +13,8 @@
      onSetTeam,
      onRemoveTeam,
      onShareOrg,
+     onInvite,
+     onRevokeInvite,
    } = $props();
 
    const LEVELS = [
@@ -25,6 +27,11 @@
    let error = $state(null);
    let addTeamId = $state(null);
    let addLevel = $state('write');
+   let inviteEmail = $state('');
+   let inviteLevel = $state('write');
+   // Set when the server could not mail the invite (no mailer configured):
+   // the link is then the inviter's to pass on.
+   let unsentLink = $state(null);
 
    // Seeded by the $effect below rather than from `board` directly. Reading a
    // prop inside $state() captures only its initial value, so a different
@@ -45,6 +52,12 @@
    });
 
    let shared = $derived(board?.teams ?? []);
+   let invitesByTeam = $derived(
+     (board?.invites ?? []).reduce((map, invite) => {
+       (map[invite.team_id] ??= []).push(invite);
+       return map;
+     }, {})
+   );
    let addable = $derived(availableTeams.filter((t) => !shared.some((s) => s.id === t.id)));
    let orgChanged = $derived(
      isPublicToOrg !== (board?.is_public_to_org ?? false) ||
@@ -69,6 +82,26 @@
      }
    }
 
+   function sendInvite() {
+     const email = inviteEmail.trim();
+     if (!email) return;
+     run(async () => {
+       const result = await onInvite(email, inviteLevel);
+       unsentLink = result?.email_sent === false ? { email, url: result.invite.url } : null;
+       inviteEmail = '';
+       inviteLevel = 'write';
+     });
+   }
+
+   async function copyLink() {
+     try {
+       await navigator.clipboard.writeText(unsentLink.url);
+     } catch {
+       // Clipboard refused (permissions, insecure origin): the link is on
+       // screen and selectable, which is enough.
+     }
+   }
+
    function addTeam() {
      if (addTeamId == null) return;
      run(async () => {
@@ -90,7 +123,8 @@
           {:else}
             <ul class="team-list">
               {#each shared as team (team.id)}
-                <li class="team-row">
+                <li class="team-item">
+                <div class="team-row">
                   <span class="team-name">{teamLabel(team)}</span>
                   <select
                     class="level-select"
@@ -110,6 +144,19 @@
                     disabled={busy}
                     onclick={() => run(() => onRemoveTeam(team.id))}
                   >Remove</button>
+                </div>
+                {#each invitesByTeam[team.id] ?? [] as invite (invite.id)}
+                  <div class="pending-row">
+                    <span class="pending-text">{invite.email} · invited, not yet accepted</span>
+                    <button
+                      type="button"
+                      class="link-btn"
+                      aria-label={`Revoke the invitation to ${invite.email}`}
+                      disabled={busy}
+                      onclick={() => run(() => onRevokeInvite(invite.id))}
+                    >Revoke</button>
+                  </div>
+                {/each}
                 </li>
               {/each}
             </ul>
@@ -133,6 +180,39 @@
           {/if}
           <p class="share-help">Everyone on a team gets its access. Admins can share the board too; only you can delete it.</p>
         </section>
+
+        {#if onInvite}
+          <section class="share-section">
+            <h3 class="share-label">Invite by email</h3>
+            <form class="team-row invite-form" onsubmit={(e) => { e.preventDefault(); sendInvite(); }}>
+              <input
+                type="email"
+                class="team-select email-input"
+                placeholder="name@example.com"
+                aria-label="Email to invite"
+                bind:value={inviteEmail}
+                disabled={busy}
+                required
+              />
+              <select class="level-select" aria-label="Access for the invitee" bind:value={inviteLevel} disabled={busy}>
+                {#each LEVELS as level (level.value)}
+                  <option value={level.value}>{level.label}</option>
+                {/each}
+              </select>
+              <button type="submit" class="create-btn" disabled={busy || !inviteEmail.trim()}>Invite</button>
+            </form>
+            <p class="share-help">They get a link to this board, for that address only. They don't need an account yet.</p>
+            {#if unsentLink}
+              <div class="unsent" role="status">
+                <p class="share-help">This server doesn't send mail. Send {unsentLink.email} this link yourself:</p>
+                <div class="team-row">
+                  <input class="team-select" readonly value={unsentLink.url} aria-label="Invitation link" onfocus={(e) => e.currentTarget.select()} />
+                  <button type="button" class="remove-btn" onclick={copyLink}>Copy</button>
+                </div>
+              </div>
+            {/if}
+          </section>
+        {/if}
 
         {#if availableOrgs.length > 0 || board?.is_public_to_org}
           <section class="share-section share-option">
@@ -222,6 +302,62 @@
 
    .team-list .team-row {
      flex-wrap: nowrap;
+   }
+
+   .team-item {
+     display: flex;
+     flex-direction: column;
+     gap: var(--space-1);
+   }
+
+   .pending-row {
+     display: flex;
+     align-items: center;
+     gap: var(--space-2);
+     padding-left: var(--space-3);
+     font-size: var(--text-sm);
+     color: var(--color-muted-foreground);
+   }
+
+   .pending-text {
+     flex: 1 1 0;
+     min-width: 0;
+     overflow-wrap: anywhere;
+   }
+
+   .link-btn {
+     padding: 0;
+     background: none;
+     border: none;
+     color: var(--color-primary);
+     font-size: var(--text-sm);
+     cursor: pointer;
+     text-decoration: underline;
+   }
+
+   .link-btn:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+   }
+
+   /* A row, explicitly: the modal's form styles stack a form's children,
+      which turns the input's flex-basis into a height. */
+   .invite-form {
+     flex-direction: row;
+     align-items: center;
+     margin: 0;
+   }
+
+   .email-input {
+     font-family: inherit;
+     height: auto;
+     min-height: 0;
+   }
+
+   .unsent {
+     display: flex;
+     flex-direction: column;
+     gap: var(--space-2);
    }
 
    .team-name {
