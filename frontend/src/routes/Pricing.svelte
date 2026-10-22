@@ -28,17 +28,17 @@
       <tr>
         <th scope="row">Boards you own</th>
         <td>{FREE_BOARDS}</td>
-        <td class="pro">Unlimited</td>
+        <td class="pro"><span aria-hidden="true">∞</span><span class="sr-only">Unlimited</span></td>
       </tr>
       <tr>
         <th scope="row">Cards per board</th>
         <td>{FREE_CARDS_PER_BOARD}</td>
-        <td class="pro">Unlimited</td>
+        <td class="pro"><span aria-hidden="true">∞</span><span class="sr-only">Unlimited</span></td>
       </tr>
       <tr>
         <th scope="row">Collaborators, API keys, CLI</th>
-        <td>Unlimited</td>
-        <td class="pro">Unlimited</td>
+        <td><span aria-hidden="true">∞</span><span class="sr-only">Unlimited</span></td>
+        <td class="pro"><span aria-hidden="true">∞</span><span class="sr-only">Unlimited</span></td>
       </tr>
       <tr class="price">
         <th scope="row">Price</th>
