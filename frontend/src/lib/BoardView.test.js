@@ -80,41 +80,26 @@ describe('BoardView drag-and-drop wiring', () => {
   });
 });
 
-describe('share button with nowhere to share to', () => {
-  // The share button only renders for the board's owner, and ownership is read
-  // from the JWT in localStorage, so the test has to look like a logged-in
-  // user 1 -- the id the fixture board is owned by.
+describe('share button', () => {
+  // Shown to admins only; ownership is read from the JWT in localStorage, so
+  // the test has to look like a logged-in user 1 -- the fixture's owner.
   beforeEach(() => {
     localStorage.setItem('token', `h.${btoa(JSON.stringify({ sub: '1' }))}.s`);
   });
-  // Teams are the only per-board sharing mechanism, and the page that creates
-  // them is linked from the boards list alone. This button used to be inert
-  // with a tooltip saying to make an organization, naming no route to one.
 
-  it('sends the owner to the organizations page', async () => {
+  // It used to send anyone with no team to the organizations page. Inviting
+  // by email needs neither a team nor an org, so the dialog always opens.
+  it('opens the share dialog even with no teams or orgs', async () => {
     navigate.mockClear();
-    const { container } = render(BoardView, {
-      props: { board, onBack: () => {}, availableTeams: [], availableOrgs: [], onShare: () => {}, onRename: () => {} },
-    });
-    const btn = container.querySelector('.share-btn.needs-org');
-    expect(btn).toBeInTheDocument();
-    btn.click();
-    expect(navigate).toHaveBeenCalledWith('/organizations');
-  });
-
-  it('opens the share modal instead once a team exists', () => {
-    const { container } = render(BoardView, {
+    const { container, findByText } = render(BoardView, {
       props: {
-        board,
-        onBack: () => {},
-        availableTeams: [{ id: 1, name: 'Collaborators', organization: 'Acme' }],
-        availableOrgs: [],
-        onShare: () => {},
-        onRename: () => {},
+        board, onBack: () => {}, availableTeams: [], availableOrgs: [], onRename: () => {},
+        sharing: { invite: vi.fn() },
       },
     });
-    expect(container.querySelector('.share-btn.needs-org')).toBeNull();
-    expect(container.querySelector('.share-btn')).toBeInTheDocument();
+    container.querySelector('.share-btn').click();
+    expect(await findByText('Invite by email')).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
   });
 });
 

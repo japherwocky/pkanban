@@ -408,6 +408,17 @@ class PkanbanClient:
     def board_team_remove(self, board_id, team_id):
         return self._request("DELETE", f"/api/boards/{board_id}/teams/{team_id}")
 
+    def board_invite(self, board_id, email, permission="write"):
+        """Invite someone to one board by email. Sends them mail."""
+        return self._request(
+            "POST",
+            f"/api/boards/{board_id}/invites",
+            json={"email": email, "permission": permission},
+        )
+
+    def board_invite_revoke(self, board_id, invite_id):
+        return self._request("DELETE", f"/api/boards/{board_id}/invites/{invite_id}")
+
     # API Key methods
     def api_keys(self):
         """List all API keys for the current user."""

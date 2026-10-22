@@ -79,3 +79,46 @@ describe('ShareModal', () => {
     expect(onShareOrg).toHaveBeenCalledWith(true, 9, 'read');
   });
 });
+
+describe('ShareModal invites', () => {
+  const withInvite = {
+    ...board,
+    invites: [{ id: 40, email: 'curtis@example.com', team_id: 2 }],
+  };
+
+  it('shows a pending invite under its team, and revokes it', async () => {
+    const onRevokeInvite = vi.fn().mockResolvedValue();
+    renderModal({ board: withInvite, onInvite: vi.fn(), onRevokeInvite });
+    expect(screen.getByText(/curtis@example.com · invited, not yet accepted/)).toBeInTheDocument();
+    await fireEvent.click(screen.getByLabelText('Revoke the invitation to curtis@example.com'));
+    expect(onRevokeInvite).toHaveBeenCalledWith(40);
+  });
+
+  it('invites by email at the chosen level and clears the field', async () => {
+    const onInvite = vi.fn().mockResolvedValue({ email_sent: true, invite: { url: 'u' } });
+    renderModal({ onInvite, onRevokeInvite: vi.fn() });
+    const field = screen.getByLabelText('Email to invite');
+    await fireEvent.input(field, { target: { value: ' curtis@example.com ' } });
+    await fireEvent.change(screen.getByLabelText('Access for the invitee'), { target: { value: 'read' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    expect(onInvite).toHaveBeenCalledWith('curtis@example.com', 'read');
+    await vi.waitFor(() => expect(field.value).toBe(''));
+    expect(screen.queryByLabelText('Invitation link')).toBeNull();
+  });
+
+  it('hands over the link when the server sends no mail', async () => {
+    const onInvite = vi.fn().mockResolvedValue({
+      email_sent: false,
+      invite: { url: 'https://kanban.test/invite/abc' },
+    });
+    renderModal({ onInvite, onRevokeInvite: vi.fn() });
+    await fireEvent.input(screen.getByLabelText('Email to invite'), { target: { value: 'c@example.com' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Invite' }));
+    expect((await screen.findByLabelText('Invitation link')).value).toBe('https://kanban.test/invite/abc');
+  });
+
+  it('has no invite form without a handler', () => {
+    renderModal();
+    expect(screen.queryByText('Invite by email')).toBeNull();
+  });
+});

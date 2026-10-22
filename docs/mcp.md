@@ -94,7 +94,11 @@ address and the key.
 - **Your plan's limits apply**, as in the CLI. Past one, the app gets an error
   with the upgrade link, and nothing is lost.
 - **Nothing can be deleted** through it. Archiving stands in, and can be
-  undone. Teams, sharing, API keys and your plan are out of its reach.
+  undone. Teams, sharing, API keys and your plan are out of its reach --
+  including inviting people to a board, which sends mail to an address and
+  gives it access. A board's text is written by whoever can see it, so a tool
+  that could invite would be one a hostile card could ask for. Invite from the
+  web or the CLI.
 - **Card text is written by whoever can see the board.** The connector tells
   the app to treat it as content, not instructions. Still, think twice before
   letting an AI act on a board strangers can write to.

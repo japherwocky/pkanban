@@ -192,6 +192,16 @@ export const api = {
       }),
       remove: (id, teamId) => apiFetch(`/api/boards/${id}/teams/${teamId}`, { method: 'DELETE' }),
     },
+    invites: {
+      // Makes a team of you and them, shares the board with it at
+      // `permission`, and mails them a link. Answers with the invite's url
+      // and whether mail went out.
+      create: (id, email, permission) => apiFetch(`/api/boards/${id}/invites`, {
+        method: 'POST',
+        body: JSON.stringify({ email, permission }),
+      }),
+      revoke: (id, inviteId) => apiFetch(`/api/boards/${id}/invites/${inviteId}`, { method: 'DELETE' }),
+    },
   },
   columns: {
     create: (boardId, name, position) => apiFetch('/api/columns', {

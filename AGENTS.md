@@ -320,6 +320,13 @@ permission), like groups on a file with an ACL (Dev #1037, migration 010).
   `team.organization` must handle `None`.
 - The web UI hides what the server would refuse: `permission` comes back on
   every board response, and a `read` board shows no edit controls.
+- **Inviting one person** (`POST /boards/{id}/invites`, Dev #1038) makes an
+  orgless team of inviter and invitee, grants it to the board, and sends a
+  team invite. A team holding exactly one board is "for" that board
+  (`_board_for_team`): its invite mail and landing page name the board, and
+  accepting lands on it. No new table. **Not an MCP tool, on purpose**: it
+  mails an address and grants it access, and a connected app reads card text
+  anyone with access wrote (see `docs/mcp.md`).
 
 ### Card archiving
 

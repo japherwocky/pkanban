@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
 import logging
@@ -22,7 +22,13 @@ from backend.auth import (
 from backend.billing import check_can_add_card, check_can_create_board, usage_for
 from backend.database import db
 from backend import stripe_billing
-from backend.mailer import send_invite_email, send_verification_email
+from backend.mailer import (
+    mail_configured,
+    public_base_url,
+    send_board_invite_email,
+    send_invite_email,
+    send_verification_email,
+)
 from backend.search import search_cards
 from backend.models import (
     User,
@@ -221,13 +227,17 @@ def board_teams(board):
 
 def board_sharing(board, user):
     """The sharing half of a board response, as `user` sees it."""
+    permission = board_permission(user, board)
     return {
         "is_public_to_org": board.is_public_to_org,
         "organization_id": board.organization_id,
         "org_permission": board.org_permission,
         "owner_id": board.owner_id,
-        "permission": board_permission(user, board),
+        "permission": permission,
         "teams": board_teams(board),
+        # Who has been asked and not yet answered. Admins only: an invite
+        # names an email address, which a reader has no need of.
+        **({"invites": board_invites(board)} if permission == ADMIN else {}),
     }
 
 
@@ -345,6 +355,8 @@ class BoardResponse(BaseModel):
     # The caller's level on this board, and every team it is shared with.
     permission: Optional[str] = None
     teams: list = []
+    # Pending invites to the board's teams; admins only, null for anyone else.
+    invites: Optional[list] = None
 
 
 class ColumnCreate(BaseModel):
@@ -1833,6 +1845,197 @@ async def unshare_board_from_team(
     )
     if not removed:
         raise HTTPException(status_code=404, detail="Board is not shared with that team")
+    # A team left with no boards has nothing for its pending invites to grant,
+    # and one accepted later would join a team that looks like access and is
+    # not. A team still holding other boards keeps them: removing it here says
+    # nothing about those.
+    if not BoardTeam.select().where(BoardTeam.team == team_id).exists():
+        OrganizationInvite.update(status="revoked").where(
+            (OrganizationInvite.team == team_id) & (OrganizationInvite.status == "pending")
+        ).execute()
+    return {"ok": True, **board_sharing(board, current_user)}
+
+
+class BoardInviteRequest(BaseModel):
+    email: str
+    permission: Permission = WRITE
+
+
+# Board invites send mail to any address an admin types, so each user gets a
+# budget. Generous for real use (a team onboarding), small for a spam run.
+BOARD_INVITES_PER_HOUR = 20
+
+
+def _board_for_team(team):
+    """The board a board-invite team exists for: its only grant, if it has
+    exactly one. A team holding several boards is a general team and its
+    invites name the team instead."""
+    grants = list(BoardTeam.select().where(BoardTeam.team == team).limit(2))
+    return grants[0] if len(grants) == 1 else None
+
+
+def board_invites(board):
+    """Pending, unexpired invites to the teams `board` is shared with."""
+    invites = (
+        OrganizationInvite.select()
+        .where(
+            OrganizationInvite.team.in_(
+                BoardTeam.select(BoardTeam.team).where(BoardTeam.board == board)
+            )
+            & (OrganizationInvite.status == "pending")
+        )
+        .order_by(OrganizationInvite.id)
+    )
+    return [
+        {
+            "id": invite.id,
+            "email": invite.email,
+            "team_id": invite.team_id,
+            "expires_at": invite.expires_at,
+            "created_by_username": invite.created_by.username,
+        }
+        for invite in invites
+        if not invite.is_expired()
+    ]
+
+
+@api.post("/boards/{board_id}/invites")
+async def invite_to_board(
+    board_id: int,
+    request: BoardInviteRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Invite someone to a board by email, at read, write or admin.
+
+    Makes a team of the inviter and the invitee (no organization), shares the
+    board with it at that level, and sends the invite. One team per person,
+    so their level is that team's level and removing them touches nobody
+    else. Inviting the same address again re-sends to the same team.
+    """
+    board = _sharable_board(board_id, current_user)
+    email = request.email.strip()
+    if not re.match(EMAIL_PATTERN, email):
+        raise HTTPException(status_code=400, detail="That is not an email address")
+
+    existing = User.get_or_none(fn.LOWER(User.email) == email.lower())
+    if existing is not None and board_permission(existing, board) is not None:
+        raise HTTPException(
+            status_code=400, detail=f"{email} can already open this board"
+        )
+
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    sent = (
+        OrganizationInvite.select()
+        .where(
+            (OrganizationInvite.created_by == current_user)
+            & (OrganizationInvite.created_at >= since)
+        )
+        .count()
+    )
+    if sent >= BOARD_INVITES_PER_HOUR:
+        raise HTTPException(
+            status_code=429,
+            detail="That is a lot of invitations for one hour. Try again later.",
+        )
+
+    # Inviting someone already invited re-sends, on their existing team, at
+    # the level asked for now: "they never got it" is the usual reason.
+    earlier = next(
+        (
+            invite
+            for invite in (
+                OrganizationInvite.select()
+                .join(BoardTeam, on=(BoardTeam.team == OrganizationInvite.team))
+                .where(
+                    (BoardTeam.board == board)
+                    & (OrganizationInvite.status == "pending")
+                    & (fn.LOWER(OrganizationInvite.email) == email.lower())
+                )
+            )
+        ),
+        None,
+    )
+
+    with db.atomic():
+        if earlier is not None:
+            team = earlier.team
+            OrganizationInvite.update(status="revoked").where(
+                OrganizationInvite.id == earlier.id
+            ).execute()
+            BoardTeam.update(permission=request.permission).where(
+                (BoardTeam.board == board) & (BoardTeam.team == team)
+            ).execute()
+        else:
+            local = email.split("@", 1)[0]
+            team = Team.create_with_columns(f"{board.name}: {local}"[:200])
+            TeamMember.create(
+                user=current_user, team=team, joined_at=datetime.now(timezone.utc)
+            )
+            BoardTeam.create(board=board, team=team, permission=request.permission)
+        invite, token = OrganizationInvite.create_invite(
+            organization=None, created_by=current_user, email=email, team=team
+        )
+
+    background_tasks.add_task(
+        send_board_invite_email,
+        email,
+        token,
+        current_user.username,
+        board.name,
+        request.permission,
+    )
+    return {
+        "ok": True,
+        "invite": {
+            "id": invite.id,
+            "email": invite.email,
+            "team_id": team.id,
+            "expires_at": invite.expires_at,
+            # The inviter's own invitation, so the link is theirs to pass on --
+            # which is the only way it arrives when this server sends no mail.
+            "url": f"{public_base_url()}/invite/{token}",
+        },
+        "email_sent": mail_configured(),
+        **board_sharing(board, current_user),
+    }
+
+
+@api.delete("/boards/{board_id}/invites/{invite_id}")
+async def revoke_board_invite(
+    board_id: int,
+    invite_id: int,
+    current_user: User = Depends(get_current_user_or_api_key),
+):
+    """Revoke a pending invite to one of the board's teams. The team keeps
+    its grant: the inviter is on it, and removing the team is a separate act."""
+    board = _sharable_board(board_id, current_user)
+    invite = OrganizationInvite.get_or_none(
+        (OrganizationInvite.id == invite_id)
+        & OrganizationInvite.team.in_(
+            BoardTeam.select(BoardTeam.team).where(BoardTeam.board == board)
+        )
+    )
+    if invite is None:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    with db.atomic():
+        invite.revoke()
+        team = invite.team
+        # A team invite_to_board made for this person -- no org, this board
+        # only, nobody on it but the inviter, nothing else pending -- exists
+        # for no one now. Take it away rather than leave an empty-looking row
+        # in the share dialog.
+        if (
+            team.organization_id is None
+            and _board_for_team(team) is not None
+            and TeamMember.select().where(TeamMember.team == team).count() <= 1
+            and not OrganizationInvite.select()
+            .where((OrganizationInvite.team == team) & (OrganizationInvite.status == "pending"))
+            .exists()
+        ):
+            _drop_team_grants(team)
+            TeamMember.delete().where(TeamMember.team == team).execute()
+            team.delete_instance()
     return {"ok": True, **board_sharing(board, current_user)}
 
 
@@ -2658,6 +2861,23 @@ async def get_invite(token: str):
         "email": invite.email,
         "status": invite.status,
         "created_by_username": invite.created_by.username,
+        **_invite_board(invite),
+    }
+
+
+def _invite_board(invite):
+    """The board a team invite is really for, when its team holds just one:
+    then the invite is described as that board, not as a team the invitee
+    has never heard of. Empty for org invites and general teams."""
+    if invite.team_id is None:
+        return {}
+    grant = _board_for_team(invite.team)
+    if grant is None:
+        return {}
+    return {
+        "board_id": grant.board_id,
+        "board_name": grant.board.name,
+        "permission": grant.permission,
     }
 
 
@@ -2722,6 +2942,8 @@ async def accept_invite(
         # someone: a team-only member has no access to the organization page.
         "team_id": invite.team_id,
         "team_name": invite.team.name if invite.team else None,
+        # Set when the invite was to one board: the client lands there.
+        **_invite_board(invite),
     }
 
 
