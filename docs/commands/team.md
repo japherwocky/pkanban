@@ -4,9 +4,9 @@ Team management commands
 
 ## Commands
 
-- [`pkanban team create`](#pkanban-team-create) — Create a new team.
+- [`pkanban team create`](#pkanban-team-create) — Create a team, with you on it.
 - [`pkanban team get`](#pkanban-team-get) — Show team details.
-- [`pkanban team list`](#pkanban-team-list) — List teams in an organization.
+- [`pkanban team list`](#pkanban-team-list) — List the teams you can share a board with, or one organization's.
 - [`pkanban team member-add`](#pkanban-team-member-add) — Add member to team.
 - [`pkanban team member-remove`](#pkanban-team-member-remove) — Remove member from team.
 - [`pkanban team members`](#pkanban-team-members) — List team members.
@@ -15,16 +15,20 @@ Team management commands
 
 ## `pkanban team create`
 
-Create a new team.
+Create a team, with you on it.
 
 ```bash
-pkanban team create <org_id> <name>
+pkanban team create <first> [name] [--org-id ORG_ID]
 ```
 
 **Arguments**
 
-- `org_id` (int) — Organization ID
-- `name` (str) — Team name
+- `first` (str) — Team name (or, before a name, an organization ID)
+- `name` (str) _(optional)_ — Team name, after an organization ID
+
+**Options**
+
+- `--org-id`, `-o` (int) — Put the team in this organization
 
 ## `pkanban team get`
 
@@ -40,15 +44,15 @@ pkanban team get <team_id>
 
 ## `pkanban team list`
 
-List teams in an organization.
+List the teams you can share a board with, or one organization's.
 
 ```bash
-pkanban team list --org-id ORG_ID
+pkanban team list [--org-id ORG_ID]
 ```
 
 **Options**
 
-- `--org-id`, `-o` (int) _(required)_ — Organization ID (required)
+- `--org-id`, `-o` (int) — Only this organization's teams
 
 ## `pkanban team member-add`
 

@@ -13,8 +13,11 @@ The application supports multi-tenant organizations with team-based board sharin
 
 - Boards are always owned by an individual user
 - By default, boards are private (only the owner can access)
-- Boards can be shared with a single team for collaboration
-- Shared boards: owner + all team members can edit; only owner can delete or change sharing
+- Boards can be shared with any number of teams, each at `read`, `write` or `admin`
+- A board shared with an organization gets a level of its own too (`write` by default)
+- Someone reachable several ways gets the highest level; the owner is always admin
+- `admin` can share the board; only the owner can delete it
+- A team needs no organization: membership is the grant
 
 ## Organization API Endpoints
 
@@ -46,6 +49,15 @@ The application supports multi-tenant organizations with team-based board sharin
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/boards/{id}/share` | Share board with a team (owner only) |
+| `PUT` | `/api/boards/{id}/teams/{team_id}` | Share with a team, or change its level: `{"permission": "read" \| "write" \| "admin"}` (admin) |
+| `DELETE` | `/api/boards/{id}/teams/{team_id}` | Take a team's access away (admin) |
+| `POST` | `/api/boards/{id}/share` | Organization sharing: `{"is_public_to_org", "organization_id", "org_permission"}` (admin) |
+| `POST` | `/api/teams` | Create a team in no organization, with you on it |
+| `GET` | `/api/me/teams` | Teams you can share a board with: yours, and your organizations' |
 
-Request body: `{"team_id": null}` to make private, `{"team_id": <team_id>}` to share.
+You can share only with a team you are on, or one in an organization you belong
+to. `GET /api/boards/{id}` reports your `permission` and the board's `teams`.
+
+`POST /share` with `{"team_id": null, "is_public_to_org": false}` makes a board
+private: every team comes off. Older clients send `{"team_id": <id>}` there to
+share with a team; that adds it at `write`.

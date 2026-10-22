@@ -188,7 +188,9 @@ def test_descriptions_are_dedented(client, key):
 
 def test_list_boards_shows_only_what_the_caller_can_see(client, key, board):
     Board.create_with_columns(owner=make_user(), name="Someone else's")
-    assert ok(client, key, "list_boards") == [{"id": board.id, "name": "MCP board"}]
+    assert ok(client, key, "list_boards") == [
+        {"id": board.id, "name": "MCP board", "permission": "admin"}
+    ]
 
 
 def test_another_users_board_is_refused(client, key):

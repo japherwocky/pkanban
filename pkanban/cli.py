@@ -424,12 +424,14 @@ def cmd_boards():
             rprint("No boards found")
             return
         for b in boards:
-            shared_info = ""
-            if b.get("shared_team_id"):
-                shared_info = f" (shared with team {b['shared_team_id']})"
-            elif b.get("is_public_to_org"):
-                shared_info = " (public to organization)"
-            rprint(f"{b['id']:4}  [bold]{esc(b['name'])}[/bold]{shared_info}")
+            shared = [f"{t['name']}: {t['permission']}" for t in b.get("teams") or []]
+            if b.get("is_public_to_org"):
+                shared.append(f"organization: {b.get('org_permission', 'write')}")
+            shared_info = f" (shared with {', '.join(shared)})" if shared else ""
+            # Your own level, unless it is everything.
+            mine = b.get("permission")
+            level = f" -- you can {mine}" if mine in ("read", "write") else ""
+            rprint(f"{b['id']:4}  [bold]{esc(b['name'])}[/bold]{esc(shared_info + level)}")
 
     emit(boards, render)
 
@@ -1160,31 +1162,51 @@ app.add_typer(team_app, name="team")
 @team_app.command("list")
 def cmd_teams(
     org_id: int = typer.Option(
-        ..., "--org-id", "-o", help="Organization ID (required)"
+        None, "--org-id", "-o", help="Only this organization's teams"
     ),
 ):
-    """List teams in an organization."""
+    """List the teams you can share a board with, or one organization's."""
     client = make_client()
-    teams = client.organization_teams(org_id)
+    teams = client.organization_teams(org_id) if org_id is not None else client.my_teams()
 
     def render():
         if not teams:
             rprint("No teams found")
             return
         for team in teams:
-            rprint(
-                f"{team['id']:4}  [bold]{esc(team['name'])}[/bold] (org: {esc(team.get('organization_name', 'Unknown'))})"
-            )
+            org = team.get("organization_name")
+            where = f" (org: {esc(org)})" if org else ""
+            rprint(f"{team['id']:4}  [bold]{esc(team['name'])}[/bold]{where}")
 
     emit(teams, render)
 
 
 @team_app.command("create")
 def cmd_team_create(
-    org_id: int = typer.Argument(..., help="Organization ID"),
-    name: str = typer.Argument(..., help="Team name"),
+    first: str = typer.Argument(
+        ..., help="Team name (or, before a name, an organization ID)"
+    ),
+    name: str = typer.Argument(None, help="Team name, after an organization ID"),
+    org_id: int = typer.Option(
+        None, "--org-id", "-o", help="Put the team in this organization"
+    ),
 ):
-    """Create a new team."""
+    """Create a team, with you on it.
+
+    A team needs no organization: `pkanban team create Curtis` makes one you
+    can add anyone to and share boards with. `--org-id` (or the older
+    `team create <org_id> <name>`) puts it in an organization instead.
+    """
+    if name is not None:
+        if not first.isdigit():
+            rprint(
+                "[red]Pass a team name, or an organization ID and a name.[/red]",
+                file=sys.stderr,
+            )
+            raise typer.Exit(code=1)
+        org_id = int(first)
+    else:
+        name = first
     client = make_client()
     result = client.team_create(org_id, name)
     emit(result, lambda: rprint(f"Team created with [green]id={result['id']}[/green]"))
@@ -1244,12 +1266,19 @@ def cmd_team_member_remove(
 # === Board Sharing ===
 
 
+PERMISSION_HELP = "read, write or admin (admins can share the board too)"
+
+
 @app.command("share")
 def cmd_board_share(
     board_id: int = typer.Argument(..., help="Board ID"),
     team_id: str = typer.Argument(
-        None, help="Team ID or 'private' to make board private"
+        None, help="Team ID, or 'private' to unshare from everyone"
     ),
+    permission: str = typer.Option(
+        "write", "--permission", "-p", help=PERMISSION_HELP
+    ),
+    remove: bool = typer.Option(False, "--remove", help="Take this team's access away"),
     org: bool = typer.Option(
         False, "--org", help="Share with a whole organization instead of a team"
     ),
@@ -1259,11 +1288,19 @@ def cmd_board_share(
         help="Which organization, when you belong to more than one",
     ),
 ):
-    """Share board with a team or a whole organization, or make it private."""
+    """Share a board with a team (read, write or admin) or an organization.
+
+    A board can be shared with any number of teams, each at its own level;
+    sharing with one leaves the others alone. `--remove` takes one away, and
+    `private` takes every team and the organization away.
+    """
     # --org-id on its own means --org: naming the organization is a clear
     # enough statement of intent that making people pass both is just friction.
     share_with_org = org or organization_id is not None
 
+    if permission not in ("read", "write", "admin"):
+        rprint(f"[red]--permission is {PERMISSION_HELP}.[/red]", file=sys.stderr)
+        raise typer.Exit(code=1)
     if share_with_org and team_id and team_id != "private":
         rprint("[red]Pass a team id or --org, not both.[/red]", file=sys.stderr)
         raise typer.Exit(code=1)
@@ -1273,28 +1310,33 @@ def cmd_board_share(
             file=sys.stderr,
         )
         raise typer.Exit(code=1)
+    if remove and (share_with_org or team_id == "private"):
+        rprint("[red]--remove takes a team id.[/red]", file=sys.stderr)
+        raise typer.Exit(code=1)
 
     client = make_client()
-    team_id_value = None if (team_id == "private" or share_with_org) else team_id
-    result = client.board_share(
-        board_id,
-        team_id_value,
-        is_public_to_org=share_with_org,
-        organization_id=organization_id,
-    )
+    if share_with_org:
+        result = client.board_share_org(
+            board_id, True, organization_id=organization_id, permission=permission
+        )
+        message = (
+            f"Board [green]{board_id}[/green] shared with organization "
+            f"{result.get('organization_id')} at {permission}"
+        )
+    elif team_id == "private":
+        result = client.board_make_private(board_id)
+        message = f"Board [green]{board_id}[/green] made private"
+    elif remove:
+        result = client.board_team_remove(board_id, team_id)
+        message = f"Board [green]{board_id}[/green] no longer shared with team {esc(team_id)}"
+    else:
+        result = client.board_team_set(board_id, team_id, permission)
+        message = (
+            f"Board [green]{board_id}[/green] shared with team {esc(team_id)} "
+            f"at {permission}"
+        )
 
-    def render():
-        if share_with_org:
-            rprint(
-                f"Board [green]{board_id}[/green] shared with organization "
-                f"{result.get('organization_id')}"
-            )
-        elif team_id_value:
-            rprint(f"Board [green]{board_id}[/green] shared with team {esc(team_id_value)}")
-        else:
-            rprint(f"Board [green]{board_id}[/green] made private")
-
-    emit(result, render)
+    emit(result, lambda: rprint(message))
 
 
 # === Account ===

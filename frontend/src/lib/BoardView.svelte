@@ -10,7 +10,7 @@
   import { dndzone } from 'svelte-dnd-action';
   import { createBoardDnd } from './boardDnd.js';
 
-  let { board, onBack, availableTeams = [], availableOrgs = [], onShare, onRename, initialCardId = null } = $props();
+  let { board, onBack, availableTeams = [], availableOrgs = [], sharing = {}, onRename, initialCardId = null } = $props();
 
   let columns = $state([]);
   let loading = $state(false);
@@ -57,6 +57,12 @@
   function isBoardOwner() {
     return board?.owner_id && String(board.owner_id) === String(currentUserId);
   }
+
+  // The server says what this user may do here (read, write or admin) and
+  // refuses anything beyond it; these keep the controls from offering it.
+  let level = $derived(board?.permission ?? (isBoardOwner() ? 'admin' : 'write'));
+  let canWrite = $derived(level === 'write' || level === 'admin');
+  let canAdmin = $derived(level === 'admin');
 
   async function loadBoard() {
     loading = true;
@@ -341,7 +347,7 @@
         </svg>
         Back
       </button>
-      {#if isBoardOwner()}
+      {#if canAdmin}
         <button class="board-title-btn" onclick={openRenameBoard} title="Rename board">
           <h1>{board.name}</h1>
           <svg class="rename-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -351,6 +357,9 @@
       {:else}
         <h1>{board.name}</h1>
       {/if}
+      {#if !canWrite}
+        <span class="read-only-badge" title="You can read this board but not change it">Read only</span>
+      {/if}
     </div>
     <div class="header-actions">
       <!-- Teams -- the thing board sharing is built on -- are managed here,
@@ -358,8 +367,8 @@
       <button class="nav-btn" onclick={() => navigate('/organizations')}>
         Organizations
       </button>
-      {#if isBoardOwner()}
-        {#if availableTeams.length > 0 || availableOrgs.length > 0}
+      {#if canAdmin}
+        {#if availableTeams.length > 0 || availableOrgs.length > 0 || board.teams?.length > 0}
           <button class="share-btn" onclick={() => showShareModal = true}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M9 3C8.44772 3 8 3.44772 8 4V8H4C3.44772 8 3 8.44772 3 9V10C3 10.6569 4.34315 12 6 12H8V14C8 14.5523 8.44772 15 9 15H9.5C10.0523 15 10.5 14.5523 10.5 14V12H12C13.6569 12 15 10.6569 15 9V8H10.5V4C10.5 3.44772 10.0523 3 9.5 3H9ZM4.5 9C4.5 8.72386 4.72386 8.5 5 8.5H6.5V9H4.5V9ZM12 9V9.5H13.5V9C13.5 8.72386 13.2761 8.5 13 8.5H12V9Z" stroke="currentColor" stroke-width="1.5"/>
@@ -395,7 +404,7 @@
     <div class="loading">Loading board...</div>
   {:else}
     <div class="columns-container"
-      use:dndzone={{ items: columns, type: 'column', flipDurationMs: 200 }}
+      use:dndzone={{ items: columns, type: 'column', flipDurationMs: 200, dragDisabled: !canWrite }}
       onconsider={dnd.considerColumns}
       onfinalize={dnd.finalizeColumns}
     >
@@ -408,7 +417,7 @@
             <h3>{column.name}</h3>
             <div class="column-actions">
               <span class="card-count">{liveCount(column.cards)}</span>
-              {#if isBoardOwner()}
+              {#if canAdmin}
                 <button class="column-delete-btn" onclick={() => deleteColumn(column.id, column.name)} title="Delete column">×</button>
               {/if}
             </div>
@@ -423,7 +432,7 @@
             {/if}
             <div
               class="cards-list"
-              use:dndzone={{ items: column.cards, type: 'card', flipDurationMs: 200 }}
+              use:dndzone={{ items: column.cards, type: 'card', flipDurationMs: 200, dragDisabled: !canWrite }}
               onconsider={(e) => dnd.considerCards(column.id, e)}
               onfinalize={(e) => dnd.finalizeCards(column.id, e)}
             >
@@ -449,7 +458,9 @@
                       {#if card.archived_at}<span class="archived-badge">Archived</span>{/if}
                       {card.title}
                     </span>
-                    <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
+                    {#if canWrite}
+                      <button class="delete-btn" onclick={(e) => deleteCard(column.id, card.id, e)}>×</button>
+                    {/if}
                   </div>
                   {#if card.description}
                     <!-- Plain text: rendered Markdown in a three-line clamp
@@ -465,14 +476,18 @@
                 {/each}
             </div>
           </div>
-          <button class="add-card-btn" onclick={() => openCreateCard(column.id)}>
-            <span>+</span> Add card
-          </button>
+          {#if canWrite}
+            <button class="add-card-btn" onclick={() => openCreateCard(column.id)}>
+              <span>+</span> Add card
+            </button>
+          {/if}
         </div>
       {/each}
-      <button class="add-column-btn" onclick={() => { newColumnName = ''; showCreateColumnModal = true; }}>
-        <span>+</span> Add Column
-      </button>
+      {#if canWrite}
+        <button class="add-column-btn" onclick={() => { newColumnName = ''; showCreateColumnModal = true; }}>
+          <span>+</span> Add Column
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -560,11 +575,13 @@
           {:else}
             {#if editingCard?.description}
               <Markdown text={editingCard.description} />
-            {:else}
+            {:else if canWrite}
               <button type="button" class="add-description" onclick={startEditDetails}>Add a description</button>
             {/if}
             <div class="modal-actions">
-              {#if editingCard?.archived_at}
+              {#if !canWrite}
+                <!-- Read only: nothing to do but close. -->
+              {:else if editingCard?.archived_at}
                 <button type="button" class="archive-btn" onclick={unarchiveCard} disabled={archiveLoading}>
                   {archiveLoading ? 'Unarchiving...' : 'Unarchive'}
                 </button>
@@ -579,8 +596,10 @@
                   {archiveLoading ? 'Archiving...' : 'Archive'}
                 </button>
               {/if}
-              <button type="button" class="cancel-btn" onclick={closeEditCard}>Close</button>
-              <button type="button" class="create-btn" onclick={startEditDetails} data-autofocus>Edit</button>
+              <button type="button" class="cancel-btn" onclick={closeEditCard} data-autofocus={!canWrite || undefined}>Close</button>
+              {#if canWrite}
+                <button type="button" class="create-btn" onclick={startEditDetails} data-autofocus>Edit</button>
+              {/if}
             </div>
           {/if}
 
@@ -588,6 +607,7 @@
             <Comments 
               card={editingCard} 
               onCommentsUpdate={handleCommentsUpdate}
+              {canWrite}
             />
           {/if}
         {/snippet}
@@ -621,7 +641,9 @@
         {board}
         availableTeams={availableTeams}
         availableOrgs={availableOrgs}
-        onShare={onShare}
+        onSetTeam={sharing.setTeam}
+        onRemoveTeam={sharing.removeTeam}
+        onShareOrg={sharing.shareOrg}
       />
     {/if}
   </div>
@@ -721,6 +743,16 @@
   .card-count {
     font-size: var(--text-sm);
     color: var(--color-muted-foreground);
+  }
+
+  .read-only-badge {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-muted-foreground);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    white-space: nowrap;
   }
 
   .nav-btn {

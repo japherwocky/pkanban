@@ -1,18 +1,20 @@
 # pkanban share
 
-Share board with a team or a whole organization, or make it private.
+Share a board with a team (read, write or admin) or an organization.
 
 ```bash
-pkanban share <board_id> [team_id] [--org] [--org-id ORGANIZATION_ID]
+pkanban share <board_id> [team_id] [--permission PERMISSION] [--remove] [--org] [--org-id ORGANIZATION_ID]
 ```
 
 **Arguments**
 
 - `board_id` (int) — Board ID
-- `team_id` (str) _(optional)_ — Team ID or 'private' to make board private
+- `team_id` (str) _(optional)_ — Team ID, or 'private' to unshare from everyone
 
 **Options**
 
+- `--permission`, `-p` (str) _(default: `write`)_ — read, write or admin (admins can share the board too)
+- `--remove` (bool) — Take this team's access away
 - `--org` (bool) — Share with a whole organization instead of a team
 - `--org-id` (int) — Which organization, when you belong to more than one
 

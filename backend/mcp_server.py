@@ -248,7 +248,10 @@ async def _card_now(ctx: Context, card_id: int) -> dict[str, Any]:
 
 @tool("List boards", READ)
 async def list_boards(ctx: Context) -> list[dict[str, Any]]:
-    """List every board you can see: your own and the ones shared with you."""
+    """List every board you can see: your own and the ones shared with you.
+
+    permission is what you may do there: read (look only), write, or admin.
+    """
     boards = []
     params: dict[str, Any] = {}
     while True:
@@ -256,7 +259,10 @@ async def list_boards(ctx: Context) -> list[dict[str, Any]]:
         boards.extend(response.json())
         cursor = response.headers.get("X-Next-Cursor")
         if not cursor or cursor == params.get("cursor"):
-            return [{"id": b["id"], "name": b["name"]} for b in boards]
+            return [
+                {"id": b["id"], "name": b["name"], "permission": b.get("permission")}
+                for b in boards
+            ]
         params = {"cursor": cursor}
 
 
@@ -271,7 +277,8 @@ async def get_board(
     """A board's columns in order, each with its cards' ids and titles.
 
     Descriptions and comments are left out so a big board stays readable; use
-    get_card for one card's full text.
+    get_card for one card's full text. permission is what you may do here:
+    read means the write tools will be refused.
     """
     params = {"include_archived": "true"} if include_archived else None
     board = (await _call(ctx, "GET", f"/api/boards/{board_id}", params=params)).json()
@@ -285,6 +292,7 @@ async def get_board(
     return {
         "id": board["id"],
         "name": board["name"],
+        "permission": board.get("permission"),
         "columns": [
             {
                 "id": column["id"],

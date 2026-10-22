@@ -267,7 +267,7 @@ class TestTeamAndOrgSharingCoexist:
         )
 
         board_row = Board.get_by_id(board["id"])
-        assert board_row.shared_team_id == team["id"]
+        assert [g.team_id for g in board_row.team_grants] == [team["id"]]
         assert board_row.is_public_to_org is True
 
         assert (

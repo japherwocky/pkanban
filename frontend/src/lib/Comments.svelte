@@ -2,7 +2,9 @@
   import { api } from './api.js';
   import Markdown from './Markdown.svelte';
 
-  let { card, onCommentsUpdate } = $props();
+  // canWrite is false on a read-only board: the thread shows, and nothing in
+  // it can be added to or changed.
+  let { card, onCommentsUpdate, canWrite = true } = $props();
 
   // Seeded by the $effect below rather than from `card` directly. Reading a
   // prop inside $state() captures only its initial value, so a card swapped
@@ -127,7 +129,7 @@
         <div class="comment-header">
           <span class="comment-author">{comment.username}</span>
           <span class="comment-time">{formatRelativeTime(comment.created_at)}</span>
-          {#if comment.user_id === currentUserId}
+          {#if canWrite && comment.user_id === currentUserId}
             <div class="comment-actions">
               <button 
                 class="comment-action-btn" 
@@ -183,10 +185,11 @@
     {/each}
     
     {#if comments.length === 0}
-      <p class="no-comments">No comments yet. Be the first to comment!</p>
+      <p class="no-comments">{canWrite ? 'No comments yet. Be the first to comment!' : 'No comments yet.'}</p>
     {/if}
   </div>
   
+  {#if canWrite}
   <!-- New comment form -->
   <div class="new-comment-form">
     <textarea 
@@ -204,6 +207,7 @@
       {loading ? 'Adding...' : 'Add Comment'}
     </button>
   </div>
+  {/if}
 </div>
 
 <style>

@@ -91,16 +91,6 @@
     }
   }
 
-  function getSharingInfo(board) {
-    if (board.is_public_to_org) {
-      return '<span class="badge public-badge">Public to Org</span>';
-    }
-    if (board.shared_team_name) {
-      return `<span class="badge shared-badge">Shared: ${board.shared_team_name}</span>`;
-    }
-    return '<span class="badge private-badge">Private</span>';
-  }
-
   function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
@@ -139,7 +129,16 @@
         </div>
         <div class="board-meta">
           <div class="sharing-info">
-            {@html getSharingInfo(board)}
+            <!-- Markup, not an HTML string: team names are user input. -->
+            {#if board.is_public_to_org}
+              <span class="badge public-badge">Public to Org</span>
+            {/if}
+            {#each board.teams ?? [] as team (team.id)}
+              <span class="badge shared-badge">{team.name}: {team.permission}</span>
+            {/each}
+            {#if !board.is_public_to_org && !board.teams?.length}
+              <span class="badge private-badge">Private</span>
+            {/if}
           </div>
           <div class="created-date">
             Created {formatDate(board.created_at)}
@@ -301,12 +300,10 @@
 
   .sharing-info {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 
-  /* The badge markup comes from sharingInfo() as an HTML string rendered
-     with {@html}, so the compiler cannot see these classes. Scope them
-     through the container instead. */
   .sharing-info :global(.badge) {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);

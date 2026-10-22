@@ -18,6 +18,7 @@ from backend.models import (  # noqa: E402
     CardSearch,
     Column,
     Organization,
+    BoardTeam,
     Team,
     TeamMember,
     User,
@@ -180,8 +181,7 @@ class TestAccess:
         org = Organization.create_with_columns("Arch Org", "arch-org", owner)
         team = Team.create_with_columns("Arch Team", org)
         TeamMember.create(user=teammate, team=team, joined_at=datetime.now(timezone.utc))
-        board.shared_team = team
-        board.save()
+        BoardTeam.create(board=board, team=team, permission="write")
         card = add_card(client, owner, first_column(board), "Shared")
 
         assert archive(client, teammate, card["id"]).status_code == 200

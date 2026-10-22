@@ -46,13 +46,16 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     # Boards pointing at a team that is gone. NOT NULL guard matters: an
     # unshared board has shared_team_id NULL, and NULL NOT IN (...) is NULL
     # rather than true, so those rows would never match anyway -- but being
-    # explicit keeps the intent readable.
-    cursor = database.execute_sql("""
-        UPDATE board SET shared_team_id = NULL
-        WHERE shared_team_id IS NOT NULL
-          AND shared_team_id NOT IN (SELECT id FROM team)
-    """)
-    print(f"  Unshared {cursor.rowcount} board(s) referencing a deleted team")
+    # explicit keeps the intent readable. A database built after 010 has no
+    # shared_team_id at all; 010 skips dangling refs when it moves them.
+    columns = [row[1] for row in database.execute_sql("PRAGMA table_info(board)")]
+    if "shared_team_id" in columns:
+        cursor = database.execute_sql("""
+            UPDATE board SET shared_team_id = NULL
+            WHERE shared_team_id IS NOT NULL
+              AND shared_team_id NOT IN (SELECT id FROM team)
+        """)
+        print(f"  Unshared {cursor.rowcount} board(s) referencing a deleted team")
 
     if _table_exists(database, "teammember"):
         cursor = database.execute_sql("""

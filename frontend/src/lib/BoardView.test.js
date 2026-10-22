@@ -117,3 +117,42 @@ describe('share button with nowhere to share to', () => {
     expect(container.querySelector('.share-btn')).toBeInTheDocument();
   });
 });
+
+describe('a read-only board', () => {
+  // Someone else's board, shared with this user's team at read.
+  beforeEach(() => {
+    localStorage.setItem('token', `h.${btoa(JSON.stringify({ sub: '2' }))}.s`);
+  });
+
+  const readOnly = { ...board, permission: 'read' };
+  const renderReadOnly = () => render(BoardView, {
+    props: { board: readOnly, onBack: () => {}, availableTeams: [], onRename: () => {} },
+  });
+
+  it('says so, and offers nothing that would be refused', () => {
+    const { container, getByText } = renderReadOnly();
+    expect(getByText('Read only')).toBeInTheDocument();
+    expect(container.querySelector('.add-card-btn')).toBeNull();
+    expect(container.querySelector('.add-column-btn')).toBeNull();
+    expect(container.querySelector('.card .delete-btn')).toBeNull();
+    expect(container.querySelector('.column-delete-btn')).toBeNull();
+    expect(container.querySelector('.share-btn')).toBeNull();
+    expect(container.querySelector('.board-title-btn')).toBeNull();
+  });
+
+  it('still shows the cards', () => {
+    const { getByText } = renderReadOnly();
+    expect(getByText('alpha')).toBeInTheDocument();
+  });
+
+  it('gives a writer the controls but not sharing', () => {
+    const { container } = render(BoardView, {
+      props: {
+        board: { ...board, permission: 'write' },
+        onBack: () => {}, availableTeams: [{ id: 1, name: 'T' }], onRename: () => {},
+      },
+    });
+    expect(container.querySelector('.add-card-btn')).toBeInTheDocument();
+    expect(container.querySelector('.share-btn')).toBeNull();
+  });
+});

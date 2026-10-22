@@ -505,8 +505,8 @@ def test_json_output_emits_raw_api_response(capsys, json_mode):
     from pkanban.cli import cmd_boards
 
     payload = [
-        {"id": 1, "name": "Dev", "shared_team_id": 1},
-        {"id": 3, "name": "Other", "shared_team_id": None},
+        {"id": 1, "name": "Dev", "teams": [{"id": 1, "name": "Core", "permission": "write"}]},
+        {"id": 3, "name": "Other", "teams": []},
     ]
     mock_client = MagicMock()
     mock_client.boards.return_value = payload
@@ -960,82 +960,94 @@ def test_expired_session_401_names_expiry():
     assert "pkanban login" in message
 
 
-# === share, team vs organization ===
+# === share: teams at a level, or an organization ===
 
 
-def test_share_with_a_team_sends_no_org_flag():
+def share(**kwargs):
+    """Run `pkanban share` with defaults for every option not given."""
     from pkanban.cli import cmd_board_share
 
+    args = dict(team_id=None, permission="write", remove=False, org=False, organization_id=None)
+    args.update(kwargs)
     mock_client = MagicMock()
-    mock_client.board_share.return_value = {"ok": True, "shared_team_id": 5}
-
+    mock_client.board_team_set.return_value = {"ok": True, "teams": []}
+    mock_client.board_team_remove.return_value = {"ok": True, "teams": []}
+    mock_client.board_make_private.return_value = {"ok": True, "teams": []}
+    mock_client.board_share_org.return_value = {"ok": True, "organization_id": 3}
     with patch("pkanban.cli.make_client", return_value=mock_client):
-        cmd_board_share(board_id=7, team_id="5", org=False, organization_id=None)
-
-    assert mock_client.board_share.call_args.args == (7, "5")
-    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is False
+        cmd_board_share(board_id=7, **args)
+    return mock_client
 
 
-def test_share_private_clears_the_team():
-    from pkanban.cli import cmd_board_share
-
-    mock_client = MagicMock()
-    mock_client.board_share.return_value = {"ok": True, "shared_team_id": None}
-
-    with patch("pkanban.cli.make_client", return_value=mock_client):
-        cmd_board_share(board_id=7, team_id="private", org=False, organization_id=None)
-
-    assert mock_client.board_share.call_args.args == (7, None)
-    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is False
+def test_share_with_a_team_sets_it_at_write_by_default():
+    client = share(team_id="5")
+    client.board_team_set.assert_called_once_with(7, "5", "write")
+    client.board_share_org.assert_not_called()
 
 
-def test_share_org_sends_the_flag_and_no_team():
-    from pkanban.cli import cmd_board_share
+def test_share_with_a_team_at_read():
+    client = share(team_id="5", permission="read")
+    client.board_team_set.assert_called_once_with(7, "5", "read")
 
-    mock_client = MagicMock()
-    mock_client.board_share.return_value = {"ok": True, "organization_id": 3}
 
-    with patch("pkanban.cli.make_client", return_value=mock_client):
-        cmd_board_share(board_id=7, team_id=None, org=True, organization_id=None)
+def test_share_remove_takes_one_team_away():
+    client = share(team_id="5", remove=True)
+    client.board_team_remove.assert_called_once_with(7, "5")
+    client.board_team_set.assert_not_called()
 
-    assert mock_client.board_share.call_args.args == (7, None)
-    assert mock_client.board_share.call_args.kwargs["is_public_to_org"] is True
+
+def test_share_private_clears_every_team():
+    client = share(team_id="private")
+    client.board_make_private.assert_called_once_with(7)
+
+
+def test_share_org_sends_the_flag_and_level():
+    client = share(org=True, permission="read")
+    client.board_share_org.assert_called_once_with(
+        7, True, organization_id=None, permission="read"
+    )
 
 
 def test_org_id_alone_implies_org():
     """Naming the organization is a clear enough statement of intent."""
-    from pkanban.cli import cmd_board_share
-
-    mock_client = MagicMock()
-    mock_client.board_share.return_value = {"ok": True, "organization_id": 3}
-
-    with patch("pkanban.cli.make_client", return_value=mock_client):
-        cmd_board_share(board_id=7, team_id=None, org=False, organization_id=3)
-
-    kwargs = mock_client.board_share.call_args.kwargs
-    assert kwargs["is_public_to_org"] is True
+    client = share(organization_id=3)
+    kwargs = client.board_share_org.call_args.kwargs
+    assert client.board_share_org.call_args.args == (7, True)
     assert kwargs["organization_id"] == 3
 
 
-def test_share_refuses_a_team_and_an_org_together():
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"team_id": "5", "org": True},  # a team and an org together
+        {},  # neither
+        {"team_id": "5", "permission": "root"},  # not a level
+        {"team_id": "private", "remove": True},  # --remove needs a team
+    ],
+)
+def test_share_refuses_a_muddled_request(kwargs):
     import typer
-    from pkanban.cli import cmd_board_share
+
+    with pytest.raises(typer.Exit):
+        client = share(**kwargs)
+        client.assert_not_called()
+
+
+def test_team_create_needs_no_organization():
+    from pkanban.cli import cmd_team_create
 
     mock_client = MagicMock()
+    mock_client.team_create.return_value = {"id": 4, "name": "Curtis"}
     with patch("pkanban.cli.make_client", return_value=mock_client):
-        with pytest.raises(typer.Exit):
-            cmd_board_share(board_id=7, team_id="5", org=True, organization_id=None)
-
-    mock_client.board_share.assert_not_called()
+        cmd_team_create(first="Curtis", name=None, org_id=None)
+    mock_client.team_create.assert_called_once_with(None, "Curtis")
 
 
-def test_share_refuses_neither_a_team_nor_an_org():
-    import typer
-    from pkanban.cli import cmd_board_share
+def test_team_create_still_takes_an_org_id_first():
+    from pkanban.cli import cmd_team_create
 
     mock_client = MagicMock()
+    mock_client.team_create.return_value = {"id": 4, "name": "Core"}
     with patch("pkanban.cli.make_client", return_value=mock_client):
-        with pytest.raises(typer.Exit):
-            cmd_board_share(board_id=7, team_id=None, org=False, organization_id=None)
-
-    mock_client.board_share.assert_not_called()
+        cmd_team_create(first="3", name="Core", org_id=None)
+    mock_client.team_create.assert_called_once_with(3, "Core")
