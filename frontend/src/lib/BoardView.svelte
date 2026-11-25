@@ -9,6 +9,8 @@
   import { navigate } from 'svelte-routing';
   import { dndzone } from 'svelte-dnd-action';
   import { createBoardDnd } from './boardDnd.js';
+  import ColumnResizeHandle from './ColumnResizeHandle.svelte';
+  import { DEFAULT_COLUMN_WIDTH, loadColumnWidths, saveColumnWidth } from './columnWidths.js';
 
   let { board, onBack, availableTeams = [], availableOrgs = [], sharing = {}, onRename, initialCardId = null } = $props();
 
@@ -41,6 +43,11 @@
   // Live cards only: the header and column counts describe what is on the board.
   const liveCount = (cards) => cards.filter((c) => !c.archived_at).length;
   let archivedTotal = $derived(columns.reduce((sum, col) => sum + (col.archived_count || 0), 0));
+
+  // This viewer's own column widths, kept on this device (columnWidths.js),
+  // so resizing is open to read-only viewers too.
+  let columnWidths = $state(loadColumnWidths());
+  const widthOf = (columnId) => columnWidths[columnId] ?? DEFAULT_COLUMN_WIDTH;
 
   // Get current user's id from token
   let currentUserId = $state(null);
@@ -308,6 +315,7 @@
     try {
       await api.columns.delete(columnId);
       columns = columns.filter(col => col.id !== columnId);
+      saveColumnWidth(columnId, null);
     } catch (e) {
       alert('Failed to delete column: ' + e.message);
     }
@@ -397,6 +405,7 @@
         <div
           class="column"
           draggable="true"
+          style:flex-basis="{widthOf(column.id)}px"
         >
           <div class="column-header">
             <h3>{column.name}</h3>
@@ -466,6 +475,12 @@
               <span>+</span> Add card
             </button>
           {/if}
+          <ColumnResizeHandle
+            width={widthOf(column.id)}
+            label={`Resize column ${column.name}`}
+            onresize={(width) => (columnWidths[column.id] = width)}
+            oncommit={(width) => saveColumnWidth(column.id, width)}
+          />
         </div>
       {/each}
       {#if canWrite}
@@ -788,7 +803,10 @@
     min-height: 0;
   }
 
+  /* 300px is DEFAULT_COLUMN_WIDTH; a resized column sets its own flex-basis
+     inline. Relative for the resize handle in the gap on its right. */
   .column {
+    position: relative;
     flex: 0 0 300px;
     display: flex;
     flex-direction: column;
@@ -1166,6 +1184,11 @@
 
     .columns-container {
       padding: var(--space-4);
+    }
+
+    /* However wide it is dragged, a column never runs off a phone's screen. */
+    .column {
+      max-width: calc(100vw - 2 * var(--space-4));
     }
   }
 </style>
