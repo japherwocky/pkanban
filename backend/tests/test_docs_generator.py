@@ -63,6 +63,42 @@ def test_unknown_type_falls_back_to_its_own_name():
     assert type_name(_FakeParam("DateTime")) == "datetime"
 
 
+class _FakeDescriptor:
+    def __init__(self, annotation, is_list=False, is_ranged=False):
+        self.annotation = annotation
+        self.is_list = is_list
+        self.is_ranged = is_ranged
+
+
+class _DescribedParam:
+    """A typer 0.29+ parameter: no click `.type`, a `type_descriptor` instead."""
+
+    def __init__(self, *args, **kwargs):
+        self.type_descriptor = _FakeDescriptor(*args, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "click_name,descriptor",
+    [
+        # Left, what click's type reported up to typer 0.28; right, what
+        # 0.29 carries for the same parameter. The CI break of 2026-11-25.
+        ("str", _DescribedParam(str)),
+        ("int", _DescribedParam(int)),
+        ("bool", _DescribedParam(bool)),
+        ("float", _DescribedParam(float)),
+        ("str", _DescribedParam(list[str], is_list=True)),
+        ("int range", _DescribedParam(int, is_ranged=True)),
+    ],
+)
+def test_typer_without_click_labels_types_the_same(click_name, descriptor):
+    assert type_name(descriptor) == type_name(_FakeParam(click_name))
+
+
+def test_typer_without_click_still_detects_flags():
+    assert is_bool(_DescribedParam(bool)) is True
+    assert is_bool(_DescribedParam(int)) is False
+
+
 @pytest.mark.parametrize("raw", ["boolean", "bool"])
 def test_flags_are_detected_under_either_spelling(raw):
     """usage_line() renders a flag without a value placeholder; missing this

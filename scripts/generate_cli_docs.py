@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import sys
+import typing
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -93,12 +94,30 @@ TYPE_NAMES = {
     "bool": "bool",
     "float": "float",
     "number": "float",
+    "integer range": "int range",
+    "int range": "int range",
+    "float range": "float range",
 }
 
 
 def type_name(param) -> str:
     """Stable label for a parameter's type."""
-    raw = (getattr(param.type, "name", "") or "").lower()
+    # typer 0.29 dropped click: its parameters have no click `.type`, only a
+    # `type_descriptor` holding the Python annotation (`int`, `list[str]`).
+    # Labelled as click's types were: a list by its items, and a bounded
+    # number (min=/max=) as "int range".
+    descriptor = getattr(param, "type_descriptor", None)
+    if descriptor is not None:
+        annotation = descriptor.annotation
+        items = typing.get_args(annotation)
+        if descriptor.is_list and items:
+            annotation = items[0]
+        raw = getattr(annotation, "__name__", str(annotation)).lower()
+        raw = TYPE_NAMES.get(raw, raw)
+        if descriptor.is_ranged:
+            raw = f"{raw} range"
+    else:
+        raw = (getattr(param.type, "name", "") or "").lower()
     return TYPE_NAMES.get(raw, raw)
 
 
