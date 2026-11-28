@@ -4,6 +4,7 @@
   import Modal from './Modal.svelte';
   import ShareModal from './ShareModal.svelte';
   import Comments from './Comments.svelte';
+  import CardSearch from './CardSearch.svelte';
   import Markdown from './Markdown.svelte';
   import { markdownToText } from './markdown.js';
   import { navigate } from 'svelte-routing';
@@ -202,6 +203,32 @@
     }
   });
 
+  const findCard = (cardId) => columns.flatMap((col) => col.cards).find((c) => c.id === cardId);
+
+  // A search result on this board opens here, with no trip through the
+  // router: this component stays mounted, and its deep link runs only once.
+  // True tells CardSearch the click is handled; another board's card is not
+  // ours, and CardSearch follows its link.
+  function openSearchResult(result) {
+    if (result.board_id !== board.id) return false;
+    const card = findCard(result.id);
+    if (card) {
+      openEditCard(card);
+    } else {
+      revealAndOpen(result);
+    }
+    return true;
+  }
+
+  // Not among the cards on screen: archived and hidden, or added by someone
+  // else since this board was loaded. Either way a reload has it.
+  async function revealAndOpen(result) {
+    if (result.archived_at) showArchived = true;
+    await loadBoard();
+    const card = findCard(result.id);
+    if (card) openEditCard(card);
+  }
+
   async function saveCard() {
     if (!editTitle.trim() || !editingCard) return;
     editLoading = true;
@@ -370,6 +397,7 @@
       {/if}
     </div>
     <div class="header-actions">
+      <CardSearch boardId={board.id} floating onopen={openSearchResult} />
       <!-- Teams -- the thing board sharing is built on -- are managed here,
            and this used to be the one screen with no route to that page. -->
       <button class="nav-btn" onclick={() => navigate('/organizations')}>

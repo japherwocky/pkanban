@@ -5,14 +5,35 @@
   import { highlightSegments } from './searchSnippet.js';
 
   // `query` is bindable so the page can hide what the results replace.
-  let { query = $bindable('') } = $props();
+  //
+  // `boardId` is the board the box sits on, if any: the search starts there
+  // and offers every board as the other choice. `floating` hangs the results
+  // under the field instead of pushing the page down, for a box in a header.
+  // `onopen(result)` lets the page open a card it already has on screen; it
+  // returns true when it did, and anything else falls through to the link.
+  let { query = $bindable(''), boardId = null, floating = false, onopen = null } = $props();
 
   let results = $state([]);
   let searching = $state(false);
   let error = $state(null);
+  // Only read when there is a board to be scoped to.
+  let scope = $state('board');
+  // A floating panel covers the page under it, so it can be put away without
+  // losing the query. Results in the page are always shown.
+  let expanded = $state(true);
+  let root;
   let input;
   let timer;
   let inflight = null;
+
+  let onBoard = $derived(boardId != null && scope === 'board');
+  let placeholder = $derived(
+    boardId == null
+      ? 'Search cards on every board  ( / )'
+      : onBoard
+        ? 'Search this board  ( / )'
+        : 'Search every board  ( / )',
+  );
 
   // Short: the server answers in about a millisecond, so this is only here to
   // avoid a request per keystroke from someone typing quickly.
@@ -21,6 +42,7 @@
   function oninput() {
     clearTimeout(timer);
     inflight?.abort();
+    expanded = true;
     if (!query.trim()) {
       results = [];
       error = null;
@@ -37,7 +59,10 @@
     const controller = new AbortController();
     inflight = controller;
     try {
-      results = await api.cards.search(query, { signal: controller.signal });
+      results = await api.cards.search(query, {
+        boardId: onBoard ? boardId : null,
+        signal: controller.signal,
+      });
       error = null;
     } catch (e) {
       if (e.name === 'AbortError') return;
@@ -64,6 +89,19 @@
     }
   }
 
+  // Straight away, not debounced: it is one click, not typing.
+  function setScope(next) {
+    if (scope === next) return;
+    scope = next;
+    clearTimeout(timer);
+    inflight?.abort();
+    if (query.trim()) {
+      searching = true;
+      run();
+    }
+    input?.focus();
+  }
+
   function cardHref(result) {
     return `/boards/${result.board_id}/card/${result.id}`;
   }
@@ -73,28 +111,43 @@
   function open(e, result) {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
+    if (floating) expanded = false;
+    if (onopen?.(result) === true) return;
     navigate(cardHref(result));
   }
 
-  // "/" jumps to the search box, unless it is being typed somewhere else.
+  // Tabbing out of a floating panel puts it away. A click is left to
+  // onOutsidePointer: it has no relatedTarget when it lands on plain text,
+  // inside the panel or not.
+  function onfocusout(e) {
+    if (floating && e.relatedTarget && !root.contains(e.relatedTarget)) expanded = false;
+  }
+
   onMount(() => {
+    // "/" jumps to the search box, unless it is being typed somewhere else
+    // or a dialog is open over the page.
     function onGlobalKey(e) {
       if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target;
-      if (target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (target.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
       e.preventDefault();
       input?.focus();
     }
+    function onOutsidePointer(e) {
+      if (floating && !root.contains(e.target)) expanded = false;
+    }
     window.addEventListener('keydown', onGlobalKey);
+    window.addEventListener('pointerdown', onOutsidePointer);
     return () => {
       window.removeEventListener('keydown', onGlobalKey);
+      window.removeEventListener('pointerdown', onOutsidePointer);
       clearTimeout(timer);
       inflight?.abort();
     };
   });
 </script>
 
-<div class="card-search">
+<div class="card-search" class:floating bind:this={root} {onfocusout}>
   <div class="field">
     <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"/>
@@ -104,8 +157,9 @@
       bind:value={query}
       {oninput}
       {onkeydown}
+      onfocus={() => (expanded = true)}
       type="search"
-      placeholder="Search cards on every board  ( / )"
+      {placeholder}
       aria-label="Search cards"
       autocomplete="off"
       spellcheck="false"
@@ -115,8 +169,14 @@
     {/if}
   </div>
 
-  {#if query.trim()}
+  {#if query.trim() && (expanded || !floating)}
     <div class="results" aria-live="polite" aria-busy={searching}>
+      {#if boardId != null}
+        <div class="scope" role="group" aria-label="Where to search">
+          <button type="button" aria-pressed={scope === 'board'} onclick={() => setScope('board')}>This board</button>
+          <button type="button" aria-pressed={scope === 'all'} onclick={() => setScope('all')}>All boards</button>
+        </div>
+      {/if}
       {#if error}
         <p class="status error">{error}</p>
       {:else if results.length === 0}
@@ -131,7 +191,8 @@
                   <span class="title">{result.title}</span>
                   {#if result.archived_at}<span class="archived-badge">Archived</span>{/if}
                 </span>
-                <span class="where">{result.board_name} / {result.column_name}</span>
+                <!-- On this board, the board's name is the page's own heading. -->
+                <span class="where">{onBoard ? result.column_name : `${result.board_name} / ${result.column_name}`}</span>
                 {#if result.snippet}
                   <span class="snippet">
                     {#each highlightSegments(result.snippet) as segment, i (i)}
@@ -280,6 +341,93 @@
     font-weight: 600;
     color: var(--color-muted-foreground);
     border: 1px solid var(--color-border);
+  }
+
+  .scope {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+  }
+
+  .scope button {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+  }
+
+  .scope button:hover {
+    color: var(--color-foreground);
+  }
+
+  .scope button[aria-pressed='true'] {
+    color: var(--color-foreground);
+    border-color: var(--color-primary);
+  }
+
+  /* In a header: a field the size of the buttons beside it, and results that
+     hang under it over the page. */
+  .floating {
+    position: relative;
+    flex: 0 1 16rem;
+    min-width: 12rem;
+    margin-bottom: 0;
+  }
+
+  .floating input {
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-8);
+    font-size: var(--text-sm);
+    border-width: 1px;
+  }
+
+  .floating .icon {
+    left: var(--space-2);
+  }
+
+  .floating .clear {
+    right: var(--space-1);
+  }
+
+  /* Under the modal (z-index 50), over the columns. Left-anchored and wider
+     than the field: the header's other buttons sit to the field's right, so
+     that is where the room is. */
+  .floating .results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 20;
+    width: min(26rem, calc(100vw - 2 * var(--space-6)));
+    max-height: min(70vh, 32rem);
+    overflow-y: auto;
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .floating .status {
+    padding: var(--space-4) 0;
+  }
+
+  .floating ul {
+    border-width: 1px;
+  }
+
+  /* On a phone the header's actions wrap under the title, so the field takes
+     the whole line and the results are exactly as wide as it is. */
+  @media (max-width: 640px) {
+    .floating {
+      flex-basis: 100%;
+    }
+
+    .floating .results {
+      right: 0;
+      width: auto;
+    }
   }
 
   mark {
