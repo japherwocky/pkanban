@@ -144,15 +144,23 @@
     </ProtectedRoute>
   </Route>
 
+  <!-- Keyed on the board: a route keeps its component when only a parameter
+       changes, and Board loads its board once, on mount. A search result on
+       another board, clicked from a card's own URL, changed the address and
+       left the old board on screen. -->
   <Route path="/boards/:id" let:params>
     <ProtectedRoute>
-      <Board {params} />
+      {#key params.id}
+        <Board {params} />
+      {/key}
     </ProtectedRoute>
   </Route>
 
   <Route path="/boards/:id/card/:cardId" let:params>
     <ProtectedRoute>
-      <Board {params} />
+      {#key params.id}
+        <Board {params} />
+      {/key}
     </ProtectedRoute>
   </Route>
 

@@ -298,6 +298,12 @@ Three triggers on `card` keep it current, so nothing in the API has to.
 - **Board access is `accessible_boards(user)`** in `backend/api.py`. Search,
   the board list and `can_access_board` all use it, so a card search can never
   reach a board the list would hide.
+- **The web app's search box is one component**, `CardSearch.svelte`, in two
+  places: in the page on the boards list, and in a board's header, where it is
+  `floating` (results hang under the field) and starts on that board with "All
+  boards" as the other choice. A result on the board you are looking at opens
+  through `onopen`, not the router: `BoardView` stays mounted, and its deep
+  link runs once.
 
 ### Board sharing
 

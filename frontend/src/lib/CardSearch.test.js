@@ -124,4 +124,137 @@ describe('CardSearch', () => {
 
     expect(document.activeElement).toBe(screen.getByRole('searchbox'));
   });
+
+  it('"/" typed in an open dialog stays there', async () => {
+    render(CardSearch);
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.innerHTML = '<button>Close</button>';
+    document.body.append(dialog);
+
+    await fireEvent.keyDown(dialog.querySelector('button'), { key: '/' });
+
+    expect(document.activeElement).not.toBe(screen.getByRole('searchbox'));
+    dialog.remove();
+  });
+
+  it('offers no choice of board when it is not on one', async () => {
+    search.mockResolvedValue([archiving]);
+    render(CardSearch);
+
+    await type('count');
+    await screen.findByRole('link', { name: /Card archiving/ });
+
+    expect(screen.queryByRole('group', { name: 'Where to search' })).toBeNull();
+    expect(search.mock.calls[0][1].boardId).toBeNull();
+  });
+});
+
+describe('CardSearch on a board', () => {
+  const onBoard = (props = {}) => render(CardSearch, { props: { boardId: 1, ...props } });
+
+  it('searches that board first, and names only the column', async () => {
+    search.mockResolvedValue([archiving]);
+    onBoard();
+    expect(screen.getByRole('searchbox').placeholder).toContain('Search this board');
+
+    await type('count');
+
+    const link = await screen.findByRole('link', { name: /Card archiving/ });
+    expect(search).toHaveBeenCalledWith('count', expect.objectContaining({ boardId: 1 }));
+    expect(link.querySelector('.where').textContent).toBe('Todo');
+    expect(screen.getByRole('button', { name: 'This board' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('"All boards" searches again, everywhere, and says which board', async () => {
+    search.mockResolvedValueOnce([]);
+    search.mockResolvedValueOnce([{ ...archiving, board_id: 2, board_name: 'Ops' }]);
+    onBoard();
+    await type('count');
+    await screen.findByText('No matching cards');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'All boards' }));
+
+    const link = await screen.findByRole('link', { name: /Card archiving/ });
+    expect(search).toHaveBeenLastCalledWith('count', expect.objectContaining({ boardId: null }));
+    expect(link.querySelector('.where').textContent).toBe('Ops / Todo');
+    expect(screen.getByRole('searchbox').placeholder).toContain('Search every board');
+  });
+
+  it('lets the page open a card itself, and follows the link when it declines', async () => {
+    search.mockResolvedValue([archiving, { ...archiving, id: 900, title: 'Elsewhere', board_id: 2 }]);
+    const onopen = vi.fn((result) => result.board_id === 1);
+    onBoard({ onopen });
+    await type('count');
+
+    await fireEvent.click(await screen.findByRole('link', { name: /Card archiving/ }));
+    expect(onopen).toHaveBeenCalledWith(expect.objectContaining({ id: 781 }));
+    expect(navigate).not.toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByRole('link', { name: /Elsewhere/ }));
+    expect(navigate).toHaveBeenCalledWith('/boards/2/card/900');
+  });
+
+  it('leaves a ctrl-click to the browser', async () => {
+    search.mockResolvedValue([archiving]);
+    const onopen = vi.fn(() => true);
+    onBoard({ onopen });
+    await type('count');
+
+    await fireEvent.click(await screen.findByRole('link', { name: /Card archiving/ }), { ctrlKey: true });
+
+    expect(onopen).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('CardSearch floating under a header', () => {
+  const floating = (props = {}) => render(CardSearch, { props: { boardId: 1, floating: true, ...props } });
+
+  it('puts the results away on a click elsewhere and brings them back on focus', async () => {
+    search.mockResolvedValue([archiving]);
+    floating();
+    await type('count');
+    await screen.findByRole('link', { name: /Card archiving/ });
+
+    await fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('link')).toBeNull();
+    // The query is kept: the panel was in the way, not finished with.
+    expect(screen.getByRole('searchbox').value).toBe('count');
+
+    await fireEvent.focus(screen.getByRole('searchbox'));
+    expect(screen.getByRole('link', { name: /Card archiving/ })).toBeTruthy();
+  });
+
+  it('stays open for a click inside it', async () => {
+    search.mockResolvedValue([archiving]);
+    floating();
+    await type('count');
+    const link = await screen.findByRole('link', { name: /Card archiving/ });
+
+    await fireEvent.pointerDown(link.querySelector('.snippet'));
+
+    expect(screen.getByRole('link', { name: /Card archiving/ })).toBeTruthy();
+  });
+
+  it('closes once a card is opened', async () => {
+    search.mockResolvedValue([archiving]);
+    floating({ onopen: () => true });
+    await type('count');
+
+    await fireEvent.click(await screen.findByRole('link', { name: /Card archiving/ }));
+
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('results in the page are not put away by a click elsewhere', async () => {
+    search.mockResolvedValue([archiving]);
+    render(CardSearch);
+    await type('count');
+    await screen.findByRole('link', { name: /Card archiving/ });
+
+    await fireEvent.pointerDown(document.body);
+
+    expect(screen.getByRole('link', { name: /Card archiving/ })).toBeTruthy();
+  });
 });
